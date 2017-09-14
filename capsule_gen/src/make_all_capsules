@@ -1,0 +1,76 @@
+#!/bin/bash
+
+if [ ! -d "../capsules" ]; then
+    mkdir ../capsules
+fi
+
+for capsule in `ls ../data/*.data`; do
+    capsule_name=$(basename "$capsule" .data)
+    echo "Making $capsule_name"
+    make encode-capsule NAME=$capsule_name
+done
+
+TEST_OUTPUT_DIR="../capsules/test_capsules"
+OUTPUT_DIR="../capsules/use_case_capsules"
+
+if [ ! -d "$TEST_OUTPUT_DIR" ]; then
+    mkdir $TEST_OUTPUT_DIR
+fi
+
+if [ ! -d "$OUTPUT_DIR" ]; then
+    mkdir $OUTPUT_DIR
+fi
+
+echo "Making test capsules"
+#test_imgs_snapchat_1KB
+./capsule_gen encode test_imgs_snapchat_1KB ../test_data/smallimg.data ../test_data/null.policy ${TEST_OUTPUT_DIR}/test_imgs_snapchat_1KB.capsule ${TEST_OUTPUT_DIR}/test_imgs_snapchat_1KB.plt ${TEST_OUTPUT_DIR}/test_imgs_snapchat_1KB.data ${TEST_OUTPUT_DIR}/test_imgs_snapchat_1KB.policy
+#test_imgl_snapchat_4KB
+./capsule_gen encode test_imgl_snapchat_4KB ../test_data/largeimg.data ../test_data/null.policy ${TEST_OUTPUT_DIR}/test_imgl_snapchat_4KB.capsule ${TEST_OUTPUT_DIR}/test_imgl_snapchat_4KB.plt ${TEST_OUTPUT_DIR}/test_imgl_snapchat_4KB.data ${TEST_OUTPUT_DIR}/test_imgl_snapchat_4KB.policy
+#test_video_snapchat_4KB
+./capsule_gen encode test_video_snapchat_4KB ../test_data/video.data ../test_data/null.policy ${TEST_OUTPUT_DIR}/test_video_snapchat_4KB.capsule ${TEST_OUTPUT_DIR}/test_video_snapchat_4KB.plt ${TEST_OUTPUT_DIR}/test_video_snapchat_4KB.data ${TEST_OUTPUT_DIR}/test_video_snapchat_4KB.policy
+#test_html_patient_1KB
+./capsule_gen encode test_html_patient_1KB ../test_data/html.data ../test_data/patient.policy ${TEST_OUTPUT_DIR}/test_html_patient_1KB.capsule ${TEST_OUTPUT_DIR}/test_html_patient_1KB.plt ${TEST_OUTPUT_DIR}/test_html_patient_1KB.data ${TEST_OUTPUT_DIR}/test_html_patient_1KB.policy
+#test_pdf_NULL_1KB
+./capsule_gen encode test_pdf_NULL_1KB ../test_data/document.pdf ../test_data/null.policy ${TEST_OUTPUT_DIR}/test_pdf_NULL_1KB.capsule ${TEST_OUTPUT_DIR}/test_pdf_NULL_1KB.plt ${TEST_OUTPUT_DIR}/test_pdf_NULL_1KB.data ${TEST_OUTPUT_DIR}/test_pdf_NULL_1KB.policy
+#test_1M_NULL_1KB
+./capsule_gen encode test_1M_NULL_1KB ../test_data/1M.data ../test_data/null.policy ${TEST_OUTPUT_DIR}/test_1M_NULL_1KB.capsule ${TEST_OUTPUT_DIR}/test_1M_NULL_1KB.plt ${TEST_OUTPUT_DIR}/test_1M_NULL_1KB.data ${TEST_OUTPUT_DIR}/test_1M_NULL_1KB.policy
+#test_1M_patient_1KB
+./capsule_gen encode test_1M_patient_1KB ../test_data/1M.data ../test_data/patient.policy ${TEST_OUTPUT_DIR}/test_1M_patient_1KB.capsule ${TEST_OUTPUT_DIR}/test_1M_patient_1KB.plt ${TEST_OUTPUT_DIR}/test_1M_patient_1KB.data ${TEST_OUTPUT_DIR}/test_1M_patient_1KB.policy
+#test_1M_needtoknow_1KB
+./capsule_gen encode test_1M_needtoknow_1KB ../test_data/1M.data ../test_data/need_to_know.policy ${TEST_OUTPUT_DIR}/test_1M_needtoknow_1KB.capsule ${TEST_OUTPUT_DIR}/test_1M_needtoknow_1KB.plt ${TEST_OUTPUT_DIR}/test_1M_needtoknow_1KB.data ${TEST_OUTPUT_DIR}/test_1M_needtoknow_1KB.policy
+#test_1M_snapchat_1KB
+./capsule_gen encode test_1M_snapchat_1KB ../test_data/1M.data ../test_data/snapchat.policy ${TEST_OUTPUT_DIR}/test_1M_snapchat_1KB.capsule ${TEST_OUTPUT_DIR}/test_1M_snapchat_1KB.plt ${TEST_OUTPUT_DIR}/test_1M_snapchat_1KB.data ${TEST_OUTPUT_DIR}/test_1M_snapchat_1KB.policy
+#test_1M_audit_1KB
+./capsule_gen encode test_1M_audit_1KB ../test_data/1M.data ../test_data/audit.policy ${TEST_OUTPUT_DIR}/test_1M_audit_1KB.capsule ${TEST_OUTPUT_DIR}/test_1M_audit_1KB.plt ${TEST_OUTPUT_DIR}/test_1M_audit_1KB.data ${TEST_OUTPUT_DIR}/test_1M_audit_1KB.policy
+#test_1M_NULL_4KB
+./capsule_gen encode test_1M_NULL_4KB ../test_data/1M.data ../test_data/null.policy ${TEST_OUTPUT_DIR}/test_1M_NULL_4KB.capsule ${TEST_OUTPUT_DIR}/test_1M_NULL_4KB.plt ${TEST_OUTPUT_DIR}/test_1M_NULL_4KB.data ${TEST_OUTPUT_DIR}/test_1M_NULL_4KB.policy
+#test_1M_NULL_2KB
+./capsule_gen encode test_1M_NULL_2KB ../test_data/1M.data ../test_data/null.policy ${TEST_OUTPUT_DIR}/test_1M_NULL_2KB.capsule ${TEST_OUTPUT_DIR}/test_1M_NULL_2KB.plt ${TEST_OUTPUT_DIR}/test_1M_NULL_2KB.data ${TEST_OUTPUT_DIR}/test_1M_NULL_2KB.policy
+#test_1M_NULL_3KB
+./capsule_gen encode test_1M_NULL_3KB ../test_data/1M.data ../test_data/null.policy ${TEST_OUTPUT_DIR}/test_1M_NULL_3KB.capsule ${TEST_OUTPUT_DIR}/test_1M_NULL_3KB.plt ${TEST_OUTPUT_DIR}/test_1M_NULL_3KB.data ${TEST_OUTPUT_DIR}/test_1M_NULL_3KB.policy
+#test_10M_NULL_4KB
+./capsule_gen encode test_10M_NULL_4KB ../test_data/10M.data ../test_data/null.policy ${TEST_OUTPUT_DIR}/test_10M_NULL_4KB.capsule ${TEST_OUTPUT_DIR}/test_10M_NULL_4KB.plt ${TEST_OUTPUT_DIR}/test_10M_NULL_4KB.data ${TEST_OUTPUT_DIR}/test_10M_NULL_4KB.policy
+#test_100KB_NULL_4KB
+./capsule_gen encode test_100KB_NULL_4KB ../test_data/100KB.data ../test_data/null.policy ${TEST_OUTPUT_DIR}/test_100KB_NULL_4KB.capsule ${TEST_OUTPUT_DIR}/test_100KB_NULL_4KB.plt ${TEST_OUTPUT_DIR}/test_100KB_NULL_4KB.data ${TEST_OUTPUT_DIR}/test_100KB_NULL_4KB.policy
+#test_10KB_NULL_4KB
+./capsule_gen encode test_10KB_NULL_4KB ../test_data/10KB.data ../test_data/null.policy ${TEST_OUTPUT_DIR}/test_10KB_NULL_4KB.capsule ${TEST_OUTPUT_DIR}/test_10KB_NULL_4KB.plt ${TEST_OUTPUT_DIR}/test_10KB_NULL_4KB.data ${TEST_OUTPUT_DIR}/test_10KB_NULL_4KB.policy
+
+echo "Making use case capsules"
+#test_bio_ehrpatient_4KB
+echo "EHR Patient"
+./capsule_gen encode test_bio_ehrpatient_4KB ../usecase_data/bio.data ../usecase_data/ehr_patient.policy ${OUTPUT_DIR}/test_bio_ehrpatient_4KB.capsule ${OUTPUT_DIR}/test_bio_ehrpatient_4KB.plt ${OUTPUT_DIR}/test_bio_ehrpatient_4KB.data ${OUTPUT_DIR}/test_bio_ehrpatient_4KB.policy
+#test_faketranscript_identity_4KB
+echo "Identity Doc"
+./capsule_gen encode test_faketranscript_identity_4KB ../usecase_data/FakeTranscript_John_Doe.pdf ../usecase_data/identity_doc.policy ${OUTPUT_DIR}/test_faketranscript_identity_4KB.capsule ${OUTPUT_DIR}/test_faketranscript_identity_4KB.plt ${OUTPUT_DIR}/test_faketranscript_identity_4KB.data ${OUTPUT_DIR}/test_faketranscript_identity_4KB.policy
+#test_imglg_private_4KB
+#echo "Private Large Image"
+#./capsule_gen encode test_imglg_private_4KB ../test_data/largeimg.data ../usecase_data/private_imglg.policy ${OUTPUT_DIR}/test_imglg_private_4KB.capsule ${OUTPUT_DIR}/test_imglg_private_4KB.plt ${OUTPUT_DIR}/test_imglg_private_4KB.data ${OUTPUT_DIR}/test_imglg_private_4KB.policy
+#test_imgsm_private_4KB
+echo "Private Small Image"
+./capsule_gen encode test_imgsm_private_4KB ../test_data/smallimg.data ../usecase_data/private_imgsm.policy ${OUTPUT_DIR}/test_imgsm_private_4KB.capsule ${OUTPUT_DIR}/test_imgsm_private_4KB.plt ${OUTPUT_DIR}/test_imgsm_private_4KB.data ${OUTPUT_DIR}/test_imgsm_private_4KB.policy
+#test_vid_private_4KB
+echo "Private video"
+./capsule_gen encode test_vid_private_4KB ../test_data/video.data ../usecase_data/private_vid.policy ${OUTPUT_DIR}/test_vid_private_4KB.capsule ${OUTPUT_DIR}/test_vid_private_4KB.plt ${OUTPUT_DIR}/test_vid_private_4KB.data ${OUTPUT_DIR}/test_vid_private_4KB.policy
+#test_merger_sensitivedoc_4KB
+echo "Sensitive Doc"
+./capsule_gen encode test_merger_sensitivedoc_4KB ../usecase_data/SkywagonIncTaildraggerCorp_Merger.fodt ../usecase_data/sensitive_doc.policy ${OUTPUT_DIR}/test_merger_sensitivedoc_4KB.capsule ${OUTPUT_DIR}/test_merger_sensitivedoc_4KB.plt ${OUTPUT_DIR}/test_merger_sensitivedoc_4KB.data ${OUTPUT_DIR}/test_merger_sensitivedoc_4KB.policy

@@ -1,0 +1,23 @@
+How to install protobuf-c and run example code:
+
+1) clone google's protobuf (C++) from source: https://github.com/google/protobuf.git
+2) follow the README.md in protobuf /src directory to install Protocol Buffer runtime 
+   and the Protocol Buffer compiler
+   
+   OPTIONAL: there are examples in /examples directory and on 
+             https://developers.google.com/protocol-buffers/docs/cpptutorial
+
+3) clone protobuf-c from source: https://github.com/protobuf-c/protobuf-c.git
+4) install protobuf-c (if permission issues are encountered, use sudo):
+	./autogen.sh
+	./configure
+	make 
+	make install
+	
+5) the Protocol Buffer API consists of two generated files amessage.pb-c.c 
+   and amessage.pb-c.h. These files are generated from the protobuf specification
+   defined in amessage.proto:
+
+   protoc-c --c_out=. amessage.proto
+
+   Replace #include<protobuf-c/protobuf-c.h> in amessage.pb-c.h with #include "protobuf-c.h"

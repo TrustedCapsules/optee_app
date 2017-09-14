@@ -1,0 +1,4 @@
+*.o
+capsule_gen
+capsule_server
+cscope*

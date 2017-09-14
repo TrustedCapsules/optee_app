@@ -1,0 +1,9 @@
+syntax = "proto2";
+message AMessage {
+  required int32 capsule_id=1; 
+  required int32 op_code=2;
+  required int32 rvalue=3;
+  required int32 tz_id=4;
+  required bytes hash=5;
+  required int32 payload_len=6;
+}

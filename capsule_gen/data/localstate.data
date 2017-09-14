@@ -1,0 +1,2 @@
+local state works by a policy that allows a file to only be opened 2 times. This has no
+policy on read/write

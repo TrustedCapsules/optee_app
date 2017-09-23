@@ -366,7 +366,7 @@ static int test_bio_single_4(void) {
 	fstat( fd_data, &stat_data );
 
 	if( stat_cap.st_size != stat_data.st_size ) {
-		PRINT_INFO( "stat_cap %u != stat_data %u\n", stat_cap.st_size,
+		PRINT_INFO( "stat_cap %ld != stat_data %ld\n", stat_cap.st_size,
 					stat_data.st_size );
 		return -1;
 	}

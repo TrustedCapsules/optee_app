@@ -376,6 +376,39 @@ TEEC_Result capsule_write( TEEC_Session *sess, TEEC_SharedMemory *in,
 						 ret_orig );
 }
 
+
+//TODO: not sure if these are necessary, might want to try removing them and see what happens
+TEEC_Result capsule_clear_benchmark( TEEC_Session *sess ) {
+	
+	uint32_t 		ret_orig;
+	TEEC_Operation  op;
+	TEEC_Result     res = TEEC_SUCCESS;
+
+	memset( &op, 0, sizeof( TEEC_Operation ) );
+	op.paramTypes = TEEC_PARAM_TYPES( TEEC_NONE, TEEC_NONE,	
+									  TEEC_NONE, TEEC_NONE );
+
+	res = TEEC_InvokeCommand( sess, CAPSULE_CLEAR_BENCHMARK, &op, &ret_orig );
+	
+	return check_result( res, "TEEC_InvokeCommand->CAPSULE_CLEAR_BENCHMARK", ret_orig );
+}
+
+TEEC_Result capsule_collect_benchmark( TEEC_Session *sess ) {
+	
+	uint32_t 		ret_orig;
+	TEEC_Operation  op;
+	TEEC_Result     res = TEEC_SUCCESS;
+
+	memset( &op, 0, sizeof( TEEC_Operation ) );
+	op.paramTypes = TEEC_PARAM_TYPES( TEEC_NONE, TEEC_NONE,	
+									  TEEC_NONE, TEEC_NONE );
+
+	res = TEEC_InvokeCommand( sess, CAPSULE_COLLECT_BENCHMARK, &op, &ret_orig );
+	
+	return check_result( res, "TEEC_InvokeCommand->CAPSULE_COLLECT_BENCHMARK",
+		ret_orig );
+}
+
 TEEC_Result capsule_ftruncate( TEEC_Session *sess, uint32_t size ) {
 	
 	uint32_t 		ret_orig;

@@ -38,7 +38,7 @@ int main( int argc, char** argv ) {
 			usage();
 		}
 	} else if( strcmp( argv[1], "benchmark" ) == 0 ) {
-		test_benchmark();
+		test_benchmark( argv[2], atoi(argv[3]), atoi(argv[4]) );
 	} else if( strcmp( argv[1], "load_system" ) == 0 ) {
 		// file name
 		load_system();

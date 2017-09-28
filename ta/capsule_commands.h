@@ -29,5 +29,7 @@ TEE_Result capsule_send_connection( uint32_t param_type, TEE_Param params[4] );
 TEE_Result capsule_send( uint32_t param_type, TEE_Param params[4] );
 TEE_Result capsule_recv_header( uint32_t param_type, TEE_Param params[4] );
 TEE_Result capsule_recv_payload( uint32_t param_type, TEE_Param params[4] );
+TEE_Result capsule_clear_benchmark( uint32_t param_type, TEE_Param params[4] );
+TEE_Result capsule_collect_benchmark( uint32_t param_type, TEE_Param params[4] );
 
 #endif /* CAPSULE_COMMANDS_H */

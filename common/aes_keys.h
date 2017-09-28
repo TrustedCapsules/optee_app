@@ -1,7 +1,9 @@
 #ifndef AES_KEYS_H
 #define AES_KEYS_H
 
+#define ORIGINAL_POLICY_EVAL   	  "need_to_know.policy"
 #define REPLACEMENT_POLICY_EVAL   "need_to_have.policy"
+#define ORIGINAL_POLICY_EVAL   "need_to_know.policy"
 #define MAX_STATES_PER_CAPSULE    20
 
 static unsigned char key_std[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 
@@ -80,7 +82,7 @@ static struct capsule_data capsule_data_array[] = {
  { "test_10M_NULL_4KB", {0x24,0x12,0xff,0x18}, 4096, {0x21,0x11,0x00,0x45} },
  /* 100KB_null_4KB capsule 29 */
  { "test_100KB_NULL_4KB", {0x24,0x12,0xff,0x19}, 4096, {0x21,0x11,0x00,0x45} },
- /* 10KB_null_4KB casule 30 */
+ /* 10KB_null_4KB capsule 30 */
  { "test_10KB_NULL_4KB", {0x24,0x12,0xff,0x1a}, 4096, {0x21,0x11,0x00,0x45} },
  /* pdf_NULL_1KB capsule 31 */
  { "test_pdf_NULL_1KB", {0x24,0x12,0xff,0x1b}, 1024, {0x21,0x11,0x00,0x45} },

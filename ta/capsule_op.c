@@ -252,7 +252,6 @@ int do_lseek( int state_tgid, int state_fd, int offset,
 
 	struct cap_text_entry *cap_entry = NULL;
 	if( is_data ) {
-        DMSG( "Finding capsule entry" );
 		cap_entry = find_capsule_entry( &cap_head.proc_entries, 
 						                state_tgid, state_fd );
 		if( cap_entry == NULL ) {
@@ -262,7 +261,6 @@ int do_lseek( int state_tgid, int state_fd, int offset,
 		}
 	}
 
-    DMSG( "Performing offset calculations" );
 	if( flag == START ) {
 		if( offset < 0 )
 			offset = 0;
@@ -316,7 +314,6 @@ TEE_Result do_read( int fd, int state_tgid, int state_fd,
 	unsigned char  		   *temp = bp;
 	struct cap_text_entry  *cap_entry;
 	if( is_data ) {
-        DMSG( "Finding capsule entry" );
 		cap_entry = find_capsule_entry( &cap_head.proc_entries, 
 						                state_tgid, state_fd );
 		if( cap_entry == NULL ) {
@@ -331,7 +328,7 @@ TEE_Result do_read( int fd, int state_tgid, int state_fd,
 			start = cap_head.data_end;
 		}
 	
-		DMSG( "do_read() start:%u len: %u", start, *len);
+		//MSG( "do_read() start:%u len: %u", start, *len);
 	
 		end = start + *len;
 		if( end > cap_head.data_end ) {
@@ -351,7 +348,7 @@ TEE_Result do_read( int fd, int state_tgid, int state_fd,
 		}
 	}
 
-	DMSG( "do_read() start: %u, end: %u", start, end);
+	//MSG( "do_read() start: %u, end: %u", start, end);
 
 	ch_start = start / symm_chunk_size;
 	ch_end = calc_chk_num( end, symm_chunk_size ); 
@@ -367,8 +364,8 @@ TEE_Result do_read( int fd, int state_tgid, int state_fd,
 	 * 3. Calculate the hash for each chunk read
 	 */
 
-	DMSG( "Performing a read of %u B starting at %u and ending at"
-	 	  " %u into the file %s", *len, start, end, capsule_name );
+	//MSG( "Performing a read of %u B starting at %u and ending at"
+	//	 " %u into the file %s", *len, start, end, capsule_name );
 
 	for( ch_curr = ch_start; ch_curr <= ch_end; ch_curr++ ) {
 		bl_curr = ch_curr == ch_start ? start % symm_chunk_size : 0;
@@ -383,13 +380,13 @@ TEE_Result do_read( int fd, int state_tgid, int state_fd,
 									   decrypt_op );
 			CHECK_SUCCESS( res, "Read_enc_file_block() Error" );
             if (plen <= 0) {
-                return TEE_ERROR_GENERIC;
+                return TEE_ERROR_GENERIC; // why?
             }
 			memcpy( bp, ptx, plen );
 			
-			//DMSG( "bl_curr: %u, bl_end: %u, plen: %u, ch_curr: %u,"
-			// 	  " ch_start: %u, ch_end: %u, ptx: %s", bl_curr, bl_end,
-			//	  plen, ch_curr, ch_start, ch_end, ptx );
+			//MSG( "bl_curr: %u, bl_end: %u, plen: %u, ch_curr: %u,"
+			//	 " ch_start: %u, ch_end: %u, ptx: %s", bl_curr, bl_end,
+			//	 plen, ch_curr, ch_start, ch_end, ptx );
 			
 			bl_curr += plen;
 			bp += plen;
@@ -403,9 +400,9 @@ TEE_Result do_read( int fd, int state_tgid, int state_fd,
 	    	bl_end = ch_curr == ch_last ? 
 					 bl_last_len : symm_chunk_size; 	
 
-			DMSG( "ch_start: %u, ch_curr: %u, ch_last: %u, ch_end: %u, " 
-				  "bl_curr: %u, bl_end: %u\n", ch_start, ch_curr, ch_last,
-				  ch_end, bl_curr, bl_end );
+			//MSG( "ch_start: %u, ch_curr: %u, ch_last: %u, ch_end: %u, " 
+			//	 "bl_curr: %u, bl_end: %u\n", ch_start, ch_curr, ch_last,
+			//	 ch_end, bl_curr, bl_end );
 
 			while( bl_curr < bl_end ) {
 				res = read_enc_file_block( fd, ptx, ptxlen, &plen, 
@@ -811,8 +808,8 @@ TEE_Result do_open( int fd, int state_tgid, int state_fd ) {
 										   symm_iv, symm_iv_len, 
 										   decrypt_op );
 		   		CHECK_SUCCESS( res, "Read_enc_file_block() Error" );
-                if (plen <= 0) {
-                    return TEE_ERROR_GENERIC;
+                if (plen <= 0){
+                    return TEE_ERROR_GENERIC; // why?
                 }
 				res = hash_block( ptx, plen, NULL, hlen, 
 								  false, hash_op );
@@ -825,7 +822,7 @@ TEE_Result do_open( int fd, int state_tgid, int state_fd ) {
 				/*Index the contents of the file*/
  				sep_policy_and_data( ptx, plen, &cap_head,
 					                 &match_state, &matched, delimiter );
-				ch_cnt += plen;		
+				ch_cnt += plen;			
 			}
 		
 			res = hash_block( NULL, 0, hash, hlen, true, hash_op );
@@ -870,7 +867,9 @@ TEE_Result do_run_policy( int fd, lua_State *L, const char* policy, SYSCALL_OP n
 	int  res = TEE_SUCCESS, ret = LUA_OK;
 	int  cur_stack = lua_gettop(L);
 	bool eval, pol_changed;
+	uint64_t cnt_a, cnt_b;
 
+	cnt_a = read_cntpct();
 	do {
 		/* Call lua policy function */
 		lua_getglobal( L, policy );
@@ -915,6 +914,8 @@ TEE_Result do_run_policy( int fd, lua_State *L, const char* policy, SYSCALL_OP n
 	/* Clear the effects of this function */
 	lua_settop( L, cur_stack );
 
+	cnt_b = read_cntpct(); 
+	timestamps[curr_ts].policy_eval += cnt_b - cnt_a;
 	return res;
 }
 
@@ -923,7 +924,9 @@ TEE_Result do_load_policy( int fd ) {
 	TEE_Result     res = TEE_SUCCESS;
 	size_t         sz = cap_head.policy_end - cap_head.policy_begin;
 	unsigned char  buffer[POLICY_MAX_SIZE];
-	
+	uint64_t       cnt_a, cnt_b;
+
+	cnt_a = read_cntpct();
 	/* We load the policy  */
 	if( sz > POLICY_MAX_SIZE ) {
 		res = TEE_ERROR_NOT_SUPPORTED;
@@ -932,17 +935,16 @@ TEE_Result do_load_policy( int fd ) {
 
 	/* Read the policy into buffer */
 	memset( buffer, 0, POLICY_MAX_SIZE );
-    DMSG( "Performing do_lseek... " );
-    do_lseek( 0, 0, 0, START, false );
-    DMSG( "Performing do_read... ");
+	do_lseek( 0, 0, 0, START, false );
 	res = do_read( fd, 0, 0, buffer, &sz, true, false );
 	CHECK_SUCCESS( res, "do_read() Error" );
 
 	/* Load the policy into Lua */
-	DMSG( "Loading policy into lua..." );
-    res = lua_load_policy( Lstate, (const char*) buffer );
+	res = lua_load_policy( Lstate, (const char*) buffer );
 	CHECK_SUCCESS( res, "load_policy() Error" );
 
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].policy_eval += cnt_b - cnt_a;
 	return res;
 }
 
@@ -970,7 +972,6 @@ TEE_Result do_create( int pfd, int cfd ) {
 	p_len = cap_head.policy_end - cap_head.policy_begin;
 	res = TEE_SimpleLseek( pfd, 0, TEE_DATA_SEEK_END, &d_len );
     CHECK_SUCCESS( res, "TEE_SimpleLseek(%d, %d, %d, %p) error", pfd, 0, TEE_DATA_SEEK_END, (void*) &d_len);
-
 	t_len = p_len + d_len + DELIMITER_SIZE; // Policy + data + delimiter
 
 	ch_start = 0;
@@ -1037,9 +1038,9 @@ TEE_Result do_create( int pfd, int cfd ) {
 
 			cfd_off -= r_len; 	
 				
-			res = TEE_SimpleLseek( pfd, pfd_off, TEE_DATA_SEEK_SET, &ns );
+			res = TEE_SimpleLseek( pfd, pfd_off, TEE_DATA_SEEK_SET, &ns ); 
 			nr = read_block( pfd, databuf, r_len );
-			res = TEE_SimpleLseek( pfd, cfd_off, TEE_DATA_SEEK_SET, &ns );
+			res = TEE_SimpleLseek( pfd, cfd_off, TEE_DATA_SEEK_SET, &ns );	
 			nw = write_block( pfd, databuf, nr );
 	
 
@@ -1312,17 +1313,17 @@ TEE_Result do_change_policy_network( int cfd, unsigned char* policy,
 	 */
 	
 	if( newlen > oldlen ) {
-		MSG( "newlen %u > oldlen %u", newlen, oldlen );
+		//MSG( "newlen %u > oldlen %u", newlen, oldlen );
 		res = do_move_data_down( cfd, newlen );
 		CHECK_SUCCESS( res, "Do_move_data_down() Error" );
 	} else if( newlen < oldlen ) {
-		MSG( "newlen %u < oldlen %u", newlen, oldlen );
+		//MSG( "newlen %u < oldlen %u", newlen, oldlen );
 		res = do_move_data_up( cfd, newlen );
 		CHECK_SUCCESS( res, "Do_move_data_up() Error" );
 	}
 
 	/* Read in and write out the new policy */
-	MSG( "Writing new policy of length %u B", newlen );	
+	//MSG( "Writing new policy of length %u B", newlen );	
 	res = do_write_new_policy_network( cfd, policy, newlen );
 	CHECK_SUCCESS( res, "Write_new_policy() Error" );
 
@@ -1479,7 +1480,7 @@ TEE_Result do_register_aes( uint32_t keyType, uint32_t id,
 		
 		total_size = attrlen + ivlen + 5*sizeof(uint32_t);
 		
-		DMSG( "Write %u B of AES key 0x%08x to sec. storage",
+		MSG( "Write %u B of AES key 0x%08x to sec. storage",
 			 total_size, id );
 
 		data_buffer = TEE_Malloc( total_size, 0 );
@@ -1551,11 +1552,14 @@ TEE_Result do_register_rsa( uint32_t keyType, uint32_t keySize,
 
 TEE_Result do_open_connection( char* ip_addr, int port, int* fd ) {
 	TEE_Result res = TEE_SUCCESS;
-
+	uint64_t   cnt_a, cnt_b;
 	/* For now, we crash the program if errors are encountered.
 	 * This may change as we build out the network protocol
 	 */	
+	cnt_a = read_cntpct();
 	res = TEE_SimpleOpenConnection( ip_addr, port, fd );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	if( res != TEE_SUCCESS ) {
 		MSG( "TEE_SimpleOpenConnection() Error: fd is %d", *fd );
 	}
@@ -1570,25 +1574,31 @@ TEE_Result do_open_connection( char* ip_addr, int port, int* fd ) {
 
 TEE_Result do_close_connection( int fd ) {
 	TEE_Result res = TEE_SUCCESS;
-
+	uint64_t   cnt_a, cnt_b;
 	/* For now, we crash the program if errors are encountered.
 	 * This may change as we build out the network protocol
 	 */	
+	cnt_a = read_cntpct();
 	if( TEE_SimpleCloseConnection( fd ) != TEE_SUCCESS ) {
 		MSG( "TEE_SimpleCloseConnection() error: fd->%d", fd );
 	}
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 
 	return res;
 }
 
 TEE_Result do_recv_connection( int fd, void *buf, int *len ) {
 	TEE_Result res = TEE_SUCCESS;
-
+	uint64_t   cnt_a, cnt_b;
 	if( len == 0 ) {
 		return res;	
 	}
 
+	cnt_a = read_cntpct();
 	res = TEE_SimpleRecvConnection( fd, buf, *len, len );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	if( *len == 0 ) {
 		do_close_connection( fd );
 	}
@@ -1606,12 +1616,16 @@ TEE_Result do_recv_connection( int fd, void *buf, int *len ) {
 TEE_Result do_send_connection( int fd, void *buf, int *len ) {
 	TEE_Result res = TEE_SUCCESS;
 	int        orig_len = *len;
+	uint64_t   cnt_a, cnt_b;
 
 	if( len == 0 ) {
 		return res;
 	}
-
+	
+	cnt_a = read_cntpct();
 	res = TEE_SimpleSendConnection( fd, buf, *len, len );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	if( *len < orig_len ) {
 		res = TEE_ERROR_NOT_SUPPORTED;
 		CHECK_SUCCESS( res, "do_send_connection() sent only %d/%d B",
@@ -1629,7 +1643,8 @@ TEE_Result do_send_connection( int fd, void *buf, int *len ) {
 	 * went wrong (connection broken or header/payload was 
 	 * incorrect ).
 	 */	
-	if( *len <= 0 || res != TEE_SUCCESS) {
+	if( *len <= 0 || res != TEE_SUCCESS ) {
+		res = TEE_ERROR_NOT_SUPPORTED;
 		CHECK_SUCCESS( res, "do_send_connection() connection error" );
 	}
 	
@@ -1764,6 +1779,7 @@ TEE_Result do_set_state( unsigned char* key, uint32_t klen,
 	uint8_t   *valid = &state[2*STATE_SIZE];
 	uint32_t   write_off = 0;
 	uint32_t   new_write_pos = 0;
+	uint64_t   cnt_a, cnt_b;
 
 	//MSG( "Setting key: %s val: %s", key, val );
 
@@ -1774,12 +1790,18 @@ TEE_Result do_set_state( unsigned char* key, uint32_t klen,
 							vlen, klen, STATE_SIZE );
 	}
 
+	cnt_a = read_cntpct();
 	res = TEE_SeekObjectData( stateFile, 0, TEE_DATA_SEEK_SET );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
 	CHECK_SUCCESS( res, "TEE_SeekObjectData() Error" );
 
 	/* First check to see if this state already exists */
 	while( 1 ) {
+		cnt_a = read_cntpct();
 		res = TEE_ReadObjectData( stateFile, state, sizeof(state), &count ); 
+		cnt_b = read_cntpct();
+		timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
 		CHECK_SUCCESS( res, "TEE_ReadObjectData Error" );
 
 		if( count == 0 ) {
@@ -1809,9 +1831,14 @@ TEE_Result do_set_state( unsigned char* key, uint32_t klen,
 	memcpy( val_state, val, vlen );
 	*valid = 1;
 
+	cnt_a = read_cntpct();
 	res = TEE_SeekObjectData( stateFile, new_write_pos, TEE_DATA_SEEK_SET );
 	res = TEE_WriteObjectData( stateFile, state, sizeof(state) );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
 	CHECK_SUCCESS( res, "TEE_WriteObjectData Error" );
+
+
 
 	return res;
 }
@@ -1825,6 +1852,7 @@ TEE_Result do_get_state( unsigned char* key, unsigned char* val,
 	uint8_t   *key_state = &state[0];
 	uint8_t   *val_state = &state[STATE_SIZE];
 	uint8_t   *valid = &state[2*STATE_SIZE];
+	uint64_t  cnt_a, cnt_b;
 
 	//MSG( "Looking for key: %s", key );
 
@@ -1835,11 +1863,17 @@ TEE_Result do_get_state( unsigned char* key, unsigned char* val,
 							vlen, STATE_SIZE );
 	}
 
+	cnt_a = read_cntpct();
 	res = TEE_SeekObjectData( stateFile, 0, TEE_DATA_SEEK_SET );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
 	CHECK_SUCCESS( res, "TEE_SeekObjectData() Error" );
 
 	while( 1 ) {
+		cnt_a = read_cntpct();
 		res = TEE_ReadObjectData( stateFile, state, 2*STATE_SIZE+1, &count );
+		cnt_b = read_cntpct();
+		timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
 		CHECK_SUCCESS( res, "TEE_ReadObjectData Error" );
 
 		if( count == 0 ) break;

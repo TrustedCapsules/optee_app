@@ -14,9 +14,9 @@
 unsigned long long read_cntpct(void) {
 	unsigned long long ts;
 #ifdef HIKEY
-	asm( "mrs %0, cntpct_el0" : "=r" (ts) );
+	asm volatile( "mrs %0, cntpct_el0" : "=r" (ts) );
 #else
-	asm( "mrrc p15, 0, %Q0, %R0, c14" : "=r" (ts) );
+	asm volatile( "mrrc p15, 0, %Q0, %R0, c14" : "=r" (ts) );
 #endif
 	return ts;
 }
@@ -186,14 +186,15 @@ void lua_close_context( lua_State **L ) {
 }
 
 /* Read a chunk of data */
-uint32_t read_block( int fd, void* buf, size_t blen ) {
+uint32_t read_block( int fd, void* buf, size_t blen ) {               
 	uint32_t nr = 0, off = 0;
+	uint64_t cnt_a, cnt_b;
 	do {
-        DMSG( "Calling TEE_SimpleRead with params fd: %d, buf: %s, blen: %ld", fd, (unsigned char*) buf, blen );
-        TEE_SimpleRead( fd, ( (unsigned char*) buf ) + off, 
-		 		        blen - off, &nr );
-
-        DMSG( "Read returns nr: %d, buf: %s", (int) nr, (unsigned char*) buf);
+		cnt_a = read_cntpct();
+		TEE_SimpleRead( fd, ( (unsigned char*) buf ) + off, 
+						     blen - off, &nr );
+	   	cnt_b = read_cntpct();
+		timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 		if( (int) nr < 0 ) {
 			return nr;
 		}
@@ -206,9 +207,13 @@ uint32_t read_block( int fd, void* buf, size_t blen ) {
 /* Write a chunk of data */
 uint32_t write_block( int fd, void* buf, size_t blen ) {
 	uint32_t nw = 0, off = 0;
+	uint64_t cnt_a, cnt_b;
 	do {
+		cnt_a = read_cntpct();
 		TEE_SimpleWrite( fd, ( (unsigned char*) buf ) + off, 
-						 blen - off, &nw );
+							  blen - off, &nw );
+		cnt_b = read_cntpct();
+		timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 		if( (int) nw < 0 ) {
 			return nw;
 		}
@@ -254,9 +259,10 @@ TEE_Result process_aes_block( unsigned char* ptx, size_t *plen,
 							  bool first, bool last,
 							  TEE_OperationHandle op ) {
 	TEE_Result res = TEE_SUCCESS;
+	uint64_t   cnt_a, cnt_b;
 
-    DMSG( "Data: %s", ctx);
-
+	cnt_a = read_cntpct();
+	
 	if( first ) {
 		TEE_CipherInit( op, iv, iv_len, ctr );
 	}
@@ -269,8 +275,10 @@ TEE_Result process_aes_block( unsigned char* ptx, size_t *plen,
 		CHECK_SUCCESS( res, "TEE_CipherUpdate() Error" );
 	}
 
-    // TODO: not working, returning plen of 0. Something is wrong with the cipher calls.
-    DMSG( "Returning with plen of %d", *plen );
+	cnt_b = read_cntpct();
+
+	timestamps[curr_ts].encryption += cnt_b - cnt_a;
+
 	return res;
 }
 
@@ -286,6 +294,9 @@ TEE_Result hash_block( unsigned char* ptx, size_t plen,
 					   bool last, TEE_OperationHandle op ) {
 	
 	TEE_Result res = TEE_SUCCESS;
+	uint64_t	cnt_a, cnt_b;
+
+	cnt_a = read_cntpct();
 
 	if( hlen != HASH_LEN ) {
 		return TEE_ERROR_NOT_SUPPORTED;
@@ -297,6 +308,10 @@ TEE_Result hash_block( unsigned char* ptx, size_t plen,
 	} else {
 		TEE_DigestUpdate( op, ptx, plen );
 	}
+
+	cnt_b = read_cntpct();
+
+	timestamps[curr_ts].hashing += cnt_b - cnt_a;
 
 	return res;
 }
@@ -317,6 +332,7 @@ TEE_Result write_enc_file_block( int fd, unsigned char* ptx,
     size_t       	len;
 	bool		    first, last = false;
 	uint32_t        nw = 0, ns = 0;
+	
 
 	UNUSED( nw );
 	UNUSED( ns );
@@ -332,7 +348,7 @@ TEE_Result write_enc_file_block( int fd, unsigned char* ptx,
 	f_off = bl_off + sizeof( struct TrustedCap ) + HASH_LEN +
 			chnum * ( chsize + HASH_LEN );
 	res = TEE_SimpleLseek( fd, f_off, TEE_DATA_SEEK_SET, &ns );
-
+    // TODO: add check for result
 
 	//MSG( "BEFORE LOOP bl_off: %u, plen: %u, p_off: %u, ns: %d, nw: %d,"
 	//	 " ctxlen: %u, len: %u, first: %s, last: %s, init_ctr: %u,"
@@ -393,8 +409,8 @@ TEE_Result read_enc_file_block( int fd, unsigned char* ptx,
 	uint32_t        rlen;
 	unsigned char   ctx[BLOCK_LEN];
 	size_t			ctxlen = sizeof(ctx);
-	int             i, before = 0, after = 0;
-    uint32_t        nr, ns;
+	uint32_t        nr, ns;
+    int             i, before = 0, after = 0;
 
 	UNUSED(nr);
 	UNUSED(ns);
@@ -423,8 +439,7 @@ TEE_Result read_enc_file_block( int fd, unsigned char* ptx,
    	aligned_end = ( bl_off + bl_len + (keylen - 1) )/keylen  * keylen;	
 	f_off = aligned_off + sizeof( struct TrustedCap ) + HASH_LEN +
 			chnum*(chsize + HASH_LEN);
-
-    DMSG( "Calling TEE_SimpleLseek with fd: %d, f_off: %d", fd, f_off );
+	
 	res = TEE_SimpleLseek( fd, f_off, TEE_DATA_SEEK_SET, &ns );
     CHECK_SUCCESS( res, "TEE_SimpleLseek() Error" );
 
@@ -433,15 +448,12 @@ TEE_Result read_enc_file_block( int fd, unsigned char* ptx,
 		rlen = ctxlen;
 	} 
 
-    DMSG( "Calling read_block" );
 	nr = read_block( fd, ctx, rlen );
-    DMSG( "Received data: %s", ctx);
 	if( nr < 0 ) {
 		res = TEE_ERROR_NOT_SUPPORTED;
 		CHECK_SUCCESS( res, "Read_block() Error" );
 	}
 	
-    //DMSG( "Calling process_aes_block" );
 	res = process_aes_block( ptx, &ptxlen, ctx, nr, iv, iv_len, 
 							 init_ctr, true, true, op );
 	CHECK_SUCCESS( res, "Process_aes_block() Error" );
@@ -459,11 +471,11 @@ TEE_Result read_enc_file_block( int fd, unsigned char* ptx,
 
 	*plen = ptxlen - ( before + after );
 
-	// DMSG( "offset: %d, bl_off: %u, bl_len: %u, aligned_off: %u," 
-	//	  " aligned_end: %u, ptxlen: %u, ctr: %u, before: %u, "
-	//	  " after: %u, nr: %d, rlen: %u, plen: %u", 
-	//	   ns, bl_off, bl_len, aligned_off, aligned_end, ptxlen, 
-	//	   init_ctr, before, after, nr, rlen, *plen );
+	//DMSG( "offset: %d, bl_off: %u, bl_len: %u, aligned_off: %u," 
+	//	 " aligned_end: %u, ptxlen: %u, ctr: %u, before: %u, "
+	//	 " after: %u, nr: %d, rlen: %u, plen: %u", 
+	//	  ns, bl_off, bl_len, aligned_off, aligned_end, ptxlen, 
+	//	  init_ctr, before, after, nr, rlen, *plen );
 	return res;
 }
 
@@ -536,9 +548,13 @@ int read_hash( int fd, unsigned char* hash, size_t hlen,
 				uint32_t chnum, uint32_t chSize ) {
 	uint32_t f_off = sizeof( struct TrustedCap ) + 
 			         chnum * ( hlen + chSize );
+	uint64_t cnt_a, cnt_b;
 	uint32_t ns;
 	UNUSED( ns );
+	cnt_a = read_cntpct();
 	TEE_SimpleLseek( fd, f_off, TEE_DATA_SEEK_SET, &ns );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	return read_block( fd, hash, hlen );
 }
 
@@ -552,7 +568,8 @@ int write_hash( int fd, unsigned char* hash, size_t hlen,
 	struct hash_entry *p = head->first;
 	uint32_t 		   f_off = sizeof( struct TrustedCap ) + 
 					 		   chnum * ( hlen + chSize );	
-    uint32_t 		   ns;
+	uint32_t 		   ns;
+	uint64_t           cnt_a, cnt_b;
 
 	UNUSED(ns);
 
@@ -576,7 +593,10 @@ int write_hash( int fd, unsigned char* hash, size_t hlen,
 	}
 
 	/* Write the hash to file */
+	cnt_a = read_cntpct();
 	TEE_SimpleLseek( fd, f_off, TEE_DATA_SEEK_SET, &ns );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	return write_block( fd, hash, hlen );
 
 	//MSG( "ns = %d, nw = %d", ns, nw );
@@ -767,13 +787,20 @@ TEE_Result find_key( struct TrustedCap *h,
 	uint8_t   		*attr_buf = NULL, *it = NULL;
     uint8_t    	    *iv = NULL, *key_attr = NULL;
 	size_t           id_len = 4;	
+	uint64_t         cnt_a, cnt_b;
 
+	cnt_a = read_cntpct();
 	res = TEE_SeekObjectData( file, 0, TEE_DATA_SEEK_SET );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
 	CHECK_SUCCESS( res, "TEE_SeekObjectData() Error" );
 
 	while( 1 ) {
+		cnt_a = read_cntpct();	
 		res = TEE_ReadObjectData( file, &total_size, 
 						 		  sizeof(uint32_t), &count );
+		cnt_b = read_cntpct();
+		timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
 		CHECK_GOTO( res, find_key_exit,
 					  	"TEE_ReadObjectData() Error" );
 		if( count == 0 ) { 
@@ -784,8 +811,11 @@ TEE_Result find_key( struct TrustedCap *h,
 		//MSG( "Find_key()-> key data size: %u", total_size );
 
 		attr_buf = TEE_Malloc( total_size, 0 );
+		cnt_a = read_cntpct();
 		res = TEE_ReadObjectData( file, attr_buf, 
 								  total_size, &count );
+		cnt_b = read_cntpct();
+		timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
 		if( count == 0 ) {
 			MSG( "Find_key()-> key file seems to be corrupted" );
 			res = TEE_ERROR_CORRUPT_OBJECT;
@@ -835,13 +865,16 @@ TEE_Result find_key( struct TrustedCap *h,
 		res = TEE_SetOperationKey( *dec_op, handle );
 		CHECK_GOTO( res, find_key_exit, 
 					"TEE_SetOperationKey() Error" );
-
+	
+		cnt_a = read_cntpct();
 		TEE_CipherInit( *dec_op, iv, iv_len, 0 );
 
 		res = TEE_CipherDoFinal( *dec_op, (void*) h->aes_id,
 					   			 sizeof(uint32_t), 
 								 (void*) &cap_id,
 							 	 &id_len );
+		cnt_b = read_cntpct();
+		timestamps[curr_ts].encryption += cnt_b - cnt_a;
    		CHECK_GOTO( res, find_key_exit,
 					"TEE_CipherDoFinal() Error" );		
 	
@@ -911,14 +944,18 @@ TEE_Result fill_header( struct TrustedCap* cap,
 						fsize ) {
 	TEE_Result res = TEE_SUCCESS;
 	uint32_t   id_len = 4;
+	uint64_t   cnt_a, cnt_b;
 
 	memset( cap, 0, sizeof( struct TrustedCap ) );
 	memcpy( cap->pad, "TRUSTEDCAP\0", sizeof( cap->pad ) );
 	
 	/* Encrypt the capsule ID */
+	cnt_a = read_cntpct();
 	TEE_CipherInit( op, iv, iv_len, 0 );
 	res = TEE_CipherDoFinal( op, ( char*) &id, sizeof(uint32_t), 
 					         cap->aes_id, &id_len );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].encryption += cnt_b - cnt_a;
 	CHECK_SUCCESS( res, "TEE_CipherDoFinal() Error" );
 
 	//MSG( "ID: %02x%02x%02x%02x\n", cap->aes_id[0], cap->aes_id[1], 
@@ -932,8 +969,12 @@ TEE_Result fill_header( struct TrustedCap* cap,
 /* Read the TrustedCap header */
 int read_header( int fd, struct TrustedCap* cap ) {
 	uint32_t ns;
+	uint64_t cnt_a, cnt_b;
 	UNUSED( ns );
+	cnt_a = read_cntpct();
 	TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_SET, &ns );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	return read_block( fd, cap, sizeof( struct TrustedCap ) );
 	//MSG( "ns: %d, nr: %d", ns, nr );
 }
@@ -941,8 +982,12 @@ int read_header( int fd, struct TrustedCap* cap ) {
 /* Write the TrustedCap header */
 int write_header( int fd, struct TrustedCap* cap ) {
 	uint32_t ns;
+	uint64_t cnt_a, cnt_b;
 	UNUSED( ns );
+	cnt_a = read_cntpct();
 	TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_SET, &ns );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	return write_block( fd, cap, sizeof( struct TrustedCap ) );
 	//MSG( "ns: %d, nw: %d", ns, nw );
 }

@@ -110,5 +110,4 @@ struct capsule_text {
 };
 
 
-
 #endif /*STRUCTURE_H*/

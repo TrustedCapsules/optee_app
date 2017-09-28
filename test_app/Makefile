@@ -1,7 +1,7 @@
 #default is QEMU
 ARMCC ?= arm-linux-gnueabihf-gcc 
 
-CFLAGS = -Wall -Wno-unused-but-set-variable -Wno-unused-variable 
+CFLAGS = -Wall -Wno-unused-but-set-variable -Wno-unused-variable -I../common 
 
 ifdef HIKEY
 CFLAGS += -DHIKEY=${HIKEY}
@@ -15,7 +15,7 @@ endif
 
 TARGET = test_app
 
-OBJECTS = test_app.o test_bio.o test_short_story.o test_helper.o test_benchmark.o test_performance.o
+OBJECTS = test_app.o test_bio.o test_short_story.o test_helper.o test_benchmark.o test_performance.o 
 
 all: default 
 

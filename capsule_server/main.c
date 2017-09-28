@@ -18,6 +18,8 @@
 #include "capsule_process.h"
 #include "server_op.h"
 
+int policy_state = -1;
+
 static void* get_in_addr( struct sockaddr *sa ) {
 	if( sa->sa_family == AF_INET ) {
 		return &((( struct sockaddr_in* ) sa )->sin_addr );
@@ -37,7 +39,7 @@ static int handle_connections( int sockfd, enum MODE mode ) {
 		
 		new_fd = accept( sockfd, (struct sockaddr *) &their_addr,
 						 &sin_size );
-
+		policy_state++;
 		if( new_fd == -1 ) {
 			PRINT_ERR( "ACCEPT() Error: %s\n", strerror( errno ) );
 			continue;
@@ -49,6 +51,7 @@ static int handle_connections( int sockfd, enum MODE mode ) {
 
 		PRINT_INFO( "Server: got connection from %s\n", s );
 		
+		/* FIXME: change to pthreads */
 		if( !fork() ) {
 			close( sockfd );
 			if( mode == ECHO_SIMPLE_MODE ) {

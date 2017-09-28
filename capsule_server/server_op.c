@@ -86,7 +86,7 @@ void register_capsule_entry(void){
 		 	strcmp( (const char*) capsule_data_array[i].str,
 				 	"test_1M_needtoknow_1KB" ) == 0 ) {
 			capsule_entry_map[i].reply = &reply_change_policy;
-			capsule_entry_map[i].version = 2;
+			capsule_entry_map[i].version = 0;
 		} else if ( strcmp( (const char*) capsule_data_array[i].str,
 					"remotedelete" ) == 0 ) {
 			capsule_entry_map[i].reply = &reply_delete;

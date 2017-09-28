@@ -41,17 +41,19 @@ static void delete_file(void) {
 	 * 4) TEE_Panic out of the trusted capsule session
 	 */
 	int    fd;
-	size_t file_length, nw, temp, curr_length = 0; // temp for unneeded ns
+	size_t file_length, nw, temp, curr_length = 0;
 	char   zero_block[BLOCK_LEN];
     TEE_Result res;
 
+
 	TEE_CloseAndDeletePersistentObject( stateFile );
 	res = TEE_SimpleOpen( capsule_name, &fd );
-	if( fd < 0 || res != TEE_SUCCESS) {
+	if( fd < 0 || res != TEE_SUCCESS ) {
 		/* File no longer exists */
 		goto delete_file_exit;
 	}
 
+    // TODO: add error checks
 	res = TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_END, &file_length );
 	res = TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_SET, &temp );
 
@@ -65,7 +67,7 @@ static void delete_file(void) {
 	TEE_SimpleUnlink( capsule_name );
 
 delete_file_exit:
-	MSG( "Deleting File %s...", capsule_name );
+	//MSG( "Deleting File %s...", capsule_name );
 	TEE_Panic(0);
 }
 
@@ -356,7 +358,7 @@ static int luaE_checkpolicychange( lua_State *L ) {
 						       policy, msg->payload_len );
 	
 		res = TEE_SimpleOpen( capsule_name, &fd_cap );
-		if( fd_cap < 0 || res != TEE_SUCCESS) {
+		if( fd_cap < 0 || res != TEE_SUCCESS ) {
 			do_close_connection( fd );
 			free_hdr( msg );
 			luaL_error( L, "Unable to open file %s for policy update", 

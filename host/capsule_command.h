@@ -85,4 +85,6 @@ TEEC_Result capsule_recv_payload( TEEC_Session *sess, TEEC_SharedMemory *in,
 								  TEEC_SharedMemory *out, char* buf, 
 								  uint32_t blen, char* hash, uint32_t hlen,
 			  					  int fd, int* nr );
+TEEC_Result capsule_collect_benchmark( TEEC_Session *sess );
+TEEC_Result capsule_clear_benchmark( TEEC_Session *sess );
 #endif /* CAPSULE_COMMAND_H */

@@ -93,6 +93,36 @@ enum command {
 	CAPSULE_SEND,
 	CAPSULE_RECV_HEADER,
 	CAPSULE_RECV_PAYLOAD,
+	CAPSULE_CLEAR_BENCHMARK,
+	CAPSULE_COLLECT_BENCHMARK,
+};
+
+struct benchmarking_ta {
+	unsigned long long 	encryption;
+	unsigned long long  hashing;
+	unsigned long long  secure_storage;
+	unsigned long long  rpc_calls;
+	unsigned long long  policy_eval;
+};
+
+struct benchmarking_supp {
+	unsigned int        action;
+	unsigned long long  network;
+};
+
+struct benchmarking_driver {
+	unsigned long long  module_op;
+	unsigned long long  rpc_peripheral_count;
+	unsigned long long  rpc_shm_count;
+	unsigned long long  rpc_cmd_count;
+	unsigned long long  rpc_fs_count;
+	unsigned long long  rpc_net_count;
+	unsigned long long  rpc_other_count; /*ta, irq, suspend, wait_queue*/
+};
+
+struct supp_buf {
+	long mytype;
+	struct benchmarking_supp info;
 };
 
 #endif /* CAPSULE_H */

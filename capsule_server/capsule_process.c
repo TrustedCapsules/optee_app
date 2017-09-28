@@ -10,6 +10,8 @@
 #include <serialize_common.h>
 #include "server_op.h"
 
+extern int policy_state;
+
 int reply_change_policy( int fd, int id, AMessage *hdr, char* payload ) {
 
 	FILE 	 *fp;
@@ -17,9 +19,11 @@ int reply_change_policy( int fd, int id, AMessage *hdr, char* payload ) {
 	char 	 *policy = NULL;
 	uint8_t   buf[PACKET_SIZE];
 
+	//printf( "policy_state: %d\n", policy_state );
 	unsigned int version = *(unsigned int*) (void*) payload;
 	
-	if( version != capsule_entry_map[id].version ) {
+//	if( version != capsule_entry_map[id].version ) {
+	if( policy_state % 4 == 0 ) {
 		fp = fopen( REPLACEMENT_POLICY_EVAL, "r" );
 		fseek( fp, 0, SEEK_END );
 		paylen = ftell(fp);
@@ -31,8 +35,24 @@ int reply_change_policy( int fd, int id, AMessage *hdr, char* payload ) {
 			policy = NULL;
 			paylen = 0;
 		}
+		printf( "changing to new policy\n" );
+	} else if( policy_state % 2 == 0 ) {
+		fp = fopen( ORIGINAL_POLICY_EVAL, "r" );
+		fseek( fp, 0, SEEK_END );
+		paylen = ftell(fp);
+		fseek( fp, 0, SEEK_SET );
+		policy = malloc( paylen );
+		nr = fread( policy, sizeof(char), paylen, fp );
+		if ( nr != paylen ) {
+			free(policy);
+			policy = NULL;
+			paylen = 0;
+		}
+		printf( "changing to old policy\n" );
+	} else {
+		printf( "no policy change\n" );
 	}
-
+	
 	serialize_hdr( hdr->capsule_id, RESP_POLICY_CHANGE, policy,
 				   paylen, hdr->rvalue, hdr->tz_id, buf, HEADER_SIZE );
 
@@ -111,7 +131,10 @@ int reply_report_locid( int fd, int id, AMessage *hdr, char* payload ) {
 	
 	encrypt_data( buf, buf, HEADER_SIZE, &capsule_entry_map[id] );
 	nw = send_data( fd, buf, HEADER_SIZE );
-	if( nw <= 0 ) return -1;
+	if( nw <= 0 ) {
+		PRINT_INFO( "Send data returned with %d\n", nw );
+		return -1;
+	}
 	
 	return 0;
 }
@@ -174,7 +197,7 @@ void capsule_process( int fd ) {
 			break;
 		}
 
-		PRINT_INFO( "Received %d B (HEADER %d B )\n", nr, HEADER_SIZE );
+		// PRINT_INFO( "Received %d B ( HEADER %d B )\n", nr, HEADER_SIZE );
 
 		for( i = 0; i < NUM_CAPSULES; i++ ) {
 			decrypt_data( buf, dbuf, nr, &capsule_entry_map[i] );
@@ -209,7 +232,9 @@ void capsule_process( int fd ) {
 
 		decrypt_data( payload, payload, nr, &capsule_entry_map[cap_id] );
 
-		PRINT_INFO( "payload: %s\n", payload );
+		int* temp = (int*)(void*) payload;
+
+		PRINT_INFO( "payload: 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n", temp[0], temp[1], temp[2], temp[3], temp[4], temp[5], temp[6] );
 		if( capsule_entry_map[cap_id].reply( fd, cap_id, recv_hdr, payload) ) break; 
 	
 		free_hdr( recv_hdr );

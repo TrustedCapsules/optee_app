@@ -51,12 +51,16 @@ int        curr_len = 0;
 char       curr_declassify_dest[128];
 int        curr_cred = 0;
 
+/* Benchmarking */
+struct benchmarking_ta timestamps[6];
+int                    curr_ts = 5;
+
 /* Opens persistent files for reading/writing when
  * new session is created*/
 TEE_Result TA_CreateEntryPoint(void) {
 	
 	TEE_Result res = TEE_SUCCESS;
-	DMSG( "Trusted Capsule Application started..." );
+	//MSG( "Trusted Capsule Application started..." );
 
 	if( keyFile != TEE_HANDLE_NULL ) {
 		TEE_Panic( 0 );
@@ -111,13 +115,61 @@ TEE_Result TA_OpenSessionEntryPoint(uint32_t param_type,
 	LIST_INIT( &hash_head );
 	LIST_INIT( &cap_head.proc_entries );
 
+	//MSG( "Opening Trusted Capsule session" );
+	memset( &timestamps, 0, sizeof(timestamps) );
+	//MSG( "     [e h s r p]  		  \n"
+	//	 "%d: %llu %llu %llu %llu %llu\n" 
+	 //	 "%d: %llu %llu %llu %llu %llu\n" 
+	//	 "%d: %llu %llu %llu %llu %llu\n" 
+	//	 "%d: %llu %llu %llu %llu %llu\n"	  
+	//	 "%d: %llu %llu %llu %llu %llu\n",
+	//	 0, timestamps[0].encryption, timestamps[0].hashing,
+	//	 timestamps[0].secure_storage, timestamps[0].rpc_calls,
+	//	 timestamps[0].policy_eval,
+	//	 1, timestamps[1].encryption, timestamps[1].hashing,
+	//	 timestamps[1].secure_storage, timestamps[1].rpc_calls,
+	//	 timestamps[1].policy_eval,
+	  //	 2, timestamps[2].encryption, timestamps[2].hashing,
+		// timestamps[2].secure_storage, timestamps[2].rpc_calls,
+	//	 timestamps[2].policy_eval,
+	//	 3, timestamps[3].encryption, timestamps[3].hashing,
+	//	 timestamps[3].secure_storage, timestamps[3].rpc_calls,
+	//	 timestamps[3].policy_eval,
+	//	 4, timestamps[4].encryption, timestamps[4].hashing,
+	//	 timestamps[4].secure_storage, timestamps[4].rpc_calls,
+	//	 timestamps[4].policy_eval
+	  // );
+
 	return TEE_SUCCESS;
 }
 
 void TA_CloseSessionEntryPoint(void *sess_ctx) {
 	UNUSED( sess_ctx );
-
+	
 	//MSG( "Closing Trusted Capsule %s session", capsule_name );
+	
+	MSG( "     [e h s r p]  		  \n"
+		 "%d: %llu %llu %llu %llu %llu\n" 
+	 	 "%d: %llu %llu %llu %llu %llu\n" 
+		 "%d: %llu %llu %llu %llu %llu\n" 
+		 "%d: %llu %llu %llu %llu %llu\n"	  
+		 "%d: %llu %llu %llu %llu %llu\n",
+		 0, timestamps[0].encryption, timestamps[0].hashing,
+		 timestamps[0].secure_storage, timestamps[0].rpc_calls,
+		 timestamps[0].policy_eval,
+		 1, timestamps[1].encryption, timestamps[1].hashing,
+		 timestamps[1].secure_storage, timestamps[1].rpc_calls,
+		 timestamps[1].policy_eval,
+	  	 2, timestamps[2].encryption, timestamps[2].hashing,
+		 timestamps[2].secure_storage, timestamps[2].rpc_calls,
+		 timestamps[2].policy_eval,
+		 3, timestamps[3].encryption, timestamps[3].hashing,
+		 timestamps[3].secure_storage, timestamps[3].rpc_calls,
+		 timestamps[3].policy_eval,
+		 4, timestamps[4].encryption, timestamps[4].hashing,
+		 timestamps[4].secure_storage, timestamps[4].rpc_calls,
+		 timestamps[4].policy_eval
+	   );
 	
 	TEE_FreeTransientObject( curr_priv );
 	TEE_FreeTransientObject( curr_pub );
@@ -153,12 +205,14 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx,
 	UNUSED( sess_ctx );
 
 	//unsigned long long val;
-	//val = read_cntpct();
-	//MSG( "Invoke: %llu", val );
-		
+	//asm volatile( "mrrc p15, 0, %Q0, %R0, c14" : "=r" (val) );
+	//MSG( "cntpct_el0: %llu", val );
+
+	curr_ts = 5;
+
 	switch (cmd_id) {
 	case CAPSULE_REGISTER_RSA_KEY:
-        return register_rsa_key(param_type, params);
+		return register_rsa_key(param_type, params);
 	case CAPSULE_REGISTER_AES_KEY:
 		return register_aes_key(param_type, params);
 	case CAPSULE_SET_STATE:
@@ -166,26 +220,32 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx,
 	case CAPSULE_GET_STATE:
 		return get_state(param_type, params);
 	case CAPSULE_OPEN:
+		curr_ts = 0;
 		return capsule_open(param_type, params);			
 	case CAPSULE_CREATE:
 		return capsule_create(param_type, params);
 	case CAPSULE_CHANGE_POLICY:
 		return capsule_change_policy(param_type, params);
 	case CAPSULE_CLOSE:
+		curr_ts = 1;
 		return capsule_close(param_type, params);
 	case CAPSULE_LSEEK:
+		curr_ts = 2;
 		return capsule_lseek(param_type, params);
 	case CAPSULE_PREAD:
 		return capsule_pread(param_type, params);
 	case CAPSULE_READ:
+		curr_ts = 3;
 		return capsule_read(param_type, params);
 	case CAPSULE_WRITE:
+		curr_ts = 4;
 		return capsule_write(param_type, params);
 	case CAPSULE_FTRUNCATE:
 		return capsule_ftruncate(param_type, params);
 	case CAPSULE_FSTAT:
 		return capsule_fstat(param_type,params);
 	case CAPSULE_WRITE_EVALUATE:
+		curr_ts = 4;
 		return capsule_write_evaluate(param_type, params);
 	case CAPSULE_OPEN_CONNECTION:
 		return capsule_open_connection(param_type, params);
@@ -201,7 +261,11 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx,
 		return capsule_recv_header(param_type, params);
 	case CAPSULE_RECV_PAYLOAD:
 		return capsule_recv_payload(param_type, params);
-		
+	case CAPSULE_CLEAR_BENCHMARK:
+		return capsule_clear_benchmark(param_type, params);
+	case CAPSULE_COLLECT_BENCHMARK:
+		return capsule_collect_benchmark(param_type, params);
+
 	default:
 		return TEE_ERROR_BAD_PARAMETERS;
 	}

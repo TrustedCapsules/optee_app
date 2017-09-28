@@ -44,4 +44,7 @@ extern int        curr_len;
 extern char       curr_declassify_dest[128];
 extern int        curr_cred;
 
+/* Benchmarking */
+extern struct benchmarking_ta timestamps[6];
+extern int                    curr_ts;
 #endif /* CAPSULE_TA_H */

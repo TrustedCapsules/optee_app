@@ -22,6 +22,11 @@ OBJS_Policy = err_ta.o \
 			  capsule_command.o \
 			  capsule_test_policy.o
 
+OBJS_Breakdown = err_ta.o \
+				 key_data.o \
+				 capsule_command.o \
+				 capsule_breakdown.o
+
 CFLAGS += -Wall -I../common -I$(TEEC_EXPORT)/include -I$(TA_DEV_KIT_DIR)/host_include
 
 ifdef HIKEY
@@ -35,7 +40,7 @@ LDADD += -lteec -lm -L$(TEEC_EXPORT)/lib
 	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: all
-all: capsule_test capsule_test_network capsule_test_policy
+all: capsule_test capsule_test_network capsule_test_policy capsule_breakdown
 
 capsule_test: $(OBJS)
 	$(CC) $(OBJS) $(LDADD) -o $@  
@@ -45,6 +50,9 @@ capsule_test_network: $(OBJS_Network)
 
 capsule_test_policy: $(OBJS_Policy)
 	$(CC) $(OBJS_Policy) $(LDADD) -o $@
+
+capsule_breakdown: $(OBJS_Breakdown)
+	$(CC) $(OBJS_Breakdown) $(LDADD) -o $@
 
 .PHONY: clean
 clean:

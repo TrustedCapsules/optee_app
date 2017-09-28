@@ -160,7 +160,8 @@ TEE_Result capsule_open( uint32_t param_type,
 	
 	TEE_Result 	  res = TEE_SUCCESS;
 	unsigned char credential[STATE_SIZE];
-	int 		  fd;
+	int			  fd;
+	uint64_t      cnt_a, cnt_b;
 
 	ASSERT_PARAM_TYPE( 
 		   TEE_PARAM_TYPES( TEE_PARAM_TYPE_MEMREF_INPUT, 
@@ -185,37 +186,36 @@ TEE_Result capsule_open( uint32_t param_type,
 			return TEE_ERROR_NOT_SUPPORTED;
 		}
 	}
-	DMSG( "Opening Trusted Capsule session...%s for %d/%d", 
-		  capsule_name, params[1].value.a, params[1].value.b );
+	DMSG( "Opening Trusted Capsule session...%s for %d/%d - curr_ts %d", 
+		  capsule_name, params[1].value.a, params[1].value.b, curr_ts );
 
+	cnt_a = read_cntpct();
 	res = TEE_SimpleOpen( capsule_name, &fd );
-    if( res != TEE_SUCCESS) {
-	    if( fd < 0 ) {
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
+	if( res != TEE_SUCCESS ) {
+        if (fd < 0) {
 		    MSG( "TEE_SimpleOpen() cannot open %s", capsule_name );
 		    return res;
-	    }
-        MSG( "TEE_SimpleOpen() cannot open %s\n\t returned fd %d", capsule_name, fd );
+        }
+        MSG( "TEE_SimpleOpen() cannot open %s\n\t returned fd %d", capsule_name, fd);
         return res;
-
-    }
+	}
 
 	res = do_open( fd, params[1].value.a, params[1].value.b );
 	CHECK_GOTO( res, capsule_open_exit, "Do_open() Error" );
 
 	if( Lstate == NULL ) {
-		DMSG( "Initializing Interpreter..." );
+		//MSG( "Initializing Interpreter..." );
 		lua_start_context( &Lstate );
-		DMSG( "Loading policy..." );
-        res = do_load_policy( fd );
+		res = do_load_policy( fd );
 		CHECK_GOTO( res, capsule_open_exit, "Do_load_policy() Error" );
-		DMSG( "Adding lua ext..." );
-        res = add_lua_ext( Lstate );
+		res = add_lua_ext( Lstate );
 		CHECK_GOTO( res, capsule_open_exit, "Add_lua_ext() Error" );
 	}
 
 	/* Open the state file for this trusted capsule */
 	if( stateFile == TEE_HANDLE_NULL ) {
-        DMSG( "Opening state file..." );
 		res = TEE_OpenPersistentObject( TEE_STORAGE_PRIVATE,
 										&symm_id, sizeof( uint32_t ),
 										TEE_DATA_FLAG_ACCESS_READ | 
@@ -225,7 +225,6 @@ TEE_Result capsule_open( uint32_t param_type,
 		CHECK_GOTO( res, capsule_open_exit, "TEE_OpenPersistentObject() Error" );
 	}	
 
-    DMSG( "Getting state..." );
 	res = do_get_state( (unsigned char*) TZ_CRED, credential, STATE_SIZE );
 	CHECK_GOTO( res, capsule_open_exit, "Do_get_state() Error" );
    	curr_cred = *(int*)(void*)(credential);	
@@ -235,17 +234,16 @@ TEE_Result capsule_open( uint32_t param_type,
 	curr_len = 0;
 	memset( curr_declassify_dest, 0, sizeof( curr_declassify_dest ) );
 
-    DMSG( "Running policy..." );
 	res = do_run_policy( fd, Lstate, POLICY_FUNC, OPEN_OP );
 	if( res != TEE_SUCCESS ) {
-        DMSG( "Error occurred with policy, closing..." );
 		do_close( params[1].value.a, params[1].value.b );
 	}
 
 capsule_open_exit:
-    DMSG( "Calling TEE_SimpleClose with %d", fd );
+	cnt_a = read_cntpct();
 	TEE_SimpleClose( fd );
-    DMSG( "Returning %x", res );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	return res;
 }
 
@@ -286,18 +284,19 @@ TEE_Result capsule_change_policy( uint32_t param_type,
 					  policyFile);
 	}
 
-	res = TEE_SimpleLseek( policy_fd, 0, TEE_DATA_SEEK_END, &pollen );
+	res = TEE_SimpleLseek( policy_fd, 0, TEE_DATA_SEEK_END, &pollen ); 
+
+    if (res != TEE_SUCCESS)
+        CHECK_GOTO(res, capsule_create_exit,
+                    "TEE_SImpleLseek() could not seek.\nfd:%d, offset: %d, whence: %d\n",
+                    policy_fd, 0, TEE_DATA_SEEK_END);
+
+	res = TEE_SimpleLseek( policy_fd, 0, TEE_DATA_SEEK_SET, &temp );
 
     if (res != TEE_SUCCESS)
         CHECK_GOTO(res, capsule_create_exit,
                     "TEE_SimpleLseek() could not seek.\nfd: %d, offset: %d, whence: %d\n",
-                    policy_fd, 0, TEE_DATA_SEEK_END);
-
-	res = TEE_SimpleLseek( policy_fd, 0, TEE_DATA_SEEK_SET, &temp );
-    if (res != TEE_SUCCESS)
-        CHECK_GOTO(res, capsule_create_exit,
-                "TEE_SimpleLseek() could not seek.\nfd: %d, offset: %d, whence: %d\n",
-                policy_fd, 0, TEE_DATA_SEEK_SET);
+                    policy_fd, 0, TEE_DATA_SEEK_SET);
 	//MSG( "Changing capsule %s policy with %s...", 
 	//	 capsule_name, policyFile );
 
@@ -350,8 +349,7 @@ TEE_Result capsule_create( uint32_t param_type,
 	/* Open the plaintext file */
 	ptxFile = params[0].memref.buffer;
 	res = TEE_SimpleOpen( ptxFile, &ptx_fd );
-	if( ptx_fd < 0 || res != TEE_SUCCESS) {
-		res = TEE_ERROR_ITEM_NOT_FOUND;
+	if( ptx_fd < 0 || res != TEE_SUCCESS ) {
 		CHECK_SUCCESS(res, "TEE_SimpleOpen() cannot open %s", 
 					  ptxFile);
 	}
@@ -359,8 +357,7 @@ TEE_Result capsule_create( uint32_t param_type,
 	
 	/* Open the capsule file */
 	res = TEE_SimpleOpen( capsule_name, &cap_fd );
-	if( cap_fd < 0 || res != TEE_SUCCESS) {
-		res = TEE_ERROR_ITEM_NOT_FOUND;
+	if( cap_fd < 0 || res != TEE_SUCCESS ) {
 		CHECK_GOTO(res, capsule_create_exit,
 				   "TEE_SimpleOpen() cannot open %s", capsule_name );
 	}
@@ -382,6 +379,7 @@ TEE_Result capsule_close(uint32_t param_type, TEE_Param params[4]) {
 
 	TEE_Result res = TEE_SUCCESS;
 	int        fd;
+	uint64_t   cnt_a, cnt_b;
 
 	if( capsule_name == NULL ) {
 		res = TEE_ERROR_ITEM_NOT_FOUND; 			
@@ -394,14 +392,17 @@ TEE_Result capsule_close(uint32_t param_type, TEE_Param params[4]) {
 										TEE_PARAM_TYPE_NONE,
 										TEE_PARAM_TYPE_NONE,
 										TEE_PARAM_TYPE_NONE ) );
-	//MSG( "Closing capsule %s for %d/%d", 
-	//	  capsule_name, params[0].value.a, params[0].value.b );
+	//MSG( "Closing capsule %s for %d/%d, curr_ts %d", 
+	//	  capsule_name, params[0].value.a, params[0].value.b, curr_ts );
 	
 	do_close( params[0].value.a, params[0].value.b );	
 	
+	cnt_a = read_cntpct();
 	res = TEE_SimpleOpen( capsule_name, &fd );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
+
 	if( fd < 0 || res != TEE_SUCCESS ) {
-		res = TEE_ERROR_ITEM_NOT_FOUND;
 		CHECK_SUCCESS(res, "TEE_SimpleOpen() cannot open %s", 
 					  capsule_name);
 	}
@@ -409,7 +410,10 @@ TEE_Result capsule_close(uint32_t param_type, TEE_Param params[4]) {
 	CHECK_GOTO( res, capsule_close_exit, "do_run_policy() Error" );
 
 capsule_close_exit:
+	cnt_a = read_cntpct();
 	TEE_SimpleClose( fd );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	return res;
 }
 
@@ -433,8 +437,8 @@ TEE_Result capsule_lseek( uint32_t param_type,
 
 	pos = do_lseek( params[0].value.a, params[0].value.b, 
 			        params[1].value.a, params[1].value.b, true );
-	//MSG( "Moved data cursor to %u for %d/%d", 
-    //	  pos, params[0].value.a, params[0].value.b );
+	//MSG( "Moved data cursor to %u for %d/%d, curr_ts %d", 
+    //	  pos, params[0].value.a, params[0].value.b, curr_ts );
 	
 	if( pos >= 0 ) {
 		params[2].value.a = pos - cap_head.data_begin ;
@@ -467,7 +471,6 @@ TEE_Result capsule_pread( uint32_t param_type, TEE_Param params[4] ) {
 	
 	res = TEE_SimpleOpen( capsule_name, &fd );
 	if( fd < 0 || res != TEE_SUCCESS ) {
-		res = TEE_ERROR_ITEM_NOT_FOUND;
 		CHECK_SUCCESS(res, "TEE_SimpleOpen() cannot open %s", 
 					  capsule_name);
 	}
@@ -525,7 +528,8 @@ TEE_Result capsule_read( uint32_t param_type, TEE_Param params[4] ) {
 	
 	TEE_Result         res = TEE_SUCCESS;
 	int                fd;
-	
+	uint64_t           cnt_a, cnt_b;
+
 	if( capsule_name == NULL ) {
 		res = TEE_ERROR_ITEM_NOT_FOUND; 			
 		CHECK_SUCCESS( res, "No capsule was previously opened" );
@@ -536,17 +540,19 @@ TEE_Result capsule_read( uint32_t param_type, TEE_Param params[4] ) {
 						 TEE_PARAM_TYPE_MEMREF_OUTPUT,
 						 TEE_PARAM_TYPE_NONE,
 						 TEE_PARAM_TYPE_NONE ) );
-	
+
+	cnt_a = read_cntpct();	
 	res = TEE_SimpleOpen( capsule_name, &fd );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	if( fd < 0 || res != TEE_SUCCESS ) {
-		res = TEE_ERROR_ITEM_NOT_FOUND;
 		CHECK_SUCCESS(res, "TEE_SimpleOpen() cannot open %s", 
 					  capsule_name);
 	}
 
-	//MSG( "Reading %u B from %s for %d/%d", 
+	//MSG( "Reading %u B from %s for %d/%d, curr_ts %d", 
 	//	 params[1].memref.size, capsule_name, 
-	//	 params[0].value.a, params[0].value.b );
+	//	 params[0].value.a, params[0].value.b, curr_ts );
 	
 	curr_tgid = params[0].value.a;
 	curr_fd = params[0].value.b;
@@ -566,7 +572,10 @@ TEE_Result capsule_read( uint32_t param_type, TEE_Param params[4] ) {
 	CHECK_GOTO( res, capsule_read_exit, "lua_read_redact() Error" );
 
 capsule_read_exit:
+	cnt_a = read_cntpct();
 	TEE_SimpleClose( fd );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	return res;
 }
 
@@ -574,6 +583,7 @@ TEE_Result capsule_write( uint32_t param_type, TEE_Param params[4] ) {
 	
 	TEE_Result res = TEE_SUCCESS;
 	int   	   fd;
+	uint64_t   cnt_a, cnt_b;
 
 	if( capsule_name == NULL ) {
 		res = TEE_ERROR_ITEM_NOT_FOUND; 			
@@ -586,17 +596,19 @@ TEE_Result capsule_write( uint32_t param_type, TEE_Param params[4] ) {
 						 TEE_PARAM_TYPE_NONE,
 						 TEE_PARAM_TYPE_NONE ) 
 	);
-	
+
+	cnt_a = read_cntpct();	
 	res = TEE_SimpleOpen( capsule_name, &fd );
-	if( fd < 0 || res != TEE_SUCCESS) {
-		res = TEE_ERROR_ITEM_NOT_FOUND;
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
+	if( fd < 0 || res != TEE_SUCCESS ) {
 		CHECK_SUCCESS(res, "TEE_SimpleOpen() cannot open %s", 
 					  capsule_name);
 	}
 
-	//MSG( "Writing %u B to %s from %d/%d", 
+	//MSG( "Writing %u B to %s from %d/%d, curr_ts %d", 
 	//	 params[1].memref.size, capsule_name, 
-	//	 params[0].value.a, params[0].value.b );
+	//	 params[0].value.a, params[0].value.b, curr_ts );
 
 	curr_tgid = params[0].value.a;
 	curr_fd = params[0].value.b;
@@ -612,7 +624,10 @@ TEE_Result capsule_write( uint32_t param_type, TEE_Param params[4] ) {
 	CHECK_GOTO( res, capsule_write_exit, "Do_write() Error" );
 
 capsule_write_exit:
+	cnt_a = read_cntpct();
 	TEE_SimpleClose( fd );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	return res;
 }
 
@@ -634,8 +649,7 @@ TEE_Result capsule_ftruncate( uint32_t param_type, TEE_Param params[4] ) {
 	);
 	
 	res = TEE_SimpleOpen( capsule_name, &fd );
-	if( fd < 0 || res != TEE_SUCCESS) {
-		res = TEE_ERROR_ITEM_NOT_FOUND;
+	if( fd < 0 || res != TEE_SUCCESS ) {
 		CHECK_SUCCESS(res, "TEE_SimpleOpen() cannot open %s", 
 					  capsule_name);
 	}
@@ -680,6 +694,7 @@ TEE_Result capsule_write_evaluate( uint32_t param_type, TEE_Param params[4] ) {
 
 	TEE_Result res = TEE_SUCCESS;
 	int        fd;
+	uint64_t   cnt_a, cnt_b;
 
 	if( capsule_name == NULL ) {
 		res = TEE_ERROR_ITEM_NOT_FOUND; 			
@@ -693,9 +708,11 @@ TEE_Result capsule_write_evaluate( uint32_t param_type, TEE_Param params[4] ) {
 						 TEE_PARAM_TYPE_NONE ) 
 	);
 
+	cnt_a = read_cntpct();
 	res = TEE_SimpleOpen( capsule_name, &fd );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	if( fd < 0 || res != TEE_SUCCESS ) {
-		res = TEE_ERROR_ITEM_NOT_FOUND;
 		CHECK_SUCCESS(res, "TEE_SimpleOpen() cannot open %s", 
 					  capsule_name);
 	}
@@ -705,8 +722,10 @@ TEE_Result capsule_write_evaluate( uint32_t param_type, TEE_Param params[4] ) {
 	memcpy( curr_declassify_dest, params[1].memref.buffer,
 			params[1].memref.size );
 
-	//MSG( "Declassifying to dest %s having accessed %s from %d/%d", 
-	//	 curr_declassify_dest, capsule_name, params[0].value.a, params[0].value.b );
+	//MSG( "Declassifying to dest %s having accessed %s from %d/%d, "
+	//	 " curr_ts %d\n", curr_declassify_dest, 
+	//	 capsule_name, params[0].value.a, params[0].value.b,
+	//  	 curr_ts );
 
 	curr_tgid = params[0].value.a;
 	curr_fd = params[0].value.b;
@@ -717,9 +736,13 @@ TEE_Result capsule_write_evaluate( uint32_t param_type, TEE_Param params[4] ) {
 	CHECK_GOTO( res, capsule_write_evaluate_exit,  "lua_run_policy() DECLASSIFY_OP error" );
 
 capsule_write_evaluate_exit:
+	cnt_a = read_cntpct();
 	TEE_SimpleClose( fd );
+	cnt_b = read_cntpct();
+	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 	return res;
-}		
+}
+
 TEE_Result capsule_open_connection( uint32_t param_type, TEE_Param params[4] ) {
 	TEE_Result res = TEE_SUCCESS;
 	int        fd = -1;
@@ -839,3 +862,26 @@ TEE_Result capsule_recv_header( uint32_t param_type, TEE_Param params[4] ) {
 	free_hdr( msg );	
 	return res;		
 }	
+
+// TODO: remove, these are unused
+TEE_Result capsule_clear_benchmark( uint32_t param_type, TEE_Param params[4] ) {
+	TEE_Result res = TEE_SUCCESS;
+	UNUSED( params );
+	ASSERT_PARAM_TYPE( TEE_PARAM_TYPES( TEE_PARAM_TYPE_NONE,
+										TEE_PARAM_TYPE_NONE,
+									    TEE_PARAM_TYPE_NONE,
+										TEE_PARAM_TYPE_NONE ) );	
+
+	return res;
+}
+
+TEE_Result capsule_collect_benchmark( uint32_t param_type, TEE_Param param[4] ) {
+	TEE_Result res = TEE_SUCCESS;
+	UNUSED(param);
+	ASSERT_PARAM_TYPE( TEE_PARAM_TYPES( TEE_PARAM_TYPE_NONE,
+										TEE_PARAM_TYPE_NONE,
+									    TEE_PARAM_TYPE_NONE,
+										TEE_PARAM_TYPE_NONE ) );	
+	return res;	
+}
+

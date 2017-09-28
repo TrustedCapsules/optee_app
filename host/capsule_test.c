@@ -1391,14 +1391,14 @@ TEEC_Result test_03() {
 TEEC_Result test_02() {
 
 	char 		key[STATE_SIZE] = "cred";
-	char        val[STATE_SIZE];
-	char        key_random[STATE_SIZE] = "num_access";
-	char        val_random[STATE_SIZE] = "0";
+	char            val[STATE_SIZE];
+	char            key_random[STATE_SIZE] = "num_access";
+	char            val_random[STATE_SIZE] = "0";
 	char		key_doct[STATE_SIZE] = "doctor";
 	char		val_doct[STATE_SIZE] = "doc1";
 	char		key_insu[STATE_SIZE] = "insurer";
 	char		val_insu[STATE_SIZE] = "ins1";
-	char        val_get[STATE_SIZE];
+	char            val_get[STATE_SIZE];
 	TEEC_Result     res = TEEC_SUCCESS;
 	TEEC_Context 	ctx;
 	TEEC_Session 	sess;

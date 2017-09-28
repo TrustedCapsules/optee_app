@@ -2,6 +2,7 @@
 home/
 refbuild/
 capsule_test
+capsule_breakdown
 capsule_test_network
 capsule_test_policy
 lua_program

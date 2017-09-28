@@ -158,7 +158,7 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx,
 		
 	switch (cmd_id) {
 	case CAPSULE_REGISTER_RSA_KEY:
-		return register_rsa_key(param_type, params);
+        return register_rsa_key(param_type, params);
 	case CAPSULE_REGISTER_AES_KEY:
 		return register_aes_key(param_type, params);
 	case CAPSULE_SET_STATE:

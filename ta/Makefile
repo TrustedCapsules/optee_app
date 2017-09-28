@@ -10,7 +10,13 @@ CFG_TEE_TA_LOG_LEVEL ?= 2
 CPPFLAGS += -DCFG_TEE_TA_LOG_LEVEL=$(CFG_TEE_TA_LOG_LEVEL) -DTRUSTED_APP \
 		   	-DTRUSTED_APP_BUILD -DLUA_COMPAT_MATHLIB -I../common -I../lua -I$(PROTOBUF_SRC_DIR)
 
-BINARY=ffa39702-9ce0-47e0-a1cb4048cfdb847d
+ifeq ($(CFG_TA_GPROF_SUPPORT),y)
+CPPFLAGS += -pg
+#CFLAGS_ta_arm64=-pg
+#CFLAGS_ta_arm32=-pg
+endif
+
+BINARY=ffa39702-9ce0-47e0-a1cb-4048cfdb847d
 
 include $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
 

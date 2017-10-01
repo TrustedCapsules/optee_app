@@ -91,17 +91,22 @@ TEE_Result set_state( uint32_t param_type,
 			CHECK_GOTO( res, set_state_exit, "TEE_CreatePersistentObject() Error" );
 			//MSG( "State file...0x%08x created", params[2].value.a );
 		} else {
+            //MSG( "In check go to" );
 			CHECK_GOTO( res, set_state_exit, "TEE_OpenPersistentObject() Error" );
 		}
 	}
 
+    //MSG( "Calling do_set_state" );
 	res = do_set_state( params[0].memref.buffer, params[0].memref.size, 
 					    params[1].memref.buffer, params[1].memref.size );
 set_state_exit:
+    //MSG( "set_state_exit" );
 	if( close_after ) {
+        //MSG( "In close_after" );
 		TEE_CloseObject( stateFile );
 		stateFile = TEE_HANDLE_NULL;
 	}
+    //MSG( "returning" );
 	return res;
 
 }

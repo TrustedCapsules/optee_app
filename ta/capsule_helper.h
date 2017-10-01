@@ -1,7 +1,6 @@
 #ifndef CAPSULE_HELPER_H
 #define CAPSULE_HELPER_H
 
-
 struct attr_packed {
 	uint32_t id;
 	uint32_t a;

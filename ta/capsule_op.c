@@ -1824,7 +1824,6 @@ TEE_Result do_set_state( unsigned char* key, uint32_t klen,
 		write_off++;
 	}
 
-
 	/*  Add the state in at the first available slot */
 	memset( state, 0, sizeof(state) );
 	memcpy( key_state, key, klen );
@@ -1837,8 +1836,6 @@ TEE_Result do_set_state( unsigned char* key, uint32_t klen,
 	cnt_b = read_cntpct();
 	timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
 	CHECK_SUCCESS( res, "TEE_WriteObjectData Error" );
-
-
 
 	return res;
 }

@@ -11,15 +11,17 @@
 #include "capsule_structures.h"
 #include "capsule_helper.h"
 
+
 unsigned long long read_cntpct(void) {
 	unsigned long long ts;
-#ifdef HIKEY
-	asm volatile( "mrs %0, cntpct_el0" : "=r" (ts) );
-#else
+//#ifdef HIKEY
+//	asm volatile( "mrs %0, cntpct_el0" : "=r" (ts) );
+//#else
 	asm volatile( "mrrc p15, 0, %Q0, %R0, c14" : "=r" (ts) );
-#endif
+//#endif
 	return ts;
 }
+
 
 int getfield( lua_State *L, int key, int tindex ) {
 	int result;

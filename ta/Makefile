@@ -16,6 +16,11 @@ CPPFLAGS += -pg
 #CFLAGS_ta_arm32=-pg
 endif
 
+ifdef HIKEY
+CPPFLAGS += -DHIKEY
+endif
+
+
 BINARY=ffa39702-9ce0-47e0-a1cb-4048cfdb847d
 
 include $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk

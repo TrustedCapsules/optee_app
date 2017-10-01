@@ -110,16 +110,6 @@ struct benchmarking_supp {
 	unsigned long long  network;
 };
 
-struct benchmarking_driver {
-	unsigned long long  module_op;
-	unsigned long long  rpc_peripheral_count;
-	unsigned long long  rpc_shm_count;
-	unsigned long long  rpc_cmd_count;
-	unsigned long long  rpc_fs_count;
-	unsigned long long  rpc_net_count;
-	unsigned long long  rpc_other_count; /*ta, irq, suspend, wait_queue*/
-};
-
 struct supp_buf {
 	long mytype;
 	struct benchmarking_supp info;

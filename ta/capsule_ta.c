@@ -115,7 +115,7 @@ TEE_Result TA_OpenSessionEntryPoint(uint32_t param_type,
 	LIST_INIT( &hash_head );
 	LIST_INIT( &cap_head.proc_entries );
 
-	MSG( "Opening Trusted Capsule session" );
+	// MSG( "Opening Trusted Capsule session" );
 	memset( &timestamps, 0, sizeof(timestamps) );
 	// MSG( "     [e h s r p]  		  \n"
 	// 	 "%d: %llu %llu %llu %llu %llu\n" 

@@ -9,7 +9,7 @@ ops=( 0 1 2 3 4 )
 # Iterate over files and ops
 for f in "${files[@]}"
 do
-    echo "\n\nTesting $f"
+    echo -e "\n\nTesting $f"
 	for op in "${ops[@]}"
 	do
 		capsule_breakdown BENCHMARK "/etc/test_capsules/$f" $iter $op

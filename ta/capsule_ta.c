@@ -117,28 +117,28 @@ TEE_Result TA_OpenSessionEntryPoint(uint32_t param_type,
 
 	MSG( "Opening Trusted Capsule session" );
 	memset( &timestamps, 0, sizeof(timestamps) );
-	MSG( "     [e h s r p]  		  \n"
-		 "%d: %llu %llu %llu %llu %llu\n" 
-		 "%d: %llu %llu %llu %llu %llu\n" 
-		 "%d: %llu %llu %llu %llu %llu\n" 
-		 "%d: %llu %llu %llu %llu %llu\n"	  
-		 "%d: %llu %llu %llu %llu %llu\n",
-		 0, timestamps[0].encryption, timestamps[0].hashing,
-		 timestamps[0].secure_storage, timestamps[0].rpc_calls,
-		 timestamps[0].policy_eval,
-		 1, timestamps[1].encryption, timestamps[1].hashing,
-		 timestamps[1].secure_storage, timestamps[1].rpc_calls,
-		 timestamps[1].policy_eval,
-		 2, timestamps[2].encryption, timestamps[2].hashing,
-	     timestamps[2].secure_storage, timestamps[2].rpc_calls,
-		 timestamps[2].policy_eval,
-		 3, timestamps[3].encryption, timestamps[3].hashing,
-		 timestamps[3].secure_storage, timestamps[3].rpc_calls,
-		 timestamps[3].policy_eval,
-		 4, timestamps[4].encryption, timestamps[4].hashing,
-		 timestamps[4].secure_storage, timestamps[4].rpc_calls,
-		 timestamps[4].policy_eval
-	);
+	// MSG( "     [e h s r p]  		  \n"
+	// 	 "%d: %llu %llu %llu %llu %llu\n" 
+	// 	 "%d: %llu %llu %llu %llu %llu\n" 
+	// 	 "%d: %llu %llu %llu %llu %llu\n" 
+	// 	 "%d: %llu %llu %llu %llu %llu\n"	  
+	// 	 "%d: %llu %llu %llu %llu %llu\n",
+	// 	 0, timestamps[0].encryption, timestamps[0].hashing,
+	// 	 timestamps[0].secure_storage, timestamps[0].rpc_calls,
+	// 	 timestamps[0].policy_eval,
+	// 	 1, timestamps[1].encryption, timestamps[1].hashing,
+	// 	 timestamps[1].secure_storage, timestamps[1].rpc_calls,
+	// 	 timestamps[1].policy_eval,
+	// 	 2, timestamps[2].encryption, timestamps[2].hashing,
+	//      timestamps[2].secure_storage, timestamps[2].rpc_calls,
+	// 	 timestamps[2].policy_eval,
+	// 	 3, timestamps[3].encryption, timestamps[3].hashing,
+	// 	 timestamps[3].secure_storage, timestamps[3].rpc_calls,
+	// 	 timestamps[3].policy_eval,
+	// 	 4, timestamps[4].encryption, timestamps[4].hashing,
+	// 	 timestamps[4].secure_storage, timestamps[4].rpc_calls,
+	// 	 timestamps[4].policy_eval
+	// );
 
 	return TEE_SUCCESS;
 }
@@ -196,6 +196,8 @@ void TA_CloseSessionEntryPoint(void *sess_ctx) {
 
 	//MSG( "Successfully closed trusted capsule %s session", capsule_name );
 }
+
+int icep_count = 0;
 
 TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx, 
 				                      uint32_t cmd_id,

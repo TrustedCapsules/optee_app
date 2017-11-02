@@ -419,6 +419,7 @@ int test_op_latency(char* file_name, int num_iter, int num_bytes, char* op) {
 	if (strcmp(op, "open") == 0 || run_all != 0) {
 		// Iterate for specific value
 		for (i = 0; i < num_iter; i++) {
+			// printf("Opening file, count: %d\n", i);
 			// ------------ TIME OPEN ------------
 			cntpct_a = read_cntpct();
 			fd = open_file( file_name, O_RDWR );
@@ -434,11 +435,12 @@ int test_op_latency(char* file_name, int num_iter, int num_bytes, char* op) {
 			}
 			// ------------ DONE OPEN ------------
 			nr = close( fd );
-			CHECK_EXIT( fd, "test_op_latency(): cannot close"
+			CHECK_EXIT( nr, "test_op_latency(): cannot close"
 					" abs path %s\n", file_name );
 		}
 	}
 
+	printf("Opening %s\n", file_name);
 	// Open file for lseek, read, write
 	fd = open_file( file_name, O_RDWR );
 	CHECK_ERROR( fd, "test_op_latency(): cannot open abs path %s\n", file_name);
@@ -537,6 +539,7 @@ int test_op_latency(char* file_name, int num_iter, int num_bytes, char* op) {
 	}
 
 	// Close the file
+	printf("Closing %s\n", file_name);
 	nr = close( fd );
 	CHECK_EXIT( fd, "test_op_latency(): cannot close"
 				" abs path %s\n", file_name );
@@ -556,7 +559,7 @@ int test_op_latency(char* file_name, int num_iter, int num_bytes, char* op) {
 				fprintf(output_file, "read_cntpct: %llu cycles, cntfrq: %u\n", cntpct_b - cntpct_a, cntfrq);
 				fflush( output_file );
 			}
-			CHECK_EXIT( fd, "test_op_latency(): cannot close"
+			CHECK_EXIT( nr, "test_op_latency(): cannot close"
 					" abs path %s\n", file_name );
 			// ----------- DONE CLOSE ------------
 		}

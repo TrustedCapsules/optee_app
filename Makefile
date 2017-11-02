@@ -12,7 +12,7 @@ PROTOBUF_SRC_DIR ?= ${PWD}/../optee_app/protobuf_common
 all:
 
 	make -C protobuf_common server
-	make -C host CROSS_COMPILE="$(HOST_CROSS_COMPILE)" TEEC_EXPORT=$(TEEC_EXPORT) TA_DEV_KIT_DIR=$(TA_DEV_KIT_DIR)
+	make -C host CROSS_COMPILE="$(HOST_CROSS_COMPILE)" TEEC_EXPORT=$(TEEC_EXPORT) TA_DEV_KIT_DIR=$(TA_DEV_KIT_DIR) HIKEY=$(HIKEY)
 	make -C ta TRUSTED_APP=y NOWERROR=y PROTOBUF_SRC_DIR=$(PROTOBUF_SRC_DIR) CROSS_COMPILE="$(TA_CROSS_COMPILE)" TA_DEV_KIT_DIR=$(TA_DEV_KIT_DIR)
 	make -C capsule_gen/src
 	make -C capsule_server

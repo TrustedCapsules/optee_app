@@ -43,6 +43,7 @@ static void delete_file(void) {
 	int    fd;
 	size_t file_length, nw, temp, curr_length = 0;
 	char   zero_block[BLOCK_LEN];
+    uint32_t offset = 0;
     TEE_Result res;
 
 
@@ -55,11 +56,12 @@ static void delete_file(void) {
 
     // TODO: add error checks
 	res = TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_END, &file_length );
-	res = TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_SET, &temp );
+	// res = TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_SET, &temp );
 
 	memset( zero_block, 0, BLOCK_LEN );
 	while( curr_length < file_length ) {
-		res = TEE_SimpleWrite( fd, zero_block, BLOCK_LEN, &nw );
+		res = TEE_SimpleWrite( fd, zero_block, BLOCK_LEN, &nw, offset );
+        offset += nw;
 		curr_length += nw;
 	}	
 

@@ -188,40 +188,40 @@ void lua_close_context( lua_State **L ) {
 }
 
 /* Read a chunk of data */
-uint32_t read_block( int fd, void* buf, size_t blen ) {               
-	uint32_t nr = 0, off = 0;
+uint32_t read_block( int fd, void* buf, size_t blen, uint32_t off ) {
+	uint32_t nr = 0, read = 0;
 	uint64_t cnt_a, cnt_b;
 	do {
 		cnt_a = read_cntpct();
-		TEE_SimpleRead( fd, ( (unsigned char*) buf ) + off, 
-						     blen - off, &nr );
+		TEE_SimpleRead( fd, ( (unsigned char*) buf ) + read, 
+						     blen - read, &nr, off );
 	   	cnt_b = read_cntpct();
 		timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 		if( (int) nr < 0 ) {
 			return nr;
 		}
 		
-		off += nr;	
-	} while( off < blen && nr > 0 );
-	return off;
+		read += nr;	
+	} while( read < blen && nr > 0 );
+	return read;
 }
 
 /* Write a chunk of data */
-uint32_t write_block( int fd, void* buf, size_t blen ) {
-	uint32_t nw = 0, off = 0;
+uint32_t write_block( int fd, void* buf, size_t blen, uint32_t off ) {
+	uint32_t nw = 0, written = 0;
 	uint64_t cnt_a, cnt_b;
 	do {
 		cnt_a = read_cntpct();
-		TEE_SimpleWrite( fd, ( (unsigned char*) buf ) + off, 
-							  blen - off, &nw );
+		TEE_SimpleWrite( fd, ( (unsigned char*) buf ) + written, 
+							  blen - written, &nw, off );
 		cnt_b = read_cntpct();
 		timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
 		if( (int) nw < 0 ) {
 			return nw;
 		}
-		off += nw;
-	} while( off < blen && nw > 0 );
-	return off;
+		written += nw;
+	} while( written < blen && nw > 0 );
+	return written;
 }
 
 /* Calculate the chunk length from an offset */
@@ -328,7 +328,7 @@ TEE_Result write_enc_file_block( int fd, unsigned char* ptx,
 								 TEE_OperationHandle op	) {
 	
 	TEE_Result 	    res = TEE_SUCCESS;
-	uint32_t        init_ctr = 0, f_off = 0, p_off = 0;
+	uint32_t        init_ctr = 0, p_off = 0, f_off = 0;
 	unsigned char   ctx[BLOCK_LEN];
 	size_t          ctxlen = sizeof(ctx)/keylen * keylen;
     size_t       	len;
@@ -349,7 +349,7 @@ TEE_Result write_enc_file_block( int fd, unsigned char* ptx,
 	init_ctr = bl_off / keylen;
 	f_off = bl_off + sizeof( struct TrustedCap ) + HASH_LEN +
 			chnum * ( chsize + HASH_LEN );
-	res = TEE_SimpleLseek( fd, f_off, TEE_DATA_SEEK_SET, &ns );
+	// res = TEE_SimpleLseek( fd, f_off, TEE_DATA_SEEK_SET, &ns );
     // TODO: add check for result
 
 	//MSG( "BEFORE LOOP bl_off: %u, plen: %u, p_off: %u, ns: %d, nw: %d,"
@@ -372,7 +372,7 @@ TEE_Result write_enc_file_block( int fd, unsigned char* ptx,
 		res = process_aes_block( ctx, &ctxlen, ptx + p_off, len, iv, 
 						         ivlen, init_ctr, first, last, op );
 		CHECK_SUCCESS( res, "Process_aes_block() Error" );
-		nw = write_block( fd, ctx, ctxlen ); 
+		nw = write_block( fd, ctx, ctxlen, f_off ); 
 		if( nw != (int) ctxlen ) {
 			res = TEE_ERROR_NOT_SUPPORTED;
 			CHECK_SUCCESS( res, "Write_block() wrote only %u/%u B",
@@ -386,6 +386,7 @@ TEE_Result write_enc_file_block( int fd, unsigned char* ptx,
 		//	 last == true ? "true" : "false", init_ctr, f_off );
 		
 		p_off += ctxlen;
+        f_off += ctxlen; // Update offset to write to
 		first = false;
 	}
 
@@ -404,18 +405,17 @@ TEE_Result read_enc_file_block( int fd, unsigned char* ptx,
 								TEE_OperationHandle op ) {
 
 	TEE_Result 		res = TEE_SUCCESS;
-	uint32_t   		init_ctr = 0;
-	uint32_t   		f_off = 0;
+	uint32_t   		init_ctr = 0, f_off = 0;
 	uint32_t   		aligned_off = 0;
 	uint32_t   		aligned_end = 0;
 	uint32_t        rlen;
 	unsigned char   ctx[BLOCK_LEN];
 	size_t			ctxlen = sizeof(ctx);
-	uint32_t        nr, ns;
+	uint32_t        nr;//, ns;
     int             i, before = 0, after = 0;
 
 	UNUSED(nr);
-	UNUSED(ns);
+	// UNUSED(ns);
 
 	if( ptxlen < keylen || ptxlen < BLOCK_LEN ) {
 		res = TEE_ERROR_NOT_SUPPORTED;
@@ -442,15 +442,15 @@ TEE_Result read_enc_file_block( int fd, unsigned char* ptx,
 	f_off = aligned_off + sizeof( struct TrustedCap ) + HASH_LEN +
 			chnum*(chsize + HASH_LEN);
 	
-	res = TEE_SimpleLseek( fd, f_off, TEE_DATA_SEEK_SET, &ns );
-    CHECK_SUCCESS( res, "TEE_SimpleLseek() Error" );
+	// res = TEE_SimpleLseek( fd, f_off, TEE_DATA_SEEK_SET, &ns );
+    // CHECK_SUCCESS( res, "TEE_SimpleLseek() Error" );
 
 	rlen = aligned_end - aligned_off;
 	if( rlen > ctxlen ) {
 		rlen = ctxlen;
 	} 
 
-	nr = read_block( fd, ctx, rlen );
+	nr = read_block( fd, ctx, rlen, f_off );
 	if( nr < 0 ) {
 		res = TEE_ERROR_NOT_SUPPORTED;
 		CHECK_SUCCESS( res, "Read_block() Error" );
@@ -548,16 +548,18 @@ bool verify_hash( uint32_t ch, struct HashList *head,
 
 int read_hash( int fd, unsigned char* hash, size_t hlen, 
 				uint32_t chnum, uint32_t chSize ) {
-	uint32_t f_off = sizeof( struct TrustedCap ) + 
+    uint32_t f_off = sizeof( struct TrustedCap ) + 
 			         chnum * ( hlen + chSize );
-	uint64_t cnt_a, cnt_b;
-	uint32_t ns;
+	/*
+    uint64_t cnt_a, cnt_b;
+    uint32_t ns;
 	UNUSED( ns );
 	cnt_a = read_cntpct();
 	TEE_SimpleLseek( fd, f_off, TEE_DATA_SEEK_SET, &ns );
 	cnt_b = read_cntpct();
 	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
-	return read_block( fd, hash, hlen );
+    */
+	return read_block( fd, hash, hlen, f_off );
 }
 
 
@@ -568,7 +570,7 @@ int write_hash( int fd, unsigned char* hash, size_t hlen,
 				 uint32_t chSize ) {
 	
 	struct hash_entry *p = head->first;
-	uint32_t 		   f_off = sizeof( struct TrustedCap ) + 
+	uint32_t    		   f_off = sizeof( struct TrustedCap ) + 
 					 		   chnum * ( hlen + chSize );	
 	uint32_t 		   ns;
 	uint64_t           cnt_a, cnt_b;
@@ -595,11 +597,13 @@ int write_hash( int fd, unsigned char* hash, size_t hlen,
 	}
 
 	/* Write the hash to file */
-	cnt_a = read_cntpct();
+	/*
+    cnt_a = read_cntpct();
 	TEE_SimpleLseek( fd, f_off, TEE_DATA_SEEK_SET, &ns );
 	cnt_b = read_cntpct();
 	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
-	return write_block( fd, hash, hlen );
+	*/
+    return write_block( fd, hash, hlen, f_off );
 
 	//MSG( "ns = %d, nw = %d", ns, nw );
 }
@@ -970,27 +974,31 @@ TEE_Result fill_header( struct TrustedCap* cap,
 
 /* Read the TrustedCap header */
 int read_header( int fd, struct TrustedCap* cap ) {
-	uint32_t ns;
+    /*
+    uint32_t ns;
 	uint64_t cnt_a, cnt_b;
 	UNUSED( ns );
 	cnt_a = read_cntpct();
 	TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_SET, &ns );
 	cnt_b = read_cntpct();
 	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
-	return read_block( fd, cap, sizeof( struct TrustedCap ) );
+	*/
+    return read_block( fd, cap, sizeof( struct TrustedCap ), 0 );
 	//MSG( "ns: %d, nr: %d", ns, nr );
 }
 
 /* Write the TrustedCap header */
 int write_header( int fd, struct TrustedCap* cap ) {
-	uint32_t ns;
+    /*
+    uint32_t ns;
 	uint64_t cnt_a, cnt_b;
 	UNUSED( ns );
 	cnt_a = read_cntpct();
 	TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_SET, &ns );
 	cnt_b = read_cntpct();
 	timestamps[curr_ts].rpc_calls += cnt_b - cnt_a;
-	return write_block( fd, cap, sizeof( struct TrustedCap ) );
+	*/
+    return write_block( fd, cap, sizeof( struct TrustedCap ), 0 );
 	//MSG( "ns: %d, nw: %d", ns, nw );
 }
 

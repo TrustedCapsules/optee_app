@@ -83,7 +83,8 @@ struct cap_text_entry{
 struct capsule_text {
 	// CapTextList represents the head of a linked list 
 	//	See capsule_structures.c for creation with LIST_HEAD	
-	struct CapTextList  proc_entries;
+    // A list of all the processes which are operating on this file
+    struct CapTextList  proc_entries;
 		
 	char* 				policy_buf;
 	/* valid bytes in policy_buf */

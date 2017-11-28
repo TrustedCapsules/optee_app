@@ -188,6 +188,7 @@ void lua_close_context( lua_State **L ) {
 }
 
 /* Read a chunk of data */
+// TODO JAMES: caching
 uint32_t read_block( int fd, void* buf, size_t blen, uint32_t off ) {
 	uint32_t nr = 0, read = 0;
 	uint64_t cnt_a, cnt_b;

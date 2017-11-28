@@ -755,7 +755,7 @@ TEE_Result do_open( int fd, int state_tgid, int state_fd ) {
 	 * open call. Otherwise, we create a new capsule_text_entries struct and add it
 	 * to the list */
 	if( cap_head.proc_entries.first == NULL ) {
-		
+	    // TODO JAMES: caching	
 		initialize_capsule_text( &cap_head );
 
 		if( read_header(fd, &header) < (int) sizeof(struct TrustedCap) ) {

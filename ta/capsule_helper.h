@@ -33,8 +33,8 @@ void initialize_capsule_entries( struct cap_text_entry *p,
 struct cap_text_entry* find_capsule_entry( struct CapTextList *head,
 										   int state_tgid, int state_fd );
 
-uint32_t read_block( int, void*, size_t );
-uint32_t write_block( int, void*, size_t );
+uint32_t read_block( int fd, void* buf, size_t blen, uint32_t offset );
+uint32_t write_block( int fd, void* buf, size_t blen, uint32_t offset );
 
 uint32_t calc_chk_len( uint32_t, uint32_t );
 uint32_t calc_chk_num( uint32_t, uint32_t );

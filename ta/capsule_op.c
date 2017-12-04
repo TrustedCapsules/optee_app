@@ -40,12 +40,13 @@ TEE_Result do_write_new_policy( int src_fd, int dst_fd, uint32_t len ) {
 	size_t        dlen = BLOCK_LEN;
 	uint32_t      cnt = 0;
 	uint32_t      nr, nw;
+    uint32_t         offset = 0;
 
 	do_lseek( 0, 0, 0, START, false );
 
 	while( cnt < len ) {
 		
-		nr = read_block( src_fd, databuf, dlen );
+		nr = read_block( src_fd, databuf, dlen, offset );
 
 		if( (int) nr < 0 ) {
 			res = TEE_ERROR_NOT_SUPPORTED;
@@ -64,6 +65,7 @@ TEE_Result do_write_new_policy( int src_fd, int dst_fd, uint32_t len ) {
 		}
 
 		cnt += nw;
+        offset += nr;
 	}
 
 	return res;	
@@ -1038,10 +1040,10 @@ TEE_Result do_create( int pfd, int cfd ) {
 
 			cfd_off -= r_len; 	
 				
-			res = TEE_SimpleLseek( pfd, pfd_off, TEE_DATA_SEEK_SET, &ns ); 
-			nr = read_block( pfd, databuf, r_len );
-			res = TEE_SimpleLseek( pfd, cfd_off, TEE_DATA_SEEK_SET, &ns );	
-			nw = write_block( pfd, databuf, nr );
+			//res = TEE_SimpleLseek( pfd, pfd_off, TEE_DATA_SEEK_SET, &ns ); 
+			nr = read_block( pfd, databuf, r_len, pfd_off );
+			//res = TEE_SimpleLseek( pfd, cfd_off, TEE_DATA_SEEK_SET, &ns );	
+			nw = write_block( pfd, databuf, nr, cfd_off );
 	
 
 			/* Sanity check */
@@ -1065,7 +1067,7 @@ TEE_Result do_create( int pfd, int cfd ) {
 			while( ch_cnt < ch_size ) {
 				res = TEE_SimpleLseek( pfd, cfd_off + ch_cnt, 
 								      TEE_DATA_SEEK_SET, &ns );
-				nr = read_block( pfd, databuf, datalen );
+				nr = read_block( pfd, databuf, datalen, cfd_off + ch_cnt );
 				//MSG( "data_block: %s", databuf );	
 				ch_off = cfd_off + ch_cnt - HASH_LEN - 
 						 sizeof( struct TrustedCap ) -
@@ -1092,8 +1094,8 @@ TEE_Result do_create( int pfd, int cfd ) {
 	
 			f_off = sizeof( struct TrustedCap ) + ch_curr * 
 					( hlen + symm_chunk_size );	
-			res = TEE_SimpleLseek( pfd, f_off, TEE_DATA_SEEK_SET, &ns );
-		    nw = write_block( pfd, hash, hlen );	
+			// res = TEE_SimpleLseek( pfd, f_off, TEE_DATA_SEEK_SET, &ns );
+		    nw = write_block( pfd, hash, hlen, f_off );	
 			if( (int) nw != (int) hlen ) {
 				res = TEE_ERROR_NOT_SUPPORTED;		
 				CHECK_SUCCESS( res, "Write_hash()-> did not write %u B",
@@ -1107,8 +1109,8 @@ TEE_Result do_create( int pfd, int cfd ) {
 	/* Read the policy from cfd and write it to pfd in a forward 
 	 * pass */
 	cfd_off = sizeof( struct TrustedCap );
-	res = TEE_SimpleLseek( pfd, cfd_off, TEE_DATA_SEEK_SET, &ns );
-	res = TEE_SimpleLseek( cfd, cfd_off, TEE_DATA_SEEK_SET, &ns );
+	//res = TEE_SimpleLseek( pfd, cfd_off, TEE_DATA_SEEK_SET, &ns );
+	//res = TEE_SimpleLseek( cfd, cfd_off, TEE_DATA_SEEK_SET, &ns );
 
 	//MSG( "pfd_off: %u, cfd_off: %u, ch_start: %u, ch_end: %u, " 
     //		 "ch_boundary: %u, ch_b_data_size: %u", pfd_off, cfd_off, 
@@ -1125,8 +1127,8 @@ TEE_Result do_create( int pfd, int cfd ) {
 			while( ch_cnt < ch_size ) {
 				nr = read_block( cfd, databuf, 
 								 ( ch_size - ch_cnt ) > datalen ? 
-								 datalen : ch_size - ch_cnt );
-				nw = write_block( pfd, databuf, nr );
+								 datalen : ch_size - ch_cnt, cfd_off );
+				nw = write_block( pfd, databuf, nr, cfd_off );
 				cfd_off += nw;
 				ch_cnt += nw;	
 			
@@ -1196,11 +1198,12 @@ TEE_Result do_create( int pfd, int cfd ) {
 
 				/* We then read the data */	
 				if( nr < datalen && ch_b_data_size > 0 ) {
-					res = TEE_SimpleLseek( pfd, cfd_off - ch_b_data_size,
-									 	  TEE_DATA_SEEK_SET, &ns );
+					//res = TEE_SimpleLseek( pfd, cfd_off - ch_b_data_size,
+					//				 	  TEE_DATA_SEEK_SET, &ns );
 					nt = read_block( pfd, databuf + nr, 
 									 datalen - nr < ch_b_data_size ? 
-									 datalen - nr : ch_b_data_size );
+									 datalen - nr : ch_b_data_size,
+                                     cfd_off - ch_b_data_size);
 					ch_b_data_size -= nt; 
 					nr += nt;		
 				}
@@ -1234,8 +1237,8 @@ TEE_Result do_create( int pfd, int cfd ) {
 
 			f_off = sizeof( struct TrustedCap ) + ch_curr * 
 					( hlen + symm_chunk_size );	
-			res = TEE_SimpleLseek( pfd, f_off, TEE_DATA_SEEK_SET, &ns );
-		    nw = write_block( pfd, hash, hlen );	
+			//res = TEE_SimpleLseek( pfd, f_off, TEE_DATA_SEEK_SET, &ns );
+		    nw = write_block( pfd, hash, hlen, f_off );	
 			if( (int) nw != (int) hlen ) {
 				res = TEE_ERROR_NOT_SUPPORTED;		
 				CHECK_SUCCESS( res, "Write_hash()-> did not write %u B",
@@ -1252,8 +1255,8 @@ TEE_Result do_create( int pfd, int cfd ) {
 		f_off = sizeof( struct TrustedCap ) + 
 				ch_curr * ( hlen + symm_chunk_size );
 		
-		res = TEE_SimpleLseek( pfd, f_off, TEE_DATA_SEEK_SET, &ns );
-		nr = read_block( pfd, hash, hlen );	
+		//res = TEE_SimpleLseek( pfd, f_off, TEE_DATA_SEEK_SET, &ns );
+		nr = read_block( pfd, hash, hlen, f_off );	
 		if( (int) nr != (int) hlen ) {
 			res = TEE_ERROR_NOT_SUPPORTED;		
 			CHECK_SUCCESS( res, "Write_hash()-> did not write %u B",

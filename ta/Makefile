@@ -6,6 +6,8 @@ OBJCOPY = $(CROSS_COMPILE)objcopy
 OBJDUMP = $(CROSS_COMPILE)objdump
 READELF = $(CROSS_COMPILE)readelf
 
+INCLUDE_WARN=""
+
 CFG_TEE_TA_LOG_LEVEL ?= 2
 CPPFLAGS += -DCFG_TEE_TA_LOG_LEVEL=$(CFG_TEE_TA_LOG_LEVEL) -DTRUSTED_APP \
 		   	-DTRUSTED_APP_BUILD -DLUA_COMPAT_MATHLIB -I../common -I../lua -I$(PROTOBUF_SRC_DIR)
@@ -23,13 +25,23 @@ endif
 
 BINARY=ffa39702-9ce0-47e0-a1cb-4048cfdb847d
 
+TA_DEV_KIT_MK:=$(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
+
+ifneq ($(strip $(wildcard $TA_DEV_KIT_MK)),)
 include $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
+else
+INCLUDE_WARN="\n\n\nWARNING: TA make could not find ${TA_DEV_KIT_MK}\n\n\n"
+endif
+
+.PHONY: warn
+warn:
+	@echo -e ${INCLUDE_WARN}
 
 .PHONY: all
-all: $(BINARY).ta
+all: warn $(BINARY).ta
 
 .PHONY: clean
-clean:
+clean: warn
 	rm -f $(BINARY).ta
 	rm -f $(BINARY).dmp
 	rm -f *.elf

@@ -25,23 +25,23 @@ endif
 
 BINARY=ffa39702-9ce0-47e0-a1cb-4048cfdb847d
 
-TA_DEV_KIT_MK:=$(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
+#TA_DEV_KIT_MK:=$(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
 
-ifneq ($(strip $(wildcard $TA_DEV_KIT_MK)),)
+#ifneq ($(strip $(wildcard $TA_DEV_KIT_MK)),)
 include $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
-else
-INCLUDE_WARN="\n\n\nWARNING: TA make could not find ${TA_DEV_KIT_MK}\n\n\n"
-endif
+#else
+#INCLUDE_WARN="\n\n\nWARNING: TA make could not find ${TA_DEV_KIT_MK}\n\n\n"
+#endif
 
-.PHONY: warn
-warn:
-	@echo -e ${INCLUDE_WARN}
+#.PHONY: pre-build
+#pre-build:
+#include $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
 
 .PHONY: all
-all: warn $(BINARY).ta
+all: $(BINARY).ta
 
 .PHONY: clean
-clean: warn
+clean:
 	rm -f $(BINARY).ta
 	rm -f $(BINARY).dmp
 	rm -f *.elf

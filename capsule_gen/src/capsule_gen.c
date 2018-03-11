@@ -143,7 +143,7 @@ void concatenate( char* datafile, char* policyfile, char* ptx,
 int encrypt_file( char* ptx ) {
 	FILE 			*in, *out;
 	unsigned char 	*buffer = NULL;
-	size_t 			 inlen;
+	size_t 			 inlen, insize;
 	unsigned char    hash[32];
 	int				 i;
 
@@ -154,25 +154,36 @@ int encrypt_file( char* ptx ) {
 		return -1;
 	}
 
+    // Get file size
+    fseek(in, 0, SEEK_END);
+    insize = ftell(f);
+    fseek(in, 0, SEEK_SET);
+
     // TODO: remove chunk logic (just encrypt everything)
 
-	buffer = (unsigned char*) malloc( aes_chunk_size );
+	buffer = (unsigned char*) malloc( insize );
 	if( buffer == NULL ) {
 		PRINT_INFO( "Encrypt_file()-> malloc() failed\n" );
+        goto exit;
 	}
 
-	while( feof( in ) == 0 ) {
-		inlen = full_read( buffer, sizeof(char), aes_chunk_size, in );
+	//while( feof( in ) == 0 ) {
+		inlen = full_read( buffer, sizeof(char), insize, in );
+
+        if (inlen != insize) {
+            PRINT_INFO( "Encrypt_file()-> full_read() read %d, file size %d\n", inlen, insize);
+        }
 
 		encrypt_content( buffer, inlen, hash, sizeof(hash), 
 						 aes_key, aes_key_len, aes_iv, aes_iv_len, 
-					     aes_chunk_size, 
+					     //aes_chunk_size, 
 						 inlen < aes_chunk_size ? true : false );
 
 		full_write( hash, sizeof(char), sizeof(hash), out );
 		full_write( buffer, sizeof(char), inlen, out );
-	}
+	//}
 	
+exit:
 	free( buffer );
 	fclose( out );
 	fclose( in );
@@ -212,7 +223,7 @@ int decrypt_file( char *capsule ) {
 	sha256_init( &md );
 	PRINT_INFO( "\nPolicy:\n" );
 
-    // TODO: remove capsule logic
+    // TODO: remove chunk logic
 
 	while( feof(in) == 0 ) {
 		block++;

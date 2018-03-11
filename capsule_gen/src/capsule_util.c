@@ -218,11 +218,12 @@ void fill_header( struct TrustedCap * header, size_t fsize,
 void encrypt_content( unsigned char* buffer, size_t buflen, 
 					  unsigned char* hash, size_t hashlen, 
 					  unsigned char* key, unsigned int key_len, 
-					  unsigned char* iv, unsigned int iv_len, 
-					  unsigned int chunk_size, bool last ) {
+					  unsigned char* iv, unsigned int iv_len//, 
+					  //unsigned int chunk_size, bool last 
+                      ) {
 	hash_state md;
 
-	if( buflen < chunk_size && last == false ) {
+	/*if( buflen < chunk_size && last == false ) {
 		PRINT_INFO( "encrypt_content()-> buffer size less than"
 					" chunk size\n" );
 		return;
@@ -232,7 +233,7 @@ void encrypt_content( unsigned char* buffer, size_t buflen,
 		PRINT_INFO( "encrypt_content()-> buffer is larger than"
 					" chunk size, I hope you are buffering on"
 					" the other side\n" );
-	}
+	}*/
 
 	if( hashlen > 32 ) {
 		PRINT_INFO( "encrypt_content()-> previously using SHA256, "
@@ -254,14 +255,16 @@ void encrypt_content( unsigned char* buffer, size_t buflen,
 void decrypt_content( unsigned char *buffer, size_t buflen, 
 					  unsigned char *hash, size_t hashlen, 
 					  unsigned char *key, unsigned int key_len, 
-					  unsigned char *iv, unsigned int iv_len, 
-					  unsigned int chunk_size,
-					  bool last, int block ) {
+					  unsigned char *iv, unsigned int iv_len//, 
+					  //unsigned int chunk_size,
+					  //bool last, int block 
+                      ) {
 
 	hash_state     md;
 	unsigned char  hash_calc[32];
 	int            n;
 
+    /*
 	if( buflen < chunk_size && last == false ) {
 		PRINT_INFO( "decrypt_content()-> buffer size %lu B less than"
 					" chunk size %u B\n", buflen, chunk_size );
@@ -273,6 +276,7 @@ void decrypt_content( unsigned char *buffer, size_t buflen,
 					" chunk size %u B, I hope you are buffering on"
 					" the other side\n", buflen, chunk_size );
 	}
+    */
 
 	if( hashlen > 32 ) {
 		PRINT_INFO( "decrypt_content()-> previously using SHA256, "
@@ -286,6 +290,7 @@ void decrypt_content( unsigned char *buffer, size_t buflen,
 	sha256_process( &md, (const unsigned char*) buffer, buflen );
 	sha256_done( &md, hash_calc);
 
+    // TODO: figure out how to remove block calculation here
 	for( n = 0; n < hashlen; n++ ) {
 		if( hash[n] != hash_calc[n] ) {
 			PRINT_INFO( "Encrypt_content()-> hash at block"
@@ -338,7 +343,7 @@ void find_delimiter( unsigned char* buf, size_t blen, int* dstart,
 // TODO: remove chunk size
 void set_capsule( char* keyname, unsigned int* key_len, 
 				  unsigned char** key, unsigned int* iv_len, 
-				  unsigned char** iv, unsigned int* chunk_size, 
+				  unsigned char** iv, //unsigned int* chunk_size, 
 				  unsigned char** id ) {
 
 	int 	i, found = 0;
@@ -353,7 +358,7 @@ void set_capsule( char* keyname, unsigned int* key_len,
 			   i++ ) {
 		//printf( "%s %s\n", keyname, capsule_data_array[i].str );
 		if( strcmp( keyname, (const char*) capsule_data_array[i].str ) == 0 ) {
-			*chunk_size = capsule_data_array[i].chunk_size;
+		    //*chunk_size = capsule_data_array[i].chunk_size;
 			*id = capsule_data_array[i].id;
 			found = 1;
 			break;

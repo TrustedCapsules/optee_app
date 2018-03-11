@@ -291,14 +291,15 @@ void decrypt_content( unsigned char *buffer, size_t buflen,
 	sha256_done( &md, hash_calc);
 
     // TODO: figure out how to remove block calculation here
-	for( n = 0; n < hashlen; n++ ) {
+/*	for( n = 0; n < hashlen; n++ ) {
 		if( hash[n] != hash_calc[n] ) {
 			PRINT_INFO( "Encrypt_content()-> hash at block"
 						" %d does not match: %02x vs. %02x\n", 
 						block, hash[n], hash_calc[n] );
 			return;
 		}
-	}	
+	}
+*/
 }
 
 /*

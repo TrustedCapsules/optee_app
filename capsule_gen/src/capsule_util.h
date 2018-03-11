@@ -56,14 +56,12 @@ void fill_header( struct TrustedCap* header, size_t fsize,
 void encrypt_content( unsigned char* buffer, size_t buflen, 
 					  unsigned char* hash, size_t hashlen, 
 					  unsigned char* key, unsigned int key_len, 
-					  unsigned char* iv, unsigned int iv_len, 
-					  unsigned int chunk_size, bool last );
+					  unsigned char* iv, unsigned int iv_len );
 
 void decrypt_content( unsigned char* buffer, size_t buflen,
 					  unsigned char* hash, size_t hashlen, 
 					  unsigned char* key, unsigned int key_len, 
-					  unsigned char* iv, unsigned int iv_len, 
-					  unsigned int chunk_size, bool last, int block );
+					  unsigned char* iv, unsigned int iv_len );
 
 void find_delimiter( unsigned char* buffer, size_t blen, int* dstart,
 					 int* dend, int* state, bool *matched, 
@@ -71,8 +69,7 @@ void find_delimiter( unsigned char* buffer, size_t blen, int* dstart,
 
 void set_capsule( char* keyname, unsigned int* key_len, 
 				  unsigned char** key, unsigned int* iv_len, 
-				  unsigned char** iv, unsigned int* chunk_size, 
-				  unsigned char** id );	  
+				  unsigned char** iv, unsigned char** id );
 /* NOT USED */
 int rsa_encrypt( const unsigned char *in, size_t inlen, 
 				 unsigned char *out, size_t *outlen, rsa_key *key );

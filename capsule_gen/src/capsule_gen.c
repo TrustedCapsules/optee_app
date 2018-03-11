@@ -6,7 +6,7 @@
 
 unsigned int   aes_key_len;
 unsigned int   aes_iv_len;
-unsigned int   aes_chunk_size;
+//unsigned int   aes_chunk_size;
 unsigned char* aes_iv;
 unsigned char* aes_key;
 unsigned char* aes_id;
@@ -50,7 +50,7 @@ void strip_header( FILE* in, unsigned char* aes_key,
 /* Adds a header to a capsule and output a capsule */
 void append_header( char *infile, char *outfile, 
 					unsigned char* aes_key, unsigned char* aes_id ) {
-	size_t 		      inlen;
+	size_t 		      inlen, insize;
 	size_t            fsize = 0;
 	unsigned char 	 *buffer = NULL;
 	hash_state        md;
@@ -66,9 +66,13 @@ void append_header( char *infile, char *outfile,
 		return;
 	}
 
-	buffer = (unsigned char*) malloc( aes_chunk_size );
+    fseek(in, 0, SEEK_END);
+    insize = ftell(in);
+    fseek(in, 0, SEEK_SET);
+
+	buffer = (unsigned char*) malloc( insize );
 	if( buffer == NULL ) {
-		PRINT_INFO( "Append_header()-> malloc() failed\n" );
+		PRINT_INFO( "Append_header()-> malloc(%lu) failed\n", insize );
 		return;
 	}
 
@@ -76,16 +80,16 @@ void append_header( char *infile, char *outfile,
 
 	/* Make space for header at beginning of file */
 	fseek( out, sizeof( struct TrustedCap ), SEEK_SET );
-	while( feof( content ) == 0 ) {
+	//while( feof( content ) == 0 ) {
 		inlen = full_read( hash, sizeof(char), sizeof(hash), content );
 		sha256_process( &md, (const unsigned char*) hash, sizeof(hash) );
 		fsize += inlen;
 		full_write( hash, sizeof(char), sizeof(hash), out );
 		
-		inlen = full_read( buffer, sizeof(char), aes_chunk_size, content );
+		inlen = full_read( buffer, sizeof(char), insize, content );
 		fsize += inlen;
 		full_write( buffer, sizeof(char), inlen, out );
-	}
+	//}
 
 	sha256_done( &md, hash );
 
@@ -156,33 +160,41 @@ int encrypt_file( char* ptx ) {
 
     // Get file size
     fseek(in, 0, SEEK_END);
-    insize = ftell(f);
+    insize = ftell(in);
     fseek(in, 0, SEEK_SET);
 
-    // TODO: remove chunk logic (just encrypt everything)
+    PRINT_INFO("Plain text size: %lu\n", insize);
 
+    // Create buffer for file
 	buffer = (unsigned char*) malloc( insize );
 	if( buffer == NULL ) {
 		PRINT_INFO( "Encrypt_file()-> malloc() failed\n" );
         goto exit;
 	}
 
-	//while( feof( in ) == 0 ) {
-		inlen = full_read( buffer, sizeof(char), insize, in );
+	// Read in entire file
+    inlen = full_read( buffer, sizeof(char), insize, in );
 
-        if (inlen != insize) {
-            PRINT_INFO( "Encrypt_file()-> full_read() read %d, file size %d\n", inlen, insize);
-        }
+    // Check to see if the data read is equal to the file size
+    if (inlen != insize) {
+        PRINT_INFO( "Encrypt_file()-> full_read() read %lu != file size %lu\n", inlen, insize);
+        goto exit;
+    }
 
-		encrypt_content( buffer, inlen, hash, sizeof(hash), 
-						 aes_key, aes_key_len, aes_iv, aes_iv_len, 
-					     //aes_chunk_size, 
-						 inlen < aes_chunk_size ? true : false );
+    // Encrypt the entire file and hash it
+	encrypt_content( buffer, inlen, hash, sizeof(hash), 
+					 aes_key, aes_key_len, aes_iv, aes_iv_len );
 
-		full_write( hash, sizeof(char), sizeof(hash), out );
-		full_write( buffer, sizeof(char), inlen, out );
-	//}
+    // Write the hash
+	full_write( hash, sizeof(char), sizeof(hash), out );
+    // Write the file
+	full_write( buffer, sizeof(char), inlen, out );
 	
+    fseek(out, 0, SEEK_END);
+    size_t outsize = ftell(out);
+    fseek(out, 0, SEEK_SET);
+
+    PRINT_INFO("Encrypted data size: %lu\n", outsize);
 exit:
 	free( buffer );
 	fclose( out );
@@ -195,7 +207,7 @@ exit:
 int decrypt_file( char *capsule ) {
 	FILE 			 *in;
 	unsigned char    *buffer;
-	size_t 			  inlen, outlen;
+	size_t 			  inlen, outlen, contentsize;
 	unsigned int      block = 0;
 	
 	unsigned char 	  delimiter[DELIMITER_SIZE] = DELIMITER;
@@ -213,32 +225,34 @@ int decrypt_file( char *capsule ) {
 		return -1;
 	}
 	
-	buffer = (unsigned char*) malloc( aes_chunk_size );
+    // TODO: remove hash of hash in header? --> get fsize from header
+    strip_header( in, aes_key, &header );
+    contentsize = header.capsize - sizeof(struct TrustedCap);
+    PRINT_INFO( "File size (according to header): %u\n", header.capsize);
+    PRINT_INFO( "Caculated file size (minus header): %lu\n", contentsize);
+	
+    buffer = (unsigned char*) malloc( contentsize );
 	if( buffer == NULL ) {
-		PRINT_INFO( "Decrypt_file()-> malloc() failed\n" );
+		PRINT_INFO( "Decrypt_file()-> malloc(%lu) failed\n", contentsize );
+        goto exit;
 	}
 
-	strip_header( in, aes_key, &header );
-	
 	sha256_init( &md );
 	PRINT_INFO( "\nPolicy:\n" );
 
     // TODO: remove chunk logic
 
-	while( feof(in) == 0 ) {
-		block++;
+	//while( feof(in) == 0 ) {
+	//	block++;
 		
 		inlen = full_read( hash, sizeof(char), sizeof(hash), in );
 	   	sha256_process( &md, (const unsigned char*) hash, sizeof( hash ) );	
-		inlen = full_read( buffer, sizeof(char), aes_chunk_size, in );
+		inlen = full_read( buffer, sizeof(char), contentsize, in );
 
 		decrypt_content( buffer, inlen, hash, sizeof(hash), 
-						 aes_key, aes_key_len, aes_iv, aes_iv_len, 
-						 aes_chunk_size, 
-						 inlen < aes_chunk_size ? true : false,
-					  	 block );
+						 aes_key, aes_key_len, aes_iv, aes_iv_len);
 		
-		find_delimiter( buffer, inlen, &start, &end, &match_state, 
+        find_delimiter( buffer, inlen, &start, &end, &match_state, 
 						&matched, delimiter, DELIMITER_SIZE );
 
 		if( start >= 0 && saved > 0 ) {
@@ -270,18 +284,21 @@ int decrypt_file( char *capsule ) {
 			}
 		}
 
-	}
+	//}
 	
 	sha256_done( &md, hash );
 	PRINT_INFO( "\n" );
 
+    /*
 	for( i = 0; i < sizeof(hash); i++ ) {
 		if( hash[i] != header.hash[i] ) {
 			PRINT_INFO( "Hash of chunk hashes do not match\n" );
 			break;
 		}
 	}
+    */
 
+exit:
 	free( buffer );
 	fclose( in );
 
@@ -300,7 +317,7 @@ static void usage( char *command ) {
 
 static void set_aes_key( char* keyname ) {
 	set_capsule( keyname, &aes_key_len, &aes_key, &aes_iv_len,
-				 &aes_iv, &aes_chunk_size, &aes_id );
+				 &aes_iv, &aes_id );
 }
 
 int main( int argc, char *argv[] ) {

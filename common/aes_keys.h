@@ -19,6 +19,7 @@ struct capsule_data {
 	unsigned char        cred[10];
 };
 
+// TODO: remove chunk_size
 /* name, id, chunk_size, cred */
 static struct capsule_data capsule_data_array[] = {
  /* bio capsule 0*/

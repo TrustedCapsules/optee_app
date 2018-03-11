@@ -154,6 +154,8 @@ int encrypt_file( char* ptx ) {
 		return -1;
 	}
 
+    // TODO: remove chunk logic (just encrypt everything)
+
 	buffer = (unsigned char*) malloc( aes_chunk_size );
 	if( buffer == NULL ) {
 		PRINT_INFO( "Encrypt_file()-> malloc() failed\n" );
@@ -209,6 +211,8 @@ int decrypt_file( char *capsule ) {
 	
 	sha256_init( &md );
 	PRINT_INFO( "\nPolicy:\n" );
+
+    // TODO: remove capsule logic
 
 	while( feof(in) == 0 ) {
 		block++;

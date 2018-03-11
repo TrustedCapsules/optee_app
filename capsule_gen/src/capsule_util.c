@@ -335,7 +335,7 @@ void find_delimiter( unsigned char* buf, size_t blen, int* dstart,
 	}
 }
 
-
+// TODO: remove chunk size
 void set_capsule( char* keyname, unsigned int* key_len, 
 				  unsigned char** key, unsigned int* iv_len, 
 				  unsigned char** iv, unsigned int* chunk_size, 

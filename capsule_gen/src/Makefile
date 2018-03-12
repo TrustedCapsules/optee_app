@@ -27,7 +27,8 @@ clean:
 	-rm -f $(TARGET) 
 
 encode-capsule:
-	./$(TARGET) encode $(NAME) ../data/$(NAME).data ../data/$(NAME).policy ../capsules/$(NAME).capsule ../capsules/$(NAME).plt ../capsules/$(NAME).data ../capsules/$(NAME).policy
+	mkdir -p ../capsules/sample_capsules
+	./$(TARGET) encode -n $(NAME) -d ../data/$(NAME).data -p ../data/$(NAME).policy -o ../capsules/sample_capsules
 
 decode-capsule:
-	./$(TARGET) decode $(NAME) ../data/$(NAME).data ../data/$(NAME).policy ../capsules/$(NAME).capsule ../capsules/$(NAME).plt ../capsules/$(NAME).data ../capsules/$(NAME).policy
+	./$(TARGET) decode -n $(NAME)

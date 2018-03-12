@@ -314,7 +314,7 @@ static void set_aes_key( char* keyname ) {
 }
 
 int main( int argc, char *argv[] ) {
-    char *op = argv[1], *capsule, *keyname, *datafile, *policyfile, *outfolder = "."; 
+    char *op = argv[1], *keyname, *datafile, *policyfile, *outfolder = "."; 
     int opt, optid = 1;
     char message[80] = "";
     char* optparse;
@@ -330,12 +330,9 @@ int main( int argc, char *argv[] ) {
         exit(EXIT_FAILURE);
     }
 
-    printf("Choosing opt parse arguments: %s\n", optparse);
-
     while ((opt = getopt(argc, argv, optparse)) != -1) {
             switch (opt) {
             case 'n':
-                capsule = filename_concat(optarg, "capsule", ".");
                 keyname = optarg;
                 break;
             case 'd':
@@ -360,6 +357,7 @@ int main( int argc, char *argv[] ) {
         char* outpath = filename_concat(outfolder, keyname, "/");
 
         // Generate output files
+        char *capsule = filename_concat(outpath, "capsule", "."); 
         char *ptx = filename_concat(outpath, "plt", "."); 
         char *datacopy = filename_concat(outpath, "data", "."); 
         char *policycopy = filename_concat(outpath, "policy", "."); 
@@ -377,16 +375,18 @@ int main( int argc, char *argv[] ) {
 	    append_header( ptx, capsule, aes_key, aes_id );
 
         // Free the files (they were malloc'd in concate call)
+        free(capsule);
         free(outpath);
         free(ptx);
         free(datacopy);
         free(policycopy);
 	} else if ( strcmp( op, "decode" ) == 0 ) {
+        char* capsule = filename_concat(keyname, "capsule", ".");
 		PRINT_INFO( "Decrypting %s\n", capsule );
 	    decrypt_file( capsule );
+        free(capsule);
 	}
 
-    free(capsule);
 	return 0;
 }
 

@@ -28,6 +28,8 @@ typedef int (*process_func)( const unsigned char *in,
 							 unsigned char *out, unsigned long len, 
 							 symmetric_CTR *ctr );
 
+char* filename_concat(const char* name, const char* extension, const char* delimiter);
+
 int process_ctr_aes( const unsigned char *in, unsigned char *out, 
 				     size_t len, unsigned char *key, size_t keylen, 
 					 unsigned int ctr, unsigned char *iv, 

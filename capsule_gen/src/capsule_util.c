@@ -4,6 +4,25 @@
 #include <capsule.h>
 #include "capsule_util.h"
 
+/* 
+ * Concatenate two strings (for generating file names)
+ */
+char* filename_concat(const char *name, const char *extension, const char *delimiter) {
+    // Get string size, +1 for the null-terminator
+    size_t size = strlen(name) + strlen(delimiter) + strlen(extension) + 1;
+    char *result = malloc(size);
+
+    if ( result == NULL ) {
+        PRINT_INFO( "concat()-> malloc(%lu) failed\n", size);
+    }
+
+    // Fill in with filename and extension
+    strcpy(result, name);
+    strcat(result, delimiter);
+    strcat(result, extension);
+    return result;
+}
+
 /*
  * Processes an AES encryption/decryption operation
  */

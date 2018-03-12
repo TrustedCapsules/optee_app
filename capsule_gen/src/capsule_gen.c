@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <getopt.h>
 #include <capsule.h>
 #include "capsule_gen.h"
 #include "capsule_util.h"
@@ -217,19 +218,18 @@ int decrypt_file( char *capsule ) {
 	
 	struct TrustedCap header;
 	hash_state        md;
-	unsigned char     hash[32];
+	unsigned char     hash[32]; // TODO: not sure if this needs to be an array anymore
 
 	in = fopen( capsule, "rb" );
 	if( in == NULL ) {
-		PRINT_INFO( "Decrypt_file()-> unable to open file\n" );
+		PRINT_INFO( "Decrypt_file()-> unable to open file [%s]\n", capsule );
 		return -1;
 	}
 	
     // TODO: remove hash of hash in header? --> get fsize from header
     strip_header( in, aes_key, &header );
-    contentsize = header.capsize - sizeof(struct TrustedCap);
+    contentsize = header.capsize;
     PRINT_INFO( "File size (according to header): %u\n", header.capsize);
-    PRINT_INFO( "Caculated file size (minus header): %lu\n", contentsize);
 	
     buffer = (unsigned char*) malloc( contentsize );
 	if( buffer == NULL ) {
@@ -240,63 +240,53 @@ int decrypt_file( char *capsule ) {
 	sha256_init( &md );
 	PRINT_INFO( "\nPolicy:\n" );
 
-    // TODO: remove chunk logic
+	inlen = full_read( hash, sizeof(char), sizeof(hash), in );
+	sha256_process( &md, (const unsigned char*) hash, sizeof( hash ) );	
+	inlen = full_read( buffer, sizeof(char), contentsize, in );
 
-	//while( feof(in) == 0 ) {
-	//	block++;
+	decrypt_content( buffer, inlen, hash, sizeof(hash), 
+					 aes_key, aes_key_len, aes_iv, aes_iv_len);
 		
-		inlen = full_read( hash, sizeof(char), sizeof(hash), in );
-	   	sha256_process( &md, (const unsigned char*) hash, sizeof( hash ) );	
-		inlen = full_read( buffer, sizeof(char), contentsize, in );
+    find_delimiter( buffer, inlen, &start, &end, &match_state, 
+					&matched, delimiter, DELIMITER_SIZE );
 
-		decrypt_content( buffer, inlen, hash, sizeof(hash), 
-						 aes_key, aes_key_len, aes_iv, aes_iv_len);
-		
-        find_delimiter( buffer, inlen, &start, &end, &match_state, 
-						&matched, delimiter, DELIMITER_SIZE );
-
-		if( start >= 0 && saved > 0 ) {
-			for( i = 0; i < saved; i++ ) {
-				PRINT_INFO( "%c", delimiter[i] );
-			}
-			saved = 0;
+	if( start >= 0 && saved > 0 ) {
+		for( i = 0; i < saved; i++ ) {
+			PRINT_INFO( "%c", delimiter[i] );
 		}
+		saved = 0;
+	}
 
-		if( matched == false ) {	
-			if( start > 0 ) {
-				saved = inlen - start;
-				inlen = start;
-			}
-			for( i = 0; i < inlen; i++ ) {
+	if( matched == false ) {	
+		if( start > 0 ) {
+			saved = inlen - start;
+			inlen = start;
+		}
+		for( i = 0; i < inlen; i++ ) {
+			PRINT_INFO( "%c", buffer[i] );
+		}
+	} else {
+		if( end > 0 && start > 0) {
+			for( i = 0; i < start; i++ ) {
 				PRINT_INFO( "%c", buffer[i] );
 			}
-		} else {
-			if( end > 0 && start > 0) {
-				for( i = 0; i < start; i++ ) {
-					PRINT_INFO( "%c", buffer[i] );
-				}
-
-				PRINT_INFO( "\nData:\n" );
-			}
-
-			for( i = end; i < inlen; i++ ) {
-				PRINT_INFO( "%c", buffer[i] );
-			}
+			PRINT_INFO( "\nData:\n" );
 		}
 
-	//}
-	
+		for( i = end; i < inlen; i++ ) {
+			PRINT_INFO( "%c", buffer[i] );
+		}
+	}
+
 	sha256_done( &md, hash );
 	PRINT_INFO( "\n" );
 
-    /*
 	for( i = 0; i < sizeof(hash); i++ ) {
 		if( hash[i] != header.hash[i] ) {
 			PRINT_INFO( "Hash of chunk hashes do not match\n" );
 			break;
 		}
 	}
-    */
 
 exit:
 	free( buffer );
@@ -305,14 +295,17 @@ exit:
 	return 0;
 }
 
-static void usage( char *command ) {
-	PRINT_INFO( "usage:      %s op keyfile infile outfile\n"
-			    "op:         'encode' or 'decode'\n"
-				"keyfile:    an RSA keyfile in .der format,\n"
-				"            public for encode, private for decode\n"
-				"datafile:   input data file to perform the op on\n"
-				"policyfile: input policy file to perform the op on\n"
-				"capsule:    output capsule file\n", command );
+static void usage( char *command, char* message) {
+	PRINT_INFO( "ERROR: %s\n"
+                "usage:      %s op <op args>\n"
+			    "op:           'encode' or 'decode'\n"
+                "encode args: -n <capsulename> -d <datafile> -p <policyfile> -o <outfolder>\n"
+				"\tcapsulename:  capsule name (no extension)\n"
+                "\tdatafile:     input data file\n"
+				"\tpolicyfile:   input policy file\n"
+				"\toutfolder:    output folder\n"
+                "decode args: -n <capsulename>\n"
+                "\tcapsulename:  capsule to decode (with .capsule extension)\n", message, command );
 }
 
 static void set_aes_key( char* keyname ) {
@@ -321,23 +314,56 @@ static void set_aes_key( char* keyname ) {
 }
 
 int main( int argc, char *argv[] ) {
-	if ( argc < 9 ) {
-		usage( argv[0] );
-	    return 0;
-	}
+    char *op = argv[1], *capsule, *keyname, *datafile, *policyfile, *outfolder = "."; 
+    int opt, optid = 1;
+    char message[80] = "";
+    char* optparse;
 
-    char *op = argv[1];
-    char *keyname = argv[2];
-    char *datafile = argv[3]; 
-	char *policyfile = argv[4]; 
-	char *capsule = argv[5];
-	char *ptx = argv[6];
-	char *datacopy = argv[7];
-	char *policycopy = argv[8];
+    // Check to see if it is a valid op
+    if (strcmp(op, "encode") == 0) {
+        optparse = "n:d:p:o:";
+    } else if (strcmp(op, "decode") == 0) {
+        optparse = "n:";
+    } else {
+        sprintf(message, "Invalid op: %s\n", op);
+        usage(argv[0], message);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Choosing opt parse arguments: %s\n", optparse);
+
+    while ((opt = getopt(argc, argv, optparse)) != -1) {
+            switch (opt) {
+            case 'n':
+                capsule = filename_concat(optarg, "capsule", ".");
+                keyname = optarg;
+                break;
+            case 'd':
+                datafile = optarg;
+                break;
+            case 'p':
+                policyfile = optarg;
+                break;
+            case 'o':
+                outfolder = optarg;
+                break;
+            default:
+                sprintf(message, "Unknown option: %c\n", opt);
+                usage( argv[0], message );
+                exit(EXIT_FAILURE);
+            }
+    }
 
 	set_aes_key( keyname );
 
-	if( strcmp( op, "encode" ) == 0 ) {
+	if( strcmp( op, "encode" ) == 0 && keyname != NULL) {
+        char* outpath = filename_concat(outfolder, keyname, "/");
+
+        // Generate output files
+        char *ptx = filename_concat(outpath, "plt", "."); 
+        char *datacopy = filename_concat(outpath, "data", "."); 
+        char *policycopy = filename_concat(outpath, "policy", "."); 
+
         PRINT_INFO( "Concatenating %s with %s into %s\n", 
 					datafile, policyfile, ptx );
 	    concatenate( datafile, policyfile, ptx, datacopy, policycopy );
@@ -349,14 +375,18 @@ int main( int argc, char *argv[] ) {
 					" a trusted capsule header...\n", 
 				    ptx, capsule );
 	    append_header( ptx, capsule, aes_key, aes_id );
+
+        // Free the files (they were malloc'd in concate call)
+        free(outpath);
+        free(ptx);
+        free(datacopy);
+        free(policycopy);
 	} else if ( strcmp( op, "decode" ) == 0 ) {
 		PRINT_INFO( "Decrypting %s\n", capsule );
 	    decrypt_file( capsule );
-	} else {
-	    usage( argv[0] );
-	    return 0;
 	}
-	
+
+    free(capsule);
 	return 0;
 }
 

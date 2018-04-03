@@ -13,19 +13,6 @@ TEEC_Result openSession( TEEC_Context *ctx, TEEC_Session *sess,
 TEEC_Result closeSession( TEEC_Session *sess );
 TEEC_Result finalizeContext( TEEC_Context *ctx );
 
-/* UNUSED */
-TEEC_Result register_rsa_key( TEEC_Session *sess, TEEC_SharedMemory *in,
-							  uint8_t* modulus, size_t mlen, 
-				              uint8_t* pub_exp, size_t publen,
-							  uint8_t* priv_exp, size_t prlen,
-							  uint8_t* prime1, size_t p1len, 
-							  uint8_t* prime2, size_t p2len, 
-							  uint8_t* exp1, size_t exp1len,
-							  uint8_t* exp2, size_t exp2len,
-							  uint8_t* coeff, size_t colen );
-TEEC_Result capsule_rsa_decrypt();
-TEEC_Result capsule_rsa_encrypt();
-
 /* AES Key Operation */
 TEEC_Result register_aes_key( TEEC_Session *sess, unsigned char* id,
 				              unsigned char* key, size_t keylen,
@@ -40,26 +27,10 @@ TEEC_Result capsule_get_state( TEEC_Session *sess, TEEC_SharedMemory *in,
 							   TEEC_SharedMemory *out, char* key, uint32_t klen, 
 							   char* val, uint32_t vlen, uint32_t id ); 
 /* Capsule Operation */
-TEEC_Result capsule_change_policy( TEEC_Session *sess, 
-								   TEEC_SharedMemory *in,
-				            	   char* filename, uint32_t flen );
 TEEC_Result capsule_create( TEEC_Session *sess, TEEC_SharedMemory *in,
 				            char* filename, uint32_t flen );
 TEEC_Result capsule_open( TEEC_Session *sess, TEEC_SharedMemory *in,
 						  char* filename, uint32_t flen, int pid, int fd );
-
-TEEC_Result capsule_ftruncate( TEEC_Session *sess, uint32_t size ); 
-TEEC_Result capsule_read( TEEC_Session *sess, TEEC_SharedMemory *out,
-				 		  char* buf, uint32_t len, uint32_t *nr, int pid,
-			              int fd );
-TEEC_Result capsule_write( TEEC_Session *sess, TEEC_SharedMemory *in,
-						   char* buf, uint32_t len, uint32_t *nw, int pid,
-			   			   int fd );
-TEEC_Result capsule_lseek( TEEC_Session *sess, uint32_t offset, 
-				           FILE_POS flag, uint32_t* pos, int pid, 
-						   int fd );
-TEEC_Result capsule_fstat( TEEC_Session *sess, int pid, 
-						   int fd, uint32_t* data_size );
 TEEC_Result capsule_close( TEEC_Session *sess, int pid, int fd );
 
 TEEC_Result capsule_open_connection( TEEC_Session *sess, TEEC_SharedMemory *in,
@@ -85,6 +56,4 @@ TEEC_Result capsule_recv_payload( TEEC_Session *sess, TEEC_SharedMemory *in,
 								  TEEC_SharedMemory *out, char* buf, 
 								  uint32_t blen, char* hash, uint32_t hlen,
 			  					  int fd, int* nr );
-TEEC_Result capsule_collect_benchmark( TEEC_Session *sess );
-TEEC_Result capsule_clear_benchmark( TEEC_Session *sess );
 #endif /* CAPSULE_COMMAND_H */

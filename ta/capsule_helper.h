@@ -2,90 +2,86 @@
 #define CAPSULE_HELPER_H
 
 struct attr_packed {
-	uint32_t id;
-	uint32_t a;
-	uint32_t b;
+    uint32_t id;
+    uint32_t a;
+    uint32_t b;
 };
 
+/*
+ * For timing
+ */
 unsigned long long read_cntpct(void);
 
+/*
+ * Lua operations
+ */
 int getfield( lua_State *L, int key, int tindex ); 
-TEE_Result lua_read_redact( lua_State *L, int state_tgid, int state_fd,
-							unsigned char *bp, uint32_t len );
-TEE_Result lua_get_replacement_char( lua_State *L, char* replace );
+// TEE_Result lua_read_redact( lua_State *L, int state_tgid, int state_fd,
+//                          unsigned char *bp, uint32_t len );
+// TEE_Result lua_get_replacement_char( lua_State *L, char* replace );
 TEE_Result lua_get_server_ip_port( lua_State *L, char* ts, int* port );
 TEE_Result lua_load_policy( lua_State *L, const char* buf );
 void lua_start_context( lua_State **L );
 void lua_close_context( lua_State **L );
 
-TEE_Result unpack_attrs( const uint8_t*, uint32_t,
-						 TEE_Attribute**, uint32_t*);
+/*
+ * Process a block of data (encrypt/decrypt)
+ */
+TEE_Result process_aes_block( unsigned char* ptx, size_t* plen, 
+                              unsigned char* ctx, size_t clen,
+                              uint8_t* iv, uint32_t iv_len, uint32_t ctr,
+                              bool first, bool last, TEE_OperationHandle op );
 
-void sep_policy_and_data( unsigned char*, size_t, 
-						  struct capsule_text*, uint8_t*, 
-						  bool *matched, unsigned char* );
-
-void initialize_capsule_text( struct capsule_text* );
-void initialize_capsule_entries( struct cap_text_entry *p,
-				                 int state_tgid, int state_fd,
-								 unsigned int d_pos );
-
-struct cap_text_entry* find_capsule_entry( struct CapTextList *head,
-										   int state_tgid, int state_fd );
-
-uint32_t read_block( int fd, void* buf, size_t blen, uint32_t offset );
-uint32_t write_block( int fd, void* buf, size_t blen, uint32_t offset );
-
-uint32_t calc_chk_len( uint32_t, uint32_t );
-uint32_t calc_chk_num( uint32_t, uint32_t );
-
-bool verify_hash( uint32_t, struct HashList*, unsigned char*, size_t);	
-int read_hash( int, unsigned char*, size_t, uint32_t, uint32_t );
-int write_hash( int, unsigned char*, size_t, struct HashList*,
-				 uint32_t, uint32_t );
-bool compare_hashes( unsigned char*, unsigned char*, size_t );
-TEE_Result hash_hashlist( struct HashList*, unsigned char*, 
-					      size_t, TEE_OperationHandle );
-bool is_in_hashlist( struct HashList*, uint32_t );
-void add_to_hashlist( unsigned char*, size_t, struct HashList*, uint32_t );
-void free_hashlist( struct HashList* );
-
+/*
+ * Hash operations
+ */
 TEE_Result hash_data( unsigned char* payload, size_t payload_len,
-					  unsigned char* hash, size_t hlen );
-TEE_Result hash_block( unsigned char*, size_t, unsigned char*, size_t,
-					   bool, TEE_OperationHandle );
+                      unsigned char* hash, size_t hlen );
+TEE_Result hash_block( unsigned char* ptx, size_t plen, unsigned char* hash, 
+                       size_t hlen, bool last, TEE_OperationHandle op );
+bool compare_hashes( unsigned char* hash1, unsigned char* hash2, size_t hlen );
 
-TEE_Result process_aes_block( unsigned char*, size_t*, 
-						  	  unsigned char*, size_t,
-						  	  uint8_t*, uint32_t, uint32_t,
-						  	  bool, bool, TEE_OperationHandle );
-TEE_Result read_enc_file_block( int, unsigned char*, size_t, size_t*,
-								uint32_t, uint32_t, uint32_t, 
-								uint32_t, uint32_t, unsigned char*, 
-								uint32_t, TEE_OperationHandle );
-TEE_Result write_enc_file_block( int, unsigned char*, size_t, size_t*,
-								 uint32_t, uint32_t, uint32_t, 
-								 uint32_t, unsigned char*, uint32_t,
-								 TEE_OperationHandle );
+/*
+ * Capsule text init/cleanup
+ */
+void initialize_capsule_text( struct capsule_text* cap );
+void finalize_capsule_text( struct capsule_text* cap );
 
-TEE_Result truncate_data( int, struct HashList*, uint32_t, uint32_t,
-						  struct capsule_text* );
+/*
+ * Key operations
+ */
+bool key_not_found( uint8_t* gl_iv, uint32_t gl_id, uint32_t gl_iv_len, 
+                    uint32_t gl_key_len );
+TEE_Result find_key( struct TrustedCap* h, TEE_ObjectHandle file,
+                     TEE_OperationHandle* dec_op, TEE_OperationHandle* enc_op,
+                     TEE_OperationHandle* sha_op,  uint32_t* gl_id, 
+                     uint32_t* gl_iv_len, uint32_t* gl_key_len, 
+                     uint32_t* gl_chunk_size, uint8_t** gl_iv );
 
-bool key_not_found( uint8_t*, uint32_t, uint32_t, uint32_t );
-TEE_Result find_key( struct TrustedCap*, TEE_ObjectHandle,
-					 TEE_OperationHandle*, TEE_OperationHandle*,
-					 TEE_OperationHandle*,  uint32_t*, uint32_t*,
-					 uint32_t*, uint32_t*, uint8_t** );
+/*
+ * Header operations
+ */
+TEE_Result fill_header( struct TrustedCap* cap, TEE_OperationHandle op,
+                        uint8_t* iv, uint32_t iv_len, uint32_t id, 
+                        unsigned char* hash, size_t hashlen, size_t fsize );
+void read_header( unsigned char* file_contents, struct TrustedCap* cap );
+int write_header( struct TrustedCap* cap );
 
-TEE_Result fill_header( struct TrustedCap*, TEE_OperationHandle,
-						uint8_t*, uint32_t, uint32_t, 
-			   			unsigned char*, size_t, size_t );
-int read_header( int, struct TrustedCap* );
-int write_header( int, struct TrustedCap* );
+/*
+ * Parsing operations
+ */
+void serialize_kv_store( unsigned char* kv_string );
+void parse_kv_store( unsigned char* input, size_t length, 
+                     struct capsule_text* cap );
 
-void free_caplist( struct CapTextList *head );
+void find_delimiter( unsigned char* buf, size_t blen, int* dstart, 
+                     int* dend, unsigned int* state, bool *matched, 
+                     unsigned char* delim, size_t dlen );
+void sep_parts( unsigned char* input, size_t inlen, 
+                struct capsule_text* cap );
 
-
+TEE_Result unpack_attrs( const uint8_t* buf, uint32_t blen,
+                         TEE_Attribute** attrs, uint32_t* attrs_count);
 
 #endif /* CAPSULE_HELPER_H */
 

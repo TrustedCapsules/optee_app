@@ -24,11 +24,19 @@ typedef int bool;
 #define true 1
 #define false 0
 
+struct range {
+	int start;
+	int end;
+};
+
 typedef int (*process_func)( const unsigned char *in, 
 							 unsigned char *out, unsigned long len, 
 							 symmetric_CTR *ctr );
 
-char* filename_concat(const char* name, const char* extension, const char* delimiter);
+void parse_kvstore( unsigned char* store, size_t inlen );
+
+char* filename_concat( const char* name, const char* extension, 
+					   const char* delimiter );
 
 int process_ctr_aes( const unsigned char *in, unsigned char *out, 
 				     size_t len, unsigned char *key, size_t keylen, 
@@ -65,21 +73,17 @@ void decrypt_content( unsigned char* buffer, size_t buflen,
 					  unsigned char* key, unsigned int key_len, 
 					  unsigned char* iv, unsigned int iv_len );
 
-void find_delimiter( unsigned char* buffer, size_t blen, int* dstart,
+void find_delimiter( unsigned char* buf, size_t blen, int* dstart, 
 					 int* dend, int* state, bool *matched, 
 					 unsigned char* delim, size_t dlen );
+
+void populate_parts( unsigned char* buffer, int len, 
+					 struct range parts[4] );
+
+void print_parts( unsigned char * buf, struct range parts[4] );
 
 void set_capsule( char* keyname, unsigned int* key_len, 
 				  unsigned char** key, unsigned int* iv_len, 
 				  unsigned char** iv, unsigned char** id );
-/* NOT USED */
-int rsa_encrypt( const unsigned char *in, size_t inlen, 
-				 unsigned char *out, size_t *outlen, rsa_key *key );
-
-int rsa_decrypt( const unsigned char *in, size_t inlen, 
-				 unsigned char *out, size_t *outlen, int *res, 
-				 rsa_key *key );
-
-int load_rsa_key( char *file_name, rsa_key *key );
 
 #endif

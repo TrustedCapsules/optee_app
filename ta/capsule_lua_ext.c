@@ -16,20 +16,20 @@
 #include "capsule_op.h"
 #include "capsule_lua_ext.h"
 
-static int getdataoffset(void) {
+// static int getdataoffset(void) {
 
-	struct cap_text_entry *p;
-	int 				   data_pos = -1;
+// 	struct cap_text_entry *p;
+// 	int 				   data_pos = -1;
 
-	LIST_FOREACH( p, &cap_head.proc_entries, entries ) {
-		if( p->state_tgid == curr_tgid &&
-			p->state_fd == curr_fd ) {
-			data_pos = p->data_pos - cap_head.data_begin;
-		}
-	}
+// 	LIST_FOREACH( p, &cap_head.proc_entries, entries ) {
+// 		if( p->state_tgid == curr_tgid &&
+// 			p->state_fd == curr_fd ) {
+// 			data_pos = p->data_pos - cap_head.data_begin;
+// 		}
+// 	}
 
-	return data_pos;
-}
+// 	return data_pos;
+// }
 
 static void delete_file(void) {
 	/* The solution below is inelegant, but it gets the
@@ -41,7 +41,7 @@ static void delete_file(void) {
 	 * 4) TEE_Panic out of the trusted capsule session
 	 */
 	int    fd;
-	size_t file_length, nw, temp, curr_length = 0;
+	size_t file_length, nw, curr_length = 0;
 	char   zero_block[BLOCK_LEN];
     uint32_t offset = 0;
     TEE_Result res;
@@ -56,7 +56,6 @@ static void delete_file(void) {
 
     // TODO: add error checks
 	res = TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_END, &file_length );
-	// res = TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_SET, &temp );
 
 	memset( zero_block, 0, BLOCK_LEN );
 	while( curr_length < file_length ) {
@@ -236,7 +235,7 @@ static int luaE_reportlocid( lua_State *L ) {
 	val[3] = t.seconds;
 	val[4] = op;
 	val[5] = curr_len;
-	val[6] = getdataoffset(); 
+	// val[6] = getdataoffset(); 
 	len = sizeof(val);
 
 	res = do_send( fd, (void*) val, &len, REQ_SEND_INFO, rv );
@@ -283,7 +282,7 @@ static int luaE_reportlocid( lua_State *L ) {
 
 static int luaE_checkpolicychange( lua_State *L ) {
 	TEE_Result 	  res;
-	int           fd, rv, ts_port, len, fd_cap;
+	int           fd, rv, ts_port, len;
 	char          ts_ip[IPV4_SIZE] = { 0 };
 	unsigned int  version = luaL_checkinteger( L, -1 );
 	unsigned char policy[POLICY_SIZE];
@@ -359,16 +358,16 @@ static int luaE_checkpolicychange( lua_State *L ) {
 		res = do_recv_payload( fd, msg->hash.data, msg->hash.len,
 						       policy, msg->payload_len );
 	
-		res = TEE_SimpleOpen( capsule_name, &fd_cap );
-		if( fd_cap < 0 || res != TEE_SUCCESS ) {
-			do_close_connection( fd );
-			free_hdr( msg );
-			luaL_error( L, "Unable to open file %s for policy update", 
-						   capsule_name );
-		}
+		// res = TEE_SimpleOpen( capsule_name, &fd_cap );
+		// if( fd_cap < 0 || res != TEE_SUCCESS ) {
+		// 	do_close_connection( fd );
+		// 	free_hdr( msg );
+		// 	luaL_error( L, "Unable to open file %s for policy update", 
+		// 				   capsule_name );
+		// }
 
-		do_change_policy_network( fd_cap, policy, msg->payload_len ); 	
-		TEE_SimpleClose( fd_cap );
+		do_change_policy_network( policy, msg->payload_len ); 	
+		// TEE_SimpleClose( fd_cap );
 		policy_change = true;
 	}
 
@@ -387,34 +386,34 @@ static int luaE_deletefile( lua_State *L ) {
 	return 0;
 }
 
-static int luaE_getdeclassifydest( lua_State *L ) {
-	lua_pushlstring( L, curr_declassify_dest, 
-					 strlen(curr_declassify_dest) );
-	return 1;
-}
+// static int luaE_getdeclassifydest( lua_State *L ) {
+// 	lua_pushlstring( L, curr_declassify_dest, 
+// 					 strlen(curr_declassify_dest) );
+// 	return 1;
+// }
 
-static int luaE_getOffsetLen( lua_State *L ) {
+// static int luaE_getOffsetLen( lua_State *L ) {
 	
-	int data_pos = getdataoffset(); 
+// 	int data_pos = getdataoffset(); 
 
-	if( data_pos == -1 ) {
-		luaL_error( L, "curr_tgid: %d, curr_fd: %d cannot be found,"
-					   " this should not be possible", 
-					   curr_tgid, curr_fd ); 
-	}
+// 	if( data_pos == -1 ) {
+// 		luaL_error( L, "curr_tgid: %d, curr_fd: %d cannot be found,"
+// 					   " this should not be possible", 
+// 					   curr_tgid, curr_fd ); 
+// 	}
 
-	if( data_pos > (int) cap_head.data_end - (int) cap_head.data_begin ) 
-		curr_len = 0;
-	if( data_pos + curr_len > (int) cap_head.data_end - (int) cap_head.data_begin )
-		curr_len = cap_head.data_end - cap_head.data_begin - data_pos;
+// 	if( data_pos > (int) cap_head.data_end - (int) cap_head.data_begin ) 
+// 		curr_len = 0;
+// 	if( data_pos + curr_len > (int) cap_head.data_end - (int) cap_head.data_begin )
+// 		curr_len = cap_head.data_end - cap_head.data_begin - data_pos;
 
-	// MSG( "data_pos: %d, curr_len: %d", data_pos, curr_len );
+// 	// MSG( "data_pos: %d, curr_len: %d", data_pos, curr_len );
 
-	lua_pushinteger( L, data_pos );
-	lua_pushinteger( L, curr_len );	
+// 	lua_pushinteger( L, data_pos );
+// 	lua_pushinteger( L, curr_len );	
 
-	return 2;	
-}
+// 	return 2;	
+// }
 
 /* State is passed between secure storage and Lua
  * interpreter as strings. Lua has facilities to convert
@@ -464,10 +463,10 @@ static int luaE_getlocalstate( lua_State *L ) {
 static const luaL_Reg ext_funcs[] = {
 	/* POLICY - local */
 	{ "getlocalstate", luaE_getlocalstate },
-	{ "getdataoffset", luaE_getOffsetLen },
+	// { "getdataoffset", luaE_getOffsetLen },
 	{ "getgps", luaE_getgps },
 	{ "gettime", luaE_getcurrtime },
-	{ "getdeclassifydest", luaE_getdeclassifydest },
+	// { "getdeclassifydest", luaE_getdeclassifydest },
 	
 	/* POLICY - server */
 	{ "getserverstate", luaE_getserverstate },

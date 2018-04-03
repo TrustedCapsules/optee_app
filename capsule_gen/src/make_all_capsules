@@ -2,11 +2,11 @@
 
 mkdir -p ../capsules
 
-for capsule in `ls ../data/*.data`; do
-    capsule_name=$(basename "$capsule" .data)
-    echo "Making $capsule_name"
-    make encode-capsule NAME=$capsule_name
-done
+# for capsule in `ls ../data/*.data`; do
+#     capsule_name=$(basename "$capsule" .data)
+#     echo "Making $capsule_name"
+#     make encode-capsule NAME=$capsule_name
+# done
 
 TEST_OUTPUT_DIR="../capsules/test_capsules"
 OUTPUT_DIR="../capsules/use_case_capsules"
@@ -15,48 +15,48 @@ mkdir -p $TEST_OUTPUT_DIR
 
 mkdir -p $OUTPUT_DIR
 
-echo "Making test capsules"
-#test_imgs_snapchat
-./capsule_gen encode -n test_imgs_snapchat -d ../test_data/smallimg.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
-#test_imgl_snapchat
-./capsule_gen encode -n test_imgl_snapchat -d ../test_data/largeimg.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
-#test_video_snapchat
-./capsule_gen encode -n test_video_snapchat -d ../test_data/video.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
-#test_html_patient
-./capsule_gen encode -n test_html_patient -d ../test_data/html.data -p ../test_data/patient.policy -o ${TEST_OUTPUT_DIR}
-#test_pdf_NULL
-./capsule_gen encode -n test_pdf_NULL -d ../test_data/document.pdf -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
-#test_1M_NULL
-./capsule_gen encode -n test_1M_NULL -d ../test_data/1M.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
-#test_1M_patient
-./capsule_gen encode -n test_1M_patient -d ../test_data/1M.data -p ../test_data/patient.policy -o ${TEST_OUTPUT_DIR}
-#test_1M_needtoknow
-./capsule_gen encode -n test_1M_needtoknow -d ../test_data/1M.data -p ../test_data/need_to_know.policy -o ${TEST_OUTPUT_DIR}
-#test_1M_snapchat
-./capsule_gen encode -n test_1M_snapchat -d ../test_data/1M.data -p ../test_data/snapchat.policy -o ${TEST_OUTPUT_DIR}
-#test_1M_audit
-./capsule_gen encode -n test_1M_audit -d ../test_data/1M.data -p ../test_data/audit.policy -o ${TEST_OUTPUT_DIR}
-#test_10M_NULL
-./capsule_gen encode -n test_10M_NULL -d ../test_data/10M.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
-#test_100KB_NULL
-./capsule_gen encode -n test_100KB_NULL -d ../test_data/100KB.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
-#test_10KB_NULL
-./capsule_gen encode -n test_10KB_NULL -d ../test_data/10KB.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
+# echo "Making test capsules"
+# #test_imgs_snapchat
+# ./capsule_gen encode -n test_imgs_snapchat -d ../test_data/smallimg.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
+# #test_imgl_snapchat
+# ./capsule_gen encode -n test_imgl_snapchat -d ../test_data/largeimg.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
+# #test_video_snapchat
+# ./capsule_gen encode -n test_video_snapchat -d ../test_data/video.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
+# #test_html_patient
+# ./capsule_gen encode -n test_html_patient -d ../test_data/html.data -p ../test_data/patient.policy -o ${TEST_OUTPUT_DIR}
+# #test_pdf_NULL
+# ./capsule_gen encode -n test_pdf_NULL -d ../test_data/document.pdf -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
+# #test_1M_NULL
+# ./capsule_gen encode -n test_1M_NULL -d ../test_data/1M.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
+# #test_1M_patient
+# ./capsule_gen encode -n test_1M_patient -d ../test_data/1M.data -p ../test_data/patient.policy -o ${TEST_OUTPUT_DIR}
+# #test_1M_needtoknow
+# ./capsule_gen encode -n test_1M_needtoknow -d ../test_data/1M.data -p ../test_data/need_to_know.policy -o ${TEST_OUTPUT_DIR}
+# #test_1M_snapchat
+# ./capsule_gen encode -n test_1M_snapchat -d ../test_data/1M.data -p ../test_data/snapchat.policy -o ${TEST_OUTPUT_DIR}
+# #test_1M_audit
+# ./capsule_gen encode -n test_1M_audit -d ../test_data/1M.data -p ../test_data/audit.policy -o ${TEST_OUTPUT_DIR}
+# #test_10M_NULL
+# ./capsule_gen encode -n test_10M_NULL -d ../test_data/10M.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
+# #test_100KB_NULL
+# ./capsule_gen encode -n test_100KB_NULL -d ../test_data/100KB.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
+# #test_10KB_NULL
+# ./capsule_gen encode -n test_10KB_NULL -d ../test_data/10KB.data -p ../test_data/null.policy -o ${TEST_OUTPUT_DIR}
 
 echo "Making use case capsules"
 #test_bio_ehrpatient
 echo "EHR Patient"
-./capsule_gen encode -n test_bio_ehrpatient -d ../data/bio.data -p ../usecase_data/ehr_patient.policy -o ${OUTPUT_DIR}
+./capsule_gen encode -n test_bio_ehrpatient -d ../data/bio.data -p ../usecase_data/ehr_patient.policy -k ../usecase_data/ehr_patient.kvstore -o ${OUTPUT_DIR}
 #test_faketranscript_identity
-echo "Identity Doc"
-./capsule_gen encode -n test_faketranscript_identity -d ../usecase_data/FakeTranscript_John_Doe.pdf -p ../usecase_data/identity_doc.policy -o ${OUTPUT_DIR}
-#test_imgsm_private
-echo "Private Small Image"
-./capsule_gen encode -n test_imgsm_private -d ../test_data/smallimg.data -p ../usecase_data/private_imgsm.policy ${OUTPUT_DIR}/test_imgsm_private_4KB.capsule -o ${OUTPUT_DIR}
-#test_vid_private
-echo "Private video"
-./capsule_gen encode -n test_vid_private -d ../test_data/video.data -p ../usecase_data/private_vid.policy ${OUTPUT_DIR}/test_vid_private_4KB.capsule -o ${OUTPUT_DIR}
-#test_merger_sensitivedoc
-echo "Sensitive Doc"
-./capsule_gen encode -n test_merger_sensitivedoc -d ../usecase_data/SkywagonIncTaildraggerCorp_Merger.fodt -p ../usecase_data/sensitive_doc.policy -o ${OUTPUT_DIR}
+# echo "Identity Doc"
+# ./capsule_gen encode -n test_faketranscript_identity -d ../usecase_data/FakeTranscript_John_Doe.pdf -p ../usecase_data/identity_doc.policy -o ${OUTPUT_DIR}
+# #test_imgsm_private
+# echo "Private Small Image"
+# ./capsule_gen encode -n test_imgsm_private -d ../test_data/smallimg.data -p ../usecase_data/private_imgsm.policy ${OUTPUT_DIR}/test_imgsm_private_4KB.capsule -o ${OUTPUT_DIR}
+# #test_vid_private
+# echo "Private video"
+# ./capsule_gen encode -n test_vid_private -d ../test_data/video.data -p ../usecase_data/private_vid.policy ${OUTPUT_DIR}/test_vid_private_4KB.capsule -o ${OUTPUT_DIR}
+# #test_merger_sensitivedoc
+# echo "Sensitive Doc"
+# ./capsule_gen encode -n test_merger_sensitivedoc -d ../usecase_data/SkywagonIncTaildraggerCorp_Merger.fodt -p ../usecase_data/sensitive_doc.policy -o ${OUTPUT_DIR}
 

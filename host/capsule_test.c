@@ -6,131 +6,147 @@
 #include <inttypes.h>
 #include <capsule.h>
 #include <aes_keys.h>
+#include <syslog.h>
 #include "err_ta.h"
 #include "key_data.h"
 #include "capsule_benchmark.h"
 #include "capsule_command.h"
 
-/* Read test of a small capsule file that is < 1 chunk */
+/* Test no-op capsule with open and close.
+ * Two part test:
+ *  1. Open capsule returns correct decrypted data
+ *  2. Close capsule returns the exact same encrypted data with no-op policy
+ */
 TEEC_Result test_03() {
-
     TEEC_Result     res = TEEC_SUCCESS;
     TEEC_Context    ctx;
     TEEC_Session    sess;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/other_capsules/bio.capsule";
-    // char            ptx[] = "/etc/other_capsules/bio.data";
-    // FILE           *fp = NULL;
-    // uint32_t        ns, nr, i, rlen;
-    // char            read_cap[1024];
-    // char            read_ptx[1024];
-    int             pid = 12345;
-    int             fd = 10;
+    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
+    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
+    FILE           *fp = NULL;
+    char           *encrypted_data, 
+                   *read_data = malloc(4096), 
+                   *write_data = malloc(4096), 
+                   *decrypted_data,
+                   *plain_text_data;
+    uint32_t        encrypt_len = 0, 
+                    read_len = 0, 
+                    write_len = 4096, // size of out buffer
+                    decrypt_len = 0,
+                    plt_len = 0;
+    int             i = 0, test_num = 3;
 
-    TEEC_SharedMemory in_mem = { .size = SHARED_MEM_SIZE,
+    // Need 4096 for test capsule (2013 bytes large encrypted, w/o log expansion)
+    TEEC_SharedMemory in_mem = { .size = 4096,
                                  .flags = TEEC_MEM_INPUT, };
-    TEEC_SharedMemory out_mem = { .size = SHARED_MEM_SIZE,
+    TEEC_SharedMemory inout_mem = { .size = 4096,
+                                    .flags = TEEC_MEM_INPUT | TEEC_MEM_OUTPUT, };
+    TEEC_SharedMemory out_mem = { .size = 4096,
                                   .flags = TEEC_MEM_OUTPUT, };
 
+    // printf("Setting up everything and opening session.\n");
     res = initializeContext( &ctx ) ;
-    CHECK_RESULT( res, "test_03: initializeContext() failed" );
+    CHECK_RESULT( res, "test_%02d: initializeContext() failed", test_num );
 
-    
     res = allocateSharedMem( &ctx, &in_mem );
-    CHECK_RESULT( res, "test_03: allocateSharedMem() failed" );
-    
-    
+    CHECK_RESULT( res, "test_%02d: allocateSharedMem() in_mem failed", 
+                       test_num);
     res = allocateSharedMem( &ctx, &out_mem );
-    CHECK_RESULT( res, "test_03: allocateSharedMem() failed" );
+    CHECK_RESULT( res, "test_%02d: allocateSharedMem() out_mem failed",
+                       test_num);
+    res = allocateSharedMem( &ctx, &inout_mem );
+    CHECK_RESULT( res, "test_%02d: allocateSharedMem() inout_mem failed",
+                       test_num);
 
-    
     res = openSession( &ctx, &sess, &uuid );
-    CHECK_RESULT( res, "test_03: openSession() failed" );
+    CHECK_RESULT( res, "test_%02d: openSession() sess failed", test_num );
 
-    
-    res = capsule_open( &sess, &in_mem, capsule, sizeof(capsule), pid, fd );
-    CHECK_RESULT( res, "test_03: capsule_open() of capsule %s failed",
-                        capsule );
+    // printf("Reading %s contents\n", capsule);
+    // Read in the capsule contents
+    fp = fopen(capsule, "rb");
+    fseek(fp, 0, SEEK_END);
+    encrypt_len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
 
-    res = capsule_open( &sess, &in_mem, capsule, sizeof(capsule), pid, fd+1 );
-    CHECK_RESULT( res, "test_03: capsule_open() of capsule %s failed",
-                        capsule );
-    
-/*
-    fp = fopen( ptx, "rb" );
-    if( fp == NULL ) {
-        CHECK_RESULT( TEEC_ERROR_CORRUPT_OBJECT,
-                      "test_03: fopen() of capsule ptx %s failed", 
-                      ptx );
-    }   
+    encrypted_data = malloc(encrypt_len + 1);
+    fread(encrypted_data, encrypt_len, 1, fp);
+    fclose(fp);
 
-    // Perform a read that is larger than the file
-    nr = 0;
-    rlen = 512; 
-    
-    res = capsule_lseek( &sess, 0, START, &ns, pid, fd );
-    CHECK_RESULT( res, "test_03: capsule_lseek() pos %u failed", ns );
-    
-    res = capsule_read( &sess, &out_mem, read_cap, rlen, &nr, pid, fd );
-    CHECK_RESULT( res, "test_03: capsule_read() %u B of %u B at"
-                       " pos %u failed", nr, rlen, ns );
+    encrypted_data[encrypt_len] = '\0';
 
-    ns = fseek( fp, ns, SEEK_SET ); 
-    nr = fread( read_ptx, sizeof(char), rlen, fp ); 
+    // printf("Reading %s contents\n", ptx);
+    // Read in data contents
+    fp = fopen(ptx, "rb");
+    fseek(fp, 0, SEEK_END);
+    plt_len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
 
-    COMPARE_TEXT( 3, 1, i, read_cap, read_ptx, nr );
-    
-    // Peform a small read (1 chunk) in the middle of the file
-    nr = 0;
-    rlen = 100; 
-    
-    res = capsule_lseek( &sess, 10, START, &ns, pid, fd );
-    CHECK_RESULT( res, "test_03: capsule_lseek() pos %u failed", ns );
-    res = capsule_read( &sess, &out_mem, read_cap, rlen, &nr, pid, fd );
-    CHECK_RESULT( res, "test_03: capsule_read() %u B of %u B at"
-                       " pos %u failed", nr, rlen, ns );
-    
-    ns = fseek( fp, ns, SEEK_SET ); 
-    nr = fread( read_ptx, sizeof(char), rlen, fp ); 
-    
-    COMPARE_TEXT( 3, 2, i, read_cap, read_ptx, nr );
+    plain_text_data = malloc(plt_len + 1);
+    fread(plain_text_data, plt_len, 1, fp);
+    fclose(fp);
 
-    // Peform a large read (>1 chunk) in the middle of the file
-    nr = 0;
-    rlen = 600;
-    
-    res = capsule_lseek( &sess, 800, START, &ns, pid, fd );
-    CHECK_RESULT( res, "test_03: capsule_lseek() pos %u failed", ns );
-    res = capsule_read( &sess, &out_mem, read_cap, rlen, &nr, pid, fd );
-    CHECK_RESULT( res, "test_03: capsule_read() %u B of %u B at"
-                       " pos %u failed", nr, rlen, ns );
-    
-    ns = fseek( fp, ns, SEEK_SET ); 
-    nr = fread( read_ptx, sizeof(char), rlen, fp ); 
-    
-    COMPARE_TEXT( 3, 3, i, read_cap, read_ptx, nr );
+    plain_text_data[plt_len] = '\0';
 
-    fclose( fp );
-*/
-    res = capsule_close( &sess, pid, fd );
-    CHECK_RESULT( res, "test_03: capsule_close() %s failed", 
+    // printf("Calling capsule open\n");
+    res = capsule_open( &sess, &in_mem, &inout_mem, capsule, sizeof(capsule),
+                        encrypted_data, encrypt_len, read_data, &read_len );
+    CHECK_RESULT( res, "test_%02d: capsule_open() of capsule %s failed", 
+                        test_num, capsule );
+
+    // printf("Copying to decrypted_data (size %d)\n", read_len);
+    decrypted_data = malloc(read_len);
+    // printf("Read_data location: %p\n", &read_data);
+    memset(decrypted_data, 0, read_len);
+    // printf("Data read: %.*s\n", read_len, read_data);
+    memcpy(decrypted_data, read_data, read_len);
+    decrypt_len = read_len;
+    // printf("Decrypted read: %.*s\n", decrypt_len, decrypted_data);
+
+    // printf("Comparing length (%d, %d)\n", strlen(decrypted_data), plt_len);
+    // Compare decrypted data with plaintext data
+    COMPARE_LEN( test_num, 1, read_len, plt_len );
+
+    // printf("Comparing data\n");
+    COMPARE_TEXT( test_num, 1, i, decrypted_data, plain_text_data, read_len );
+
+    // printf("Calling close for %s\n", capsule);
+    res = capsule_close( &sess, false, decrypted_data, decrypt_len, &in_mem,
+                         &out_mem, &write_len, write_data );
+    CHECK_RESULT( res, "test_%02d: capsule_close() %s failed", test_num,
                   capsule );
 
-    res = capsule_close( &sess, pid, fd+1 );
-    CHECK_RESULT( res, "test_03: capsule_close() %s failed", 
-                  capsule );
-    
+    // printf("Write_data location: %p\n", &write_data);
+
+    // PRINT_INFO("Write data: ");
+    // for( int i = 0; i < write_len; i++ ) {
+    //     PRINT_INFO( "%02x", write_data[i] );
+    // }
+    // PRINT_INFO("\n");
+
+    // Compare write data with encrypted data. 
+    // TODO: cannot compare byte wise because the log and KV store could be
+    //       changed. Unless we restrict this test to a no-op capsule.
+    // printf("Comparing length (%d, %d)\n", write_len, encrypt_len);
+    COMPARE_LEN( test_num, 2, write_len, encrypt_len );
+    // printf("Comparing data\n");
+    COMPARE_CAPSULE( test_num, 2, i, encrypted_data, write_data, write_len );
+
+
+    // printf("Closing session\n");
     res = closeSession( &sess );
-    CHECK_RESULT( res, "test_03: closeSession() failed" );
+    CHECK_RESULT( res, "test_%02d: closeSession() failed", test_num );
 
+    // printf("Freeing shared memory\n");
     res = freeSharedMem( &in_mem );
-    CHECK_RESULT( res, "test_03: freeSharedMem() in_mem failed" );
+    CHECK_RESULT( res, "test_%02d: freeSharedMem() in_mem failed", test_num );
 
     res = freeSharedMem( &out_mem );
-    CHECK_RESULT( res, "test_03: freeSharedMem() out_mem failed" );
+    CHECK_RESULT( res, "test_%02d: freeSharedMem() out_mem failed", test_num );
     
+    // printf("Finalizing context\n");
     res = finalizeContext( &ctx );
-    CHECK_RESULT( res, "test_03: finalizeContext() failed" );
+    CHECK_RESULT( res, "test_%02d: finalizeContext() failed", test_num );
 
     return res;
 
@@ -152,7 +168,7 @@ TEEC_Result test_02() {
     TEEC_Context    ctx;
     TEEC_Session    sess;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    int             i;
+    int             i, test_num = 2;
 
     TEEC_SharedMemory in_mem = { .size = SHARED_MEM_SIZE,
                                  .flags = TEEC_MEM_INPUT, };
@@ -160,16 +176,16 @@ TEEC_Result test_02() {
                                   .flags = TEEC_MEM_OUTPUT, };
     
     res = initializeContext( &ctx ) ;
-    CHECK_RESULT( res, "test_02: initializeContext() failed" );
+    CHECK_RESULT( res, "test_%02d: initializeContext() failed", test_num );
 
     res = allocateSharedMem( &ctx, &in_mem );
-    CHECK_RESULT( res, "test_02: allocateSharedMem() failed" );
+    CHECK_RESULT( res, "test_%02d: allocateSharedMem() failed", test_num );
     
     res = allocateSharedMem( &ctx, &out_mem );
-    CHECK_RESULT( res, "test_02: allocateSharedMem() failed" );
+    CHECK_RESULT( res, "test_%02d: allocateSharedMem() failed", test_num );
 
     res = openSession( &ctx, &sess, &uuid );
-    CHECK_RESULT( res, "test_02: openSession() failed" );
+    CHECK_RESULT( res, "test_%02d: openSession() failed", test_num );
 
     /* Test key registration */
 
@@ -180,7 +196,7 @@ TEEC_Result test_02() {
                                 iv_std, sizeof(iv_std), 
                                 capsule_data_array[i].chunk_size,
                                 &in_mem );
-        CHECK_RESULT( res, "test_02: register_aes_key() %s failed", 
+        CHECK_RESULT( res, "test_%02d: register_aes_key() %s failed", test_num,
                            capsule_data_array[i].str );
     }
 
@@ -190,8 +206,8 @@ TEEC_Result test_02() {
         res = capsule_set_state( &sess, &in_mem, key, STATE_SIZE, 
                                  val_random, STATE_SIZE, 
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
-        CHECK_RESULT( res, "test_02: capsule_set_state() key %s -> val %s"
-                           " for %s failed", key, val_random, 
+        CHECK_RESULT( res, "test_%02d: capsule_set_state() key %s -> val %s"
+                           " for %s failed", test_num, key, val_random, 
                            capsule_data_array[i].str );
 
         // reset the cred state to the right value
@@ -202,41 +218,43 @@ TEEC_Result test_02() {
         res = capsule_set_state( &sess, &in_mem, key, STATE_SIZE,
                                  val, STATE_SIZE, 
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
-        CHECK_RESULT( res, "test_02: capsule_set_state() key %s -> val %s"
-                           " for %s failed", key, val, capsule_data_array[i].str );
+        CHECK_RESULT( res, "test_%02d: capsule_set_state() key %s -> val %s"
+                           " for %s failed", test_num, key, val, 
+                           capsule_data_array[i].str );
         
         // setting another random state to see if we can add multiple
         // states 
         res = capsule_set_state( &sess, &in_mem, key_random, STATE_SIZE,
                                  val_random, STATE_SIZE, 
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
-        CHECK_RESULT( res, "test_02: capsule_set_state() key %s -> val %s"
-                           " for %s failed", key_random, val_random, 
+        CHECK_RESULT( res, "test_%02d: capsule_set_state() key %s -> val %s"
+                           " for %s failed", test_num, key_random, val_random, 
                            capsule_data_array[i].str );
 
         // get the two states to see if they are correct 
         res = capsule_get_state( &sess, &in_mem, &out_mem, key, STATE_SIZE, 
                                  val_get, STATE_SIZE, 
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
-        CHECK_RESULT( res, "test_02: capsule_get_state() key %s failed for %s", 
-                           key, capsule_data_array[i].str );
+        CHECK_RESULT( res, "test_%02d: capsule_get_state() key %s failed for %s",
+                           test_num, key, capsule_data_array[i].str );
 
         if( strcmp( val, val_get) != 0 ) {
             CHECK_RESULT( TEEC_ERROR_CORRUPT_OBJECT, 
-                         "test_02: capsule state op for key %s results did "
-                         " not match (%s) (%s)", key, val, val_get );
+                         "test_%02d: capsule state op for key %s results did "
+                         " not match (%s) (%s)", test_num, key, val, val_get );
         }
     
         res = capsule_get_state( &sess, &in_mem, &out_mem, key_random, 
                                  STATE_SIZE, val_get, STATE_SIZE, 
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
-        CHECK_RESULT( res, "test_02: capsule_get_state() key %s failed for %s", 
-                           key_random, capsule_data_array[i].str );
+        CHECK_RESULT( res, "test_%02d: capsule_get_state() key %s failed for %s",
+                           test_num, key_random, capsule_data_array[i].str );
 
         if( strcmp( val_random, val_get) != 0 ) {
             CHECK_RESULT( TEEC_ERROR_CORRUPT_OBJECT, 
-                         "test_02: capsule state op for key %s results did "
-                         " not match (%s) (%s)", key_random, val_random, val_get );
+                         "test_%02d: capsule state op for key %s results did "
+                         " not match (%s) (%s)", test_num, key_random, 
+                         val_random, val_get );
         }
     }
 
@@ -248,16 +266,16 @@ TEEC_Result test_02() {
                             *(uint32_t*) (void*) capsule_data_array[32].id);
 
     res = closeSession( &sess );
-    CHECK_RESULT( res, "test_02: closeSession()" );
+    CHECK_RESULT( res, "test_%02d: closeSession()", test_num );
 
     res = freeSharedMem( &in_mem );
-    CHECK_RESULT( res, "test_02: freeSharedMem()" );
+    CHECK_RESULT( res, "test_%02d: freeSharedMem()", test_num );
 
     res = freeSharedMem( &out_mem );
-    CHECK_RESULT( res, "test_02: freeSharedMem()" );
+    CHECK_RESULT( res, "test_%02d: freeSharedMem()", test_num );
     
     res = finalizeContext( &ctx );
-    CHECK_RESULT( res, "test_02: finalizeContext()" );
+    CHECK_RESULT( res, "test_%02d: finalizeContext()", test_num );
 
     return res;
 }
@@ -272,40 +290,50 @@ TEEC_Result test_01() {
     TEEC_Session    sess1;
     TEEC_Session    sess2;
     TEEC_UUID       uuid = CAPSULE_UUID;
+    int             test_num = 1;
 
     TEEC_SharedMemory in_mem = { .size = SHARED_MEM_SIZE,
                                  .flags = TEEC_MEM_INPUT, };
+    TEEC_SharedMemory inout_mem = { .size = SHARED_MEM_SIZE,
+                                    .flags = TEEC_MEM_INPUT | TEEC_MEM_OUTPUT, };
     TEEC_SharedMemory out_mem = { .size = SHARED_MEM_SIZE,
                                   .flags = TEEC_MEM_OUTPUT, };
 
     res = initializeContext( &ctx ) ;
-    CHECK_RESULT( res, "test_01: initializeContext() failed" );
+    CHECK_RESULT( res, "test_%02d: initializeContext() failed", test_num );
 
     res = allocateSharedMem( &ctx, &in_mem );
-    CHECK_RESULT( res, "test_01: allocateSharedMem() failed");
+    CHECK_RESULT( res, "test_%02d: allocateSharedMem() in_mem failed", 
+                       test_num );
     res = allocateSharedMem( &ctx, &out_mem );
-    CHECK_RESULT( res, "test_01: allocateSharedMem() failed");
+    CHECK_RESULT( res, "test_%02d: allocateSharedMem() out_mem failed", 
+                       test_num );
+    res = allocateSharedMem( &ctx, &inout_mem );
+    CHECK_RESULT( res, "test_%02d: allocateSharedMem() inout_mem failed", 
+                       test_num );
 
     res = openSession( &ctx, &sess1, &uuid );
-    CHECK_RESULT( res, "test_01: openSession() sess1 failed" );
+    CHECK_RESULT( res, "test_%02d: openSession() sess1 failed", test_num );
 
     res = openSession( &ctx, &sess2, &uuid );
-    CHECK_RESULT( res, "test_01: openSession() sess2 failed" );
+    CHECK_RESULT( res, "test_%02d: openSession() sess2 failed", test_num );
     
     res = closeSession( &sess1 );
-    CHECK_RESULT( res, "test_01: closeSession() sess1 failed" );
+    CHECK_RESULT( res, "test_%02d: closeSession() sess1 failed", test_num );
 
     res = closeSession( &sess2 );
-    CHECK_RESULT( res, "test_01: closeSession() sess2 failed" );
+    CHECK_RESULT( res, "test_%02d: closeSession() sess2 failed", test_num );
     
     res = freeSharedMem( &in_mem );
-    CHECK_RESULT( res, "test_01: freeSharedMem() failed" );
-
+    CHECK_RESULT( res, "test_%02d: freeSharedMem() in_mem failed", test_num );
     res = freeSharedMem( &out_mem );
-    CHECK_RESULT( res, "test_01: freeSharedMem() failed" );
+    CHECK_RESULT( res, "test_%02d: freeSharedMem() out_mem failed", test_num );
+    res = freeSharedMem( &inout_mem );
+    CHECK_RESULT( res, "test_%02d: freeSharedMem() inout_mem failed", 
+                       test_num );
     
     res = finalizeContext( &ctx );
-    CHECK_RESULT( res, "test_01: finalizeContext() failed" );
+    CHECK_RESULT( res, "test_%02d: finalizeContext() failed", test_num );
 
     return res;
 
@@ -319,6 +347,7 @@ static void usage(void) {
 int main(int argc, char *argv[]) {
     
     TEEC_Result res;
+    int         test_num = 0;  
 
     if( (strcmp( argv[1], "BENCHMARK" ) == 0 && argc != 5) ) {
         usage();
@@ -340,50 +369,28 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    openlog("capsule_test", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+
     if( strcmp( argv[1], "REGISTER_KEYS" ) == 0 ) {
+        test_num = 1;
         res = test_01();
-        CHECK_RESULT( res, "test_01: failed" );
-        PRINT_INFO( "test_01: passed\n" );
+        CHECK_RESULT( res, "test_%02d: failed", test_num );
+        PRINT_INFO( "test_%02d: passed\n", test_num );
     
+        test_num = 2;
         res = test_02();
-        CHECK_RESULT( res, "test_02: failed" );
-        PRINT_INFO( "test_02: passed\n" );
+        CHECK_RESULT( res, "test_%02d: failed", test_num );
+        PRINT_INFO( "test_%02d: passed\n", test_num );
     } else if( strcmp( argv[1], "FULL" ) == 0 ) {
+        // Test no-op open and close of a capsule. Checks:
+        //  1. Decrypt works
+        //  2. Disassembly and conversion to data works
+        //  3. Assembly of components works
+        //  4. Encrypt works
+        test_num = 3;
         res = test_03();
-        CHECK_RESULT( res, "test_03: failed" );
-        PRINT_INFO( "test_03: passed\n" );
-
-        // res = test_04();
-        // CHECK_RESULT( res, "test_04: failed" );
-        // PRINT_INFO( "test_04: passed\n" );
-        
-        // res = test_05();
-        // CHECK_RESULT( res, "test_05: failed" );
-        // PRINT_INFO( "test_05: passed\n" );
-
-        // res = test_06();
-        // CHECK_RESULT( res, "test_06: failed" );
-        // PRINT_INFO( "test_06: passed\n" );
-
-        //res = test_07();
-        //CHECK_RESULT( res, "test_07: failed" );
-        //PRINT_INFO( "test_07: passed\n" );
-    
-        //res = test_08();
-        //CHECK_RESULT( res, "test_08: failed" );
-        //PRINT_INFO( "test_08: passed\n" );
-        
-        // res = test_09();
-        // CHECK_RESULT( res, "test_09: failed" );
-        // PRINT_INFO( "test_09: passed\n" );       
-    
-        // res = test_12();
-        // CHECK_RESULT( res, "test_12: failed" );
-        // PRINT_INFO( "test_12: passed\n" );
-        
-        // res = test_13();
-        // CHECK_RESULT( res, "test_13: failed" );
-        // PRINT_INFO( "test_13: passed\n" );
+        CHECK_RESULT( res, "test_%02d: failed", test_num );
+        PRINT_INFO( "test_%02d: passed\n", test_num );
     
     } else if( strcmp( argv[1], "TEST_CAPSULES" ) == 0 ) {
         
@@ -400,5 +407,8 @@ int main(int argc, char *argv[]) {
         // CHECK_RESULT( res, "memory test of failed");
         // PRINT_INFO( "memory test finished \n");
     }
+
+    closelog();
+
     return 0;
 }

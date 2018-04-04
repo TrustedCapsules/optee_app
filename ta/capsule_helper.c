@@ -187,8 +187,8 @@ void lua_close_context( lua_State **L ) {
 }
 
 /* Performs encryption and decryption for a piece of data */
-TEE_Result process_aes_block( unsigned char* ptx, size_t *plen,
-                              unsigned char* ctx, size_t clen,
+TEE_Result process_aes_block( unsigned char* ctx, size_t clen,
+                              unsigned char* ptx, size_t *plen,
                               uint8_t *iv, uint32_t iv_len, uint32_t ctr,
                               bool first, bool last,
                               TEE_OperationHandle op ) {
@@ -266,6 +266,7 @@ bool compare_hashes( unsigned char* hash1, unsigned char* hash2,
 
 /* Initialize the capsule text buffer */
 void initialize_capsule_text( struct capsule_text* p ) {
+    memset(&(p->header), 0, sizeof(struct TrustedCap));
     p->policy_len = 0;
     p->log_len = 0;
     p->kv_store_len = 0;
@@ -343,7 +344,7 @@ TEE_Result find_key( struct TrustedCap *h,
             CHECK_SUCCESS( res, "Find_key() AES key not found" );
             goto find_key_exit;
         }
-        //MSG( "Find_key()-> key data size: %u", total_size );
+        // MSG( "Find_key()-> key data size: %u", total_size );
 
         attr_buf = TEE_Malloc( total_size, 0 );
         cnt_a = read_cntpct();
@@ -405,17 +406,19 @@ TEE_Result find_key( struct TrustedCap *h,
         cnt_a = read_cntpct();
         TEE_CipherInit( *dec_op, iv, iv_len, 0 );
 
+        // MSG( "AES Key before decrypt: %08x", h->aes_id);
         res = TEE_CipherDoFinal( *dec_op, (void*) h->aes_id,
                                  sizeof(uint32_t), 
                                  (void*) &cap_id,
                                  &id_len );
+        // MSG( "AES Key after decrypt: %08x", cap_id);
         cnt_b = read_cntpct();
         timestamps[curr_ts].encryption += cnt_b - cnt_a;
         CHECK_GOTO( res, find_key_exit,
                     "TEE_CipherDoFinal() Error" );      
     
         if( id == cap_id ) {
-            //MSG( "Found AES Key %08x", id );
+            // MSG( "Found AES Key %08x", id );
             *gl_id = id;
             *gl_iv_len = iv_len;
             *gl_key_len = key_len;
@@ -494,7 +497,7 @@ TEE_Result fill_header( struct TrustedCap* cap,
     timestamps[curr_ts].encryption += cnt_b - cnt_a;
     CHECK_SUCCESS( res, "TEE_CipherDoFinal() Error" );
 
-    //MSG( "ID: %02x%02x%02x%02x\n", cap->aes_id[0], cap->aes_id[1], 
+    // MSG( "ID: %02x%02x%02x%02x\n", cap->aes_id[0], cap->aes_id[1], 
     //                             cap->aes_id[2], cap->aes_id[3] );
     cap->capsize = fsize;
     memcpy( cap->hash, hash, hashlen );
@@ -506,6 +509,7 @@ TEE_Result fill_header( struct TrustedCap* cap,
 void read_header( unsigned char* file_contents, struct TrustedCap* cap ) {
     // Just copy the header size from the file contents into the struct
     memcpy( cap, file_contents, sizeof( struct TrustedCap ) );
+    // MSG("Header pad: %s\nHeader capsule size: %u\n", cap->pad, cap->capsize);
 }
 
 /* Write the TrustedCap header */
@@ -530,6 +534,7 @@ void parse_kv_store( unsigned char* input, size_t inlen,
     unsigned char*  delim = (unsigned char*) ";";
     int             delim_len = strlen((char*) delim);
 
+    // MSG("Parsing KV pairs for [%s]", input);
     // Parse into key value pairs
     do {
         matched = false;
@@ -555,6 +560,7 @@ void parse_kv_store( unsigned char* input, size_t inlen,
 
     delim = (unsigned char*) ":";
 
+    // MSG("Parsing each pair");
     // Parse each pair
     for (int i = 0; i < total_num; i++) {
         pair_len = strlen((char*) pairs[i]);
@@ -580,31 +586,35 @@ void parse_kv_store( unsigned char* input, size_t inlen,
         kv_store[i].val_len = strlen((char*) kv_store[i].value);
     }
 
+    // MSG("Mallocing kv_store_buf");
     cap->kv_store_buf = TEE_Malloc(sizeof(struct kv_pair) * total_num, 0); // Allocate memory
+    // MSG("Moving memory");
     TEE_MemMove(cap->kv_store_buf, kv_store, sizeof(struct kv_pair) * total_num);
+    // MSG("Updating number of entries");
     cap->kv_store_len = total_num;
 }
 
-void serialize_kv_store( unsigned char* kv_string ) {
-    int total_len = 0, last = 0;
+void serialize_kv_store( unsigned char* kv_string, size_t total_len ) {
+    int last = 0;
 
-    // Figure out how large to make the buffer
-    for (unsigned int i = 0; i < cap_head.kv_store_len; i++) {
-        total_len += cap_head.kv_store_buf[i].key_len + 1; // Key + :
-        total_len += cap_head.kv_store_buf[i].val_len + 1; // Val + ;
-    }
-
-    kv_string = TEE_Realloc(kv_string, total_len);
-
+    // MSG("Combine into string");
     for (unsigned int i = 0; i < cap_head.kv_store_len; i++) {
         int str_len = cap_head.kv_store_buf[i].key_len + 1 + 
-                      cap_head.kv_store_buf[i].val_len + 1; // +1 for delimiter
-        snprintf( (char*) kv_string + last, str_len, "%s:%s;", 
+                      cap_head.kv_store_buf[i].val_len + 1 + 1; // +1 for delimiter + null
+        char temp[str_len];
+        // MSG("Adding key: %s and value: %s\n", cap_head.kv_store_buf[i].key,
+        //     cap_head.kv_store_buf[i].value);
+        snprintf( temp, str_len, "%s:%s;", 
                  cap_head.kv_store_buf[i].key, cap_head.kv_store_buf[i].value);
-        last += str_len;
+        // MSG("temp: %s", temp);
+        TEE_MemMove(kv_string + last, temp, str_len);
+        // MSG("String so far: %s", kv_string);
+        last += str_len - 1; // don't want to include null character
     }
 
-    kv_string[total_len - 1] = '\0'; // Add null terminator at end
+    kv_string[total_len] = '\0'; // Add null terminator at end
+    // MSG("End result: %s", kv_string);
+    // MSG("end ptr: %p", kv_string);
 }
 
 /*
@@ -660,47 +670,56 @@ void sep_parts( unsigned char* input, size_t inlen,
     bool            matched;
     unsigned char   delimiter[DELIMITER_SIZE] = DELIMITER;
 
+    // MSG("Parsing [%.*s] on delimiter [%s] with length [%u]", 10, input, delimiter, inlen);
     do {
         matched = false;
         find_delimiter(input+last, inlen - last, &start, &end, &match_state, 
                        &matched, delimiter, DELIMITER_SIZE);
         if (index < 4) {
             if (matched == true) {
-                parts[index] = TEE_Malloc(start * sizeof(unsigned char), 0);
+                parts[index] = TEE_Malloc(start * sizeof(unsigned char)+1, 0);
                 TEE_MemMove(parts[index], input + last, start);
+                // MSG("Part %d size: %d", index, start);
+                parts[index][start] = '\0';
                 last += end;
                 index++;
             } else {
-                parts[index] = TEE_Malloc((inlen - last) * sizeof(unsigned char), 0);
+                parts[index] = TEE_Malloc((inlen - last) * sizeof(unsigned char)+1, 0);
                 TEE_MemMove(parts[index], input+last, (inlen - last));
+                parts[index][(inlen - last) * sizeof(unsigned char)] = '\0';
+                // MSG("Part %d size: %d", index, (inlen - last));
                 index++;
                 break;
             }
         }
     } while(matched == true);
 
-    cap->policy_buf = TEE_Malloc(strlen((char *) parts[0]) * sizeof(unsigned char), 0);
-    TEE_MemMove(cap->policy_buf, parts[0], strlen((char *) parts[0]));
+    // Note you MUST + 1 to the sizes because of the added null character
     cap->policy_len = strlen((char *) parts[0]);
+    // MSG("policy len: %d", cap->policy_len);
+    cap->policy_buf = TEE_Malloc(cap->policy_len * sizeof(unsigned char) + 1, 0);
+    TEE_MemMove(cap->policy_buf, parts[0], cap->policy_len); // +1 to include \0
 
-    cap->log_buf = TEE_Malloc(strlen((char *) parts[1]) * sizeof(unsigned char), 0);
-    TEE_MemMove(cap->log_buf, parts[1], strlen((char *) parts[1]));
-    cap->log_len = strlen((char *) parts[1]);
+    parse_kv_store(parts[1], strlen((char *) parts[1]), cap);
+
+    cap->log_len = strlen((char *) parts[2]);
+    cap->log_buf = TEE_Malloc(cap->log_len * sizeof(unsigned char) + 1, 0);
+    TEE_MemMove(cap->log_buf, parts[2], cap->log_len);
     
-    parse_kv_store(parts[2], strlen((char *) parts[2]), cap);
-    
-    cap->data_buf = TEE_Malloc(strlen((char *) parts[3]) * sizeof(unsigned char), 0);
-    TEE_MemMove(cap->data_buf, parts[3], strlen((char *) parts[3]));
     cap->data_len = strlen((char *) parts[3]);
+    cap->data_buf = TEE_Malloc(cap->data_len * sizeof(unsigned char) + 1, 0);
+    TEE_MemMove(cap->data_buf, parts[3], cap->data_len);
 
     // Copy data into the shadow buffer
-    cap->data_shadow_buf = TEE_Malloc(strlen((char *) cap->data_buf) * sizeof(unsigned char), 0);
-    TEE_MemMove(cap->data_shadow_buf, cap->data_buf, strlen((char *) cap->data_buf));
+    cap->data_shadow_buf = TEE_Malloc(cap->data_len * sizeof(unsigned char), 0);
+    TEE_MemMove(cap->data_shadow_buf, cap->data_buf, cap->data_len);
     cap->data_shadow_len = cap->data_len;
 
+    // MSG("Freeing parts");
     for (int i = 0; i < 4; i++) {
         TEE_Free(parts[i]);
     }
+    // MSG("Returning");
 }
 
 /* De-serialize the AES key */

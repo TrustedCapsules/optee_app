@@ -27,6 +27,7 @@
 		do {														\
 			for( (iter) = 0; (iter) < (size); (iter)++ ) {			\
 				if( ciph[(iter)] != plain[(iter)] ) {				\
+					PRINT_INFO( "Mismatch at %d\n", (iter) );       \
 					PRINT_INFO( "nr: %d, ciphtext: ", (size) );		\
 					for( (iter) = 0; (iter) < (size); (iter)++ ) {	\
 						PRINT_INFO( "%c", ciph[(iter)] );			\

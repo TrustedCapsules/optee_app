@@ -27,8 +27,8 @@ void lua_close_context( lua_State **L );
 /*
  * Process a block of data (encrypt/decrypt)
  */
-TEE_Result process_aes_block( unsigned char* ptx, size_t* plen, 
-                              unsigned char* ctx, size_t clen,
+TEE_Result process_aes_block( unsigned char* ctx, size_t clen,
+                              unsigned char* ptx, size_t* plen,
                               uint8_t* iv, uint32_t iv_len, uint32_t ctr,
                               bool first, bool last, TEE_OperationHandle op );
 
@@ -70,7 +70,7 @@ int write_header( struct TrustedCap* cap );
 /*
  * Parsing operations
  */
-void serialize_kv_store( unsigned char* kv_string );
+void serialize_kv_store( unsigned char* kv_string, size_t length );
 void parse_kv_store( unsigned char* input, size_t length, 
                      struct capsule_text* cap );
 

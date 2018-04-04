@@ -83,18 +83,18 @@ void append_header( char *infile, char *outfile,
 
     /* Make space for header at beginning of file */
     fseek( out, sizeof( struct TrustedCap ), SEEK_SET );
-    //while( feof( content ) == 0 ) {
-        inlen = full_read( hash, sizeof(char), sizeof(hash), content );
-        sha256_process( &md, (const unsigned char*) hash, sizeof(hash) );
-        fsize += inlen;
-        full_write( hash, sizeof(char), sizeof(hash), out );
-        
-        inlen = full_read( buffer, sizeof(char), insize, content );
-        fsize += inlen;
-        full_write( buffer, sizeof(char), inlen, out );
-    //}
+    
+    // Read in everything after the header
+    inlen = full_read( buffer, sizeof(char), insize, content );
+    // Hash what you read
+    sha256_process( &md, (const unsigned char*) buffer, insize );
 
+    // Finish hash operation
     sha256_done( &md, hash );
+
+    fsize += inlen;
+    // Write the buffer to the output file
+    full_write( buffer, sizeof(char), inlen, out );
 
     /* Create and write header to file */
     fseek( out, 0, SEEK_SET );
@@ -244,11 +244,11 @@ int encrypt_file( char* ptx ) {
     }
 
     // Encrypt the entire file and hash it
-    encrypt_content( buffer, inlen, hash, sizeof(hash), 
+    encrypt_content( buffer, inlen, //hash, sizeof(hash), 
                      aes_key, aes_key_len, aes_iv, aes_iv_len );
 
     // Write the hash
-    full_write( hash, sizeof(char), sizeof(hash), out );
+    // full_write( hash, sizeof(char), sizeof(hash), out );
     // Write the file
     full_write( buffer, sizeof(char), inlen, out );
     
@@ -298,13 +298,13 @@ int decrypt_file( char *capsule ) {
         goto exit;
     }
 
-    sha256_init( &md );
+    // sha256_init( &md );
 
-    inlen = full_read( hash, sizeof(char), sizeof(hash), in );
-    sha256_process( &md, (const unsigned char*) hash, sizeof( hash ) ); 
+    // inlen = full_read( hash, sizeof(char), sizeof(hash), in );
+    // sha256_process( &md, (const unsigned char*) hash, sizeof( hash ) ); 
     inlen = full_read( buffer, sizeof(char), contentsize, in );
 
-    decrypt_content( buffer, inlen, hash, sizeof(hash), 
+    decrypt_content( buffer, inlen, //hash, sizeof(hash), 
                      aes_key, aes_key_len, aes_iv, aes_iv_len);
         
     struct range parts[4];
@@ -314,14 +314,14 @@ int decrypt_file( char *capsule ) {
     // printf("[capsule_gen] Ranges:\n");
     print_parts( buffer, parts );
 
-    sha256_done( &md, hash );
+    // sha256_done( &md, hash );
 
-    for( i = 0; i < sizeof(hash); i++ ) {
-        if( hash[i] != header.hash[i] ) {
-            PRINT_INFO( "Hash of chunk hashes do not match\n" );
-            break;
-        }
-    }
+    // for( i = 0; i < sizeof(hash); i++ ) {
+    //     if( hash[i] != header.hash[i] ) {
+    //         PRINT_INFO( "Hash of chunk hashes do not match\n" );
+    //         break;
+    //     }
+    // }
 
 exit:
     free( buffer );

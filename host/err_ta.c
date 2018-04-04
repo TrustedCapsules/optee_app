@@ -9,6 +9,24 @@
 #define SOCKET_CLOSE_CONNECTION_FAIL		1234554324
 #define SOCKET_CLOSE_ALL_CONNECTIONS_FAIL	1234554325
 
+// bool compare_bytes( char* string1, uint32_t s1_len, char* string2, 
+// 					uint32_t s2_len ) {
+// 	bool res = true;
+
+// 	if (s1_len != s2_len) {
+// 		res = false;
+// 	} else {
+// 		for (int i = 0; i < s1_len; i++) {
+// 			if (string1[i] != string2[i]) {
+// 				res = false;
+// 				break;
+// 			}
+// 		}
+// 	}
+
+// 	return res;
+// }
+
 TEEC_Result check_result( TEEC_Result res, char* fn, uint32_t orig ) {
 	
 	if( res != TEEC_SUCCESS ) { 									

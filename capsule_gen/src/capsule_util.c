@@ -235,20 +235,21 @@ void fill_header( struct TrustedCap * header, size_t fsize,
  * Encrypt and hash a chunk of data
  */
 void encrypt_content( unsigned char* buffer, size_t buflen, 
-                      unsigned char* hash, size_t hashlen, 
                       unsigned char* key, unsigned int key_len, 
                       unsigned char* iv, unsigned int iv_len
                       ) {
-    hash_state md;
+                      //unsigned char* hash, size_t hashlen, 
+    
+    // hash_state md;
 
-    if( hashlen > 32 ) {
-        PRINT_INFO( "encrypt_content()-> previously using SHA256, "
-                    "did this change?\n" );
-    }
+    // if( hashlen > 32 ) {
+    //     PRINT_INFO( "encrypt_content()-> previously using SHA256, "
+    //                 "did this change?\n" );
+    // }
 
-    sha256_init( &md );
-    sha256_process( &md, (const unsigned char*) buffer, buflen );
-    sha256_done( &md, hash );
+    // sha256_init( &md );
+    // sha256_process( &md, (const unsigned char*) buffer, buflen );
+    // sha256_done( &md, hash );
 
     aes_encrypt( (const unsigned char* ) buffer, buffer, buflen, 
                  key, key_len, 0, iv, iv_len );
@@ -259,26 +260,25 @@ void encrypt_content( unsigned char* buffer, size_t buflen,
  * Decrypt and calculate the hash of a chunk of data
  */
 void decrypt_content( unsigned char *buffer, size_t buflen, 
-                      unsigned char *hash, size_t hashlen, 
                       unsigned char *key, unsigned int key_len, 
                       unsigned char *iv, unsigned int iv_len
                       ) {
+                      // unsigned char *hash, size_t hashlen, 
+    // hash_state     md;
+    // unsigned char  hash_calc[32];
+    // int            n;
 
-    hash_state     md;
-    unsigned char  hash_calc[32];
-    int            n;
-
-    if( hashlen > 32 ) {
-        PRINT_INFO( "decrypt_content()-> previously using SHA256, "
-                    "did this change?\n" );
-    }
+    // if( hashlen > 32 ) {
+    //     PRINT_INFO( "decrypt_content()-> previously using SHA256, "
+    //                 "did this change?\n" );
+    // }
 
     aes_decrypt( (const unsigned char*) buffer, buffer, 
                  buflen, key, key_len, 0, iv, iv_len );
 
-    sha256_init( &md );
-    sha256_process( &md, (const unsigned char*) buffer, buflen );
-    sha256_done( &md, hash_calc);
+    // sha256_init( &md );
+    // sha256_process( &md, (const unsigned char*) buffer, buflen );
+    // sha256_done( &md, hash_calc);
 }
 
 /*

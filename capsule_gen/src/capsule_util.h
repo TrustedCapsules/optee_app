@@ -64,12 +64,12 @@ void fill_header( struct TrustedCap* header, size_t fsize,
 			   	  unsigned int hashlen );
 
 void encrypt_content( unsigned char* buffer, size_t buflen, 
-					  unsigned char* hash, size_t hashlen, 
+					  //unsigned char* hash, size_t hashlen, 
 					  unsigned char* key, unsigned int key_len, 
 					  unsigned char* iv, unsigned int iv_len );
 
 void decrypt_content( unsigned char* buffer, size_t buflen,
-					  unsigned char* hash, size_t hashlen, 
+					  //unsigned char* hash, size_t hashlen, 
 					  unsigned char* key, unsigned int key_len, 
 					  unsigned char* iv, unsigned int iv_len );
 

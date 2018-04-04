@@ -177,17 +177,18 @@ TEE_Result capsule_open( uint32_t param_type,
 
     // Create the file contents buffer
     file_len = params[1].memref.size + 1;
+    // MSG("Opening file with size %d", file_len);
     file_contents = TEE_Malloc( file_len, 0);
-    TEE_MemMove( file_contents, params[1].memref.buffer, file_len );
-    file_contents[file_len - 1] = '\0';
+    TEE_MemMove( file_contents, params[1].memref.buffer, params[1].memref.size );
+    file_contents[params[1].memref.size] = '\0';
 
     // Open the file (initializes the capsule structure)
-    res = do_open( file_contents, file_len );
+    res = do_open( file_contents, params[1].memref.size );
     CHECK_GOTO( res, capsule_open_exit, "Do_open() Error" );
 
     // Setup Lua (if this is the first time using it)
     if( Lstate == NULL ) {
-        //MSG( "Initializing Interpreter..." );
+        // MSG( "Initializing Interpreter..." );
         lua_start_context( &Lstate );
         res = do_load_policy();
         CHECK_GOTO( res, capsule_open_exit, "Do_load_policy() Error" );
@@ -230,20 +231,26 @@ TEE_Result capsule_open( uint32_t param_type,
         goto capsule_open_exit;
     }
 
+    // MSG("Copying over data to return param (len %d)", cap_head.data_shadow_len);
+    // MSG("Data: %.*s", cap_head.data_shadow_len, cap_head.data_shadow_buf);
     // Copy over shadow copy (policy can modify this buffer)
     // QUESTION: what happens if the buffer is bigger? Do we allow the policy to 
     //           add more data?
     TEE_MemMove(params[1].memref.buffer, cap_head.data_shadow_buf, 
-                cap_head.data_shadow_len); 
+                cap_head.data_shadow_len + 1); 
     params[1].memref.size = cap_head.data_shadow_len;
 
     // Increment reference counter for debugging
+    // MSG("Incrementing ref count");
     cap_head.ref_count++;
 
 capsule_open_exit:
     // Clean up malloc'd memory. File contents should have been copied
     // into the capsule buffers.
-    TEE_Free(file_contents);
+    // MSG("Freeing file_contents");
+    // TEE_Free(file_contents);
+
+    // MSG("return");
     return res;
 }
 
@@ -251,7 +258,7 @@ capsule_open_exit:
 TEE_Result capsule_close(uint32_t param_type, TEE_Param params[4]) {
 
     TEE_Result      res = TEE_SUCCESS;
-    unsigned char  *new_contents = TEE_Malloc(0, 0); // Create empty buffer
+    unsigned char  *new_contents; // Create empty buffer
     size_t          new_len = 0;
 
     if( capsule_name == NULL ) {
@@ -281,15 +288,20 @@ TEE_Result capsule_close(uint32_t param_type, TEE_Param params[4]) {
     res = do_run_policy( Lstate, POLICY_FUNC, CLOSE_OP );
 
     // Construct the encrypted file and clear all buffers
-    res = do_close( res, new_contents, &new_len, params[0].value.a );
+    new_contents = do_close( res, &new_len, params[0].value.a );
+
+    // MSG("Copying over data to return param (len %d)", new_len);
+    // MSG("Data: %.*s", new_len, new_contents);
 
     // Setup return parameter with encrypted file
     TEE_MemMove(params[2].memref.buffer, new_contents, new_len);
+    // MSG("Setting size");
     params[2].memref.size = new_len;
 
     // Free allocated memory
-    TEE_Free(new_contents);
+    // TEE_Free(new_contents);
 
+    // MSG("returning");
     return res;
 }
 

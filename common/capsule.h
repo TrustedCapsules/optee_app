@@ -41,10 +41,10 @@ typedef enum {
 } FILE_POS; 
 
 struct TrustedCap {
-    char          pad[11];
-    unsigned int  capsize;
-    unsigned char aes_id[4];
-    unsigned char hash[32];
+    char          pad[11];      // bytes 0 - 11 
+    unsigned int  capsize;      // bytes 12 - 15 
+    unsigned char aes_id[4];    // bytes 16 - 19 
+    unsigned char hash[32];     // bytes 20 - 52 
 };
 
 typedef enum {

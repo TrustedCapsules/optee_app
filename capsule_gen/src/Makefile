@@ -28,7 +28,7 @@ clean:
 
 encode-capsule:
 	mkdir -p ../capsules/sample_capsules
-	./$(TARGET) encode -n $(NAME) -d ../data/$(NAME).data -p ../data/$(NAME).policy -o ../capsules/sample_capsules
+	./$(TARGET) encode -n $(NAME) -d ../data/$(NAME).data -p ../data/$(NAME).policy -k ../data/default.kvstore -o ../capsules/sample_capsules
 
 decode-capsule:
 	./$(TARGET) decode -n $(NAME)

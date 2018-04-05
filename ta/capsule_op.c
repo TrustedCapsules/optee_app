@@ -37,7 +37,7 @@ TEE_Result do_register_aes( uint32_t keyType, uint32_t id, uint32_t keyLen,
         // Should be 4 instead of 5. (remove chunk size)
         total_size = attrlen + ivlen + 5*sizeof(uint32_t);
         
-        MSG( "Write %u B of AES key 0x%08x to sec. storage",
+        DMSG( "Write %u B of AES key 0x%08x to sec. storage",
              total_size, id );
 
         data_buffer = TEE_Malloc( total_size, 0 );
@@ -127,7 +127,7 @@ TEE_Result do_open( unsigned char* file_contents, int file_size ) {
     }
 
     // Increase the reference count for this capsule
-    cap_head.ref_count++;
+    // cap_head.ref_count++;
 
     return res;
 }

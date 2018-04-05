@@ -108,7 +108,7 @@ TEE_Result TA_OpenSessionEntryPoint(uint32_t param_type,
 
     // MSG( "Opening Trusted Capsule session" );
     memset( &timestamps, 0, sizeof(timestamps) );
-    // MSG( "     [e h s r p]         \n"
+    // MSG( "\n   [e h s r p]         \n"
     //   "%d: %llu %llu %llu %llu %llu\n" 
     //   "%d: %llu %llu %llu %llu %llu\n" 
     //   "%d: %llu %llu %llu %llu %llu\n" 
@@ -139,7 +139,7 @@ void TA_CloseSessionEntryPoint(void *sess_ctx) {
     
     //MSG( "Closing Trusted Capsule %s session", capsule_name );
     
-    MSG( "     [e h s r p]            \n"
+    MSG( "\n   [e h s r p]            \n"
          "%d: %llu %llu %llu %llu %llu\n" 
          "%d: %llu %llu %llu %llu %llu\n" 
          "%d: %llu %llu %llu %llu %llu\n" 

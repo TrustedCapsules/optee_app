@@ -250,9 +250,15 @@ TEE_Result capsule_close(uint32_t param_type, TEE_Param params[4]) {
     unsigned char  *new_contents;
     size_t          new_len = 0;
 
+    // MSG("Capsule ref_count = %d", cap_head.ref_count);
     if( capsule_name == NULL ) {
         res = TEE_ERROR_ITEM_NOT_FOUND;             
         CHECK_SUCCESS( res, "No capsule was previously opened" );
+    } 
+
+    if (cap_head.ref_count == 0) {
+        res = TEE_ERROR_ITEM_NOT_FOUND;
+        CHECK_SUCCESS( res, "Capsule state already cleared" );
     }
     
     ASSERT_PARAM_TYPE( TEE_PARAM_TYPES( TEE_PARAM_TYPE_VALUE_INPUT,     // fsync/fflush flag

@@ -2,11 +2,11 @@
 
 mkdir -p ../capsules
 
-# for capsule in `ls ../data/*.data`; do
-#     capsule_name=$(basename "$capsule" .data)
-#     echo "Making $capsule_name"
-#     make encode-capsule NAME=$capsule_name
-# done
+for capsule in `ls ../data/*.data`; do
+    capsule_name=$(basename "$capsule" .data)
+    echo "Making $capsule_name"
+    make encode-capsule NAME=$capsule_name
+done
 
 TEST_OUTPUT_DIR="../capsules/test_capsules"
 OUTPUT_DIR="../capsules/use_case_capsules"

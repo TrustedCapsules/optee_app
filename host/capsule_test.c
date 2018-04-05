@@ -67,9 +67,11 @@ TEEC_Result test_07() {
     res = allocateSharedMem( &ctx, &in_mem );
     CHECK_RESULT( res, "test_%02d: allocateSharedMem() in_mem failed", 
                        test_num);
+    
     res = allocateSharedMem( &ctx, &out_mem );
     CHECK_RESULT( res, "test_%02d: allocateSharedMem() out_mem failed",
                        test_num);
+    
     res = allocateSharedMem( &ctx, &inout_mem );
     CHECK_RESULT( res, "test_%02d: allocateSharedMem() inout_mem failed",
                        test_num);
@@ -162,7 +164,7 @@ TEEC_Result test_07() {
     // Compare decrypted data with plaintext data
     COMPARE_LEN( test_num, 1, read_len, plt_len2 );
     COMPARE_TEXT( test_num, 1, i, read_data, plain_text_data2, read_len );
-
+    
     // Second close
     memset(write_data, 0, write_len);
     write_len = 10000;
@@ -193,6 +195,9 @@ TEEC_Result test_07() {
     
     res = finalizeContext( &ctx );
     CHECK_RESULT( res, "test_%02d: finalizeContext() failed", test_num );
+
+    free(read_data);
+    free(write_data);
 
     return res;
 }
@@ -326,6 +331,9 @@ TEEC_Result test_06() {
     
     res = finalizeContext( &ctx );
     CHECK_RESULT( res, "test_%02d: finalizeContext() failed", test_num );
+
+    free(read_data);
+    free(write_data);
 
     return res;
 }
@@ -462,6 +470,9 @@ TEEC_Result test_05() {
     res = finalizeContext( &ctx );
     CHECK_RESULT( res, "test_%02d: finalizeContext() failed", test_num );
 
+    free(read_data);
+    free(write_data);
+
     return res;
 }
 
@@ -489,7 +500,7 @@ TEEC_Result test_04() {
     int             i = 0, 
                     test_num = 4;
 
-    PRINT_INFO("test_%02d: basic encrypt/decrypt using open and close\n",
+    PRINT_INFO("test_%02d: multiple open and close of the same capsule\n",
                 test_num);
 
     // Need 4096 for test capsule (489 bytes large encrypted, w/o log expansion)
@@ -612,6 +623,9 @@ TEEC_Result test_04() {
     
     res = finalizeContext( &ctx );
     CHECK_RESULT( res, "test_%02d: finalizeContext() failed", test_num );
+
+    free(read_data);
+    free(write_data);
 
     return res;
 }
@@ -739,6 +753,9 @@ TEEC_Result test_03() {
     
     res = finalizeContext( &ctx );
     CHECK_RESULT( res, "test_%02d: finalizeContext() failed", test_num );
+
+    free(read_data);
+    free(write_data);
 
     return res;
 
@@ -1032,10 +1049,10 @@ int main(int argc, char *argv[]) {
         CHECK_RESULT( res, "test_%02d: failed", test_num );
         PRINT_INFO( "test_%02d: passed\n", test_num );
 
-        // test_num = 7;
-        // res = test_07();
-        // CHECK_RESULT( res, "test_%02d: failed", test_num );
-        // PRINT_INFO( "test_%02d: passed\n", test_num );
+        test_num = 7;
+        res = test_07();
+        CHECK_RESULT( res, "test_%02d: failed", test_num );
+        PRINT_INFO( "test_%02d: passed\n", test_num );
     
     } else if( strcmp( argv[1], "TEST_CAPSULES" ) == 0 ) {
         

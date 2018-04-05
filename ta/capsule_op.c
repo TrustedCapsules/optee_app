@@ -12,9 +12,7 @@
 #include "capsule_op.h"
 #include "capsule_ta.h"
 
-// TODO: remove chunksize
-TEE_Result do_register_aes( uint32_t keyType, uint32_t id, 
-                            uint32_t keyLen, 
+TEE_Result do_register_aes( uint32_t keyType, uint32_t id, uint32_t keyLen, 
                             uint8_t* attr, uint32_t attrlen,
                             uint8_t* iv, uint32_t ivlen ) {
 
@@ -29,7 +27,7 @@ TEE_Result do_register_aes( uint32_t keyType, uint32_t id,
     }
     
     /* Add the key to persistent storage in a serial manner.
-     * => Total size, ch size, key size, key id, iv size, iv, attrs 
+     * => Total size, key size, key id, iv size, iv, attrs 
      */
     if( keyFile != TEE_HANDLE_NULL ) {
 
@@ -50,26 +48,25 @@ TEE_Result do_register_aes( uint32_t keyType, uint32_t id,
         DMSG( "First 4 bytes: %u", *(uint32_t*)(void*) it );       
         it += sizeof(uint32_t);
 
-        //chunk_size -- REMOVE
-        // *(uint32_t*) (void*) it = chSize;
-        // DMSG( "Second 4 bytes: %u", *(uint32_t*)(void*) it );
-        // it += sizeof(uint32_t);
-
         //key_len
         *(uint32_t*) (void*) it = keyLen;                
         DMSG( "Second 4 bytes: %u", *(uint32_t*)(void*) it );       
         it += sizeof(uint32_t);
+
         //key_id
         *(uint32_t*) (void*) it = id;               
         DMSG( "Third 4 bytes: %08x", *(uint32_t*)(void*) it );    
         it += sizeof(uint32_t);
+
         //iv_size
         *(uint32_t*) (void*) it = ivlen;            
         DMSG( "Fourth 4 bytes: %u", *(uint32_t*)(void*) it );      
         it += sizeof(uint32_t);
+
         //iv
         memcpy( it, iv, ivlen );
         it += ivlen;
+
         //aes key_attr
         memcpy( it, attr, attrlen ); 
 
@@ -275,8 +272,6 @@ TEE_Result do_run_policy( lua_State *L, const char* policy, SYSCALL_OP n ) {
     bool eval, pol_changed;
     uint64_t cnt_a, cnt_b;
 
-    // MSG("Running policy");
-
     cnt_a = read_cntpct();
     do {
         /* Call lua policy function */
@@ -296,8 +291,8 @@ TEE_Result do_run_policy( lua_State *L, const char* policy, SYSCALL_OP n ) {
         }
 
         pol_changed  = lua_toboolean( L, -1 );
-        //MSG( "Function '%s:%d' pol_changed is %s", policy, n,
-        //   pol_changed == true ? "true" : "false" );
+        DMSG( "Function '%s:%d' pol_changed is %s", policy, n,
+          pol_changed == true ? "true" : "false" );
         
         if( pol_changed ) {
             /* reload the policy since it has changed */
@@ -313,8 +308,8 @@ TEE_Result do_run_policy( lua_State *L, const char* policy, SYSCALL_OP n ) {
     }
 
     eval = lua_toboolean( L, -2 );
-    // MSG( "Function '%s:%d' evaluated to %s", policy, n,
-    //   eval == true ? "true" : "false" );
+    DMSG( "Function '%s:%d' evaluated to %s", policy, n,
+      eval == true ? "true" : "false" );
     if( eval == false ) {
         res = TEE_ERROR_POLICY_FAILED;
     }
@@ -335,7 +330,6 @@ TEE_Result do_load_policy(void) {
     cnt_a = read_cntpct();
 
     /* Load the policy into Lua */
-    // MSG("Loading policy [%s]", cap_head.policy_buf);
     res = lua_load_policy( Lstate, (const char*) cap_head.policy_buf );
     CHECK_SUCCESS( res, "load_policy() Error" );
 
@@ -352,7 +346,8 @@ TEE_Result do_write_new_policy_network( unsigned char* policy,
     
     TEE_Result res = TEE_SUCCESS;
 
-    // If the new length is not the same as the current len, then resize the buffer
+    // If the new length is not the same as the current len, then resize the 
+    // buffer
     if (len != cap_head.policy_len) {
         cap_head.policy_buf = TEE_Realloc(cap_head.policy_buf, len);
     }
@@ -613,7 +608,7 @@ TEE_Result do_set_state( unsigned char* key, uint32_t klen,
     uint32_t   new_write_pos = 0;
     uint64_t   cnt_a, cnt_b;
 
-    //MSG( "Setting key: %s val: %s", key, val );
+    DMSG( "Setting key: %s val: %s", key, val );
 
     if( vlen > STATE_SIZE || klen > STATE_SIZE ) {
         res = TEE_ERROR_NOT_SUPPORTED;
@@ -683,7 +678,7 @@ TEE_Result do_get_state( unsigned char* key, unsigned char* val,
     uint8_t   *valid = &state[2*STATE_SIZE];
     uint64_t   cnt_a, cnt_b;
 
-    //MSG( "Looking for key: %s", key );
+    DMSG( "Looking for key: %s", key );
 
     if( vlen < STATE_SIZE ) {
         res = TEE_ERROR_NOT_SUPPORTED;

@@ -309,21 +309,18 @@ TEE_Result find_key( struct TrustedCap *h,
                      uint32_t *gl_id, 
                      uint32_t *gl_iv_len,
                      uint32_t *gl_key_len, 
-                     // uint32_t *gl_chunk_size,
                      uint8_t **gl_iv ) {
     
     TEE_Result       res = TEE_SUCCESS;
     TEE_ObjectHandle handle = TEE_HANDLE_NULL;
     TEE_Attribute   *attrs = NULL;
     uint32_t         total_size, count, id, iv_len;
-    uint32_t         key_attr_len, key_len;//, chunk_size;
+    uint32_t         key_attr_len, key_len;
     uint32_t         attr_count, cap_id;
     uint8_t         *attr_buf = NULL, *it = NULL;
     uint8_t         *iv = NULL, *key_attr = NULL;
     size_t           id_len = 4;    
     uint64_t         cnt_a, cnt_b;
-
-    // CHANGE: modify to not include symm_chunk_size (no more chunks!)
 
     cnt_a = read_cntpct();
     res = TEE_SeekObjectData( file, 0, TEE_DATA_SEEK_SET );
@@ -344,7 +341,6 @@ TEE_Result find_key( struct TrustedCap *h,
             CHECK_SUCCESS( res, "Find_key() AES key not found" );
             goto find_key_exit;
         }
-        // MSG( "Find_key()-> key data size: %u", total_size );
 
         attr_buf = TEE_Malloc( total_size, 0 );
         cnt_a = read_cntpct();
@@ -360,9 +356,6 @@ TEE_Result find_key( struct TrustedCap *h,
 
         it = attr_buf;
 
-        // TODO: figure out where this order comes from. Maybe common/aes_keys.h
-        // chunk_size = *(uint32_t*) (void*) it;
-        // it += sizeof(uint32_t);
         key_len = *(uint32_t*) (void*) it;
         it += sizeof(uint32_t);
         id = *(uint32_t*) (void*) it;
@@ -406,24 +399,21 @@ TEE_Result find_key( struct TrustedCap *h,
         cnt_a = read_cntpct();
         TEE_CipherInit( *dec_op, iv, iv_len, 0 );
 
-        // MSG( "AES Key before decrypt: %08x", h->aes_id);
         res = TEE_CipherDoFinal( *dec_op, (void*) h->aes_id,
                                  sizeof(uint32_t), 
                                  (void*) &cap_id,
                                  &id_len );
-        // MSG( "AES Key after decrypt: %08x", cap_id);
         cnt_b = read_cntpct();
         timestamps[curr_ts].encryption += cnt_b - cnt_a;
         CHECK_GOTO( res, find_key_exit,
                     "TEE_CipherDoFinal() Error" );      
     
         if( id == cap_id ) {
-            // MSG( "Found AES Key %08x", id );
+            DMSG( "Found AES Key %08x", id );
             *gl_id = id;
             *gl_iv_len = iv_len;
             *gl_key_len = key_len;
             *gl_iv = TEE_Malloc( *gl_iv_len, 0 );
-            // *gl_chunk_size = chunk_size;
             memcpy( *gl_iv, iv, iv_len );
             goto find_key_setup_keys;       
         }
@@ -497,8 +487,8 @@ TEE_Result fill_header( struct TrustedCap* cap,
     timestamps[curr_ts].encryption += cnt_b - cnt_a;
     CHECK_SUCCESS( res, "TEE_CipherDoFinal() Error" );
 
-    // MSG( "ID: %02x%02x%02x%02x\n", cap->aes_id[0], cap->aes_id[1], 
-    //                             cap->aes_id[2], cap->aes_id[3] );
+    DMSG( "ID: %02x%02x%02x%02x\n", cap->aes_id[0], cap->aes_id[1], 
+                                cap->aes_id[2], cap->aes_id[3] );
     cap->capsize = fsize;
     memcpy( cap->hash, hash, hashlen );
 

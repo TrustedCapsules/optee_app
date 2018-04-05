@@ -90,17 +90,22 @@ TEE_Result do_open( unsigned char* file_contents, int file_size ) {
 
     TEE_Result          res = TEE_SUCCESS;
     struct TrustedCap   header;
-    unsigned char       ptx[file_size]; // The largest the plaintext will be
+    unsigned char       ptx[file_size];     // The plain text can be no bigger 
+                                            // than the capsule size
     size_t              ptxlen = file_size;
     int                 init_ctr = 0;
 
-    // Initialize the capsule's text index structure and header if this is the first
-    // open call. Otherwise, everything is already loaded and we do nothing.
+    // Initialize the capsule's text index structure and header if this is the 
+    // first open call. Otherwise, everything is already loaded and we 
+    // increment the ref_count.
     if( cap_head.ref_count == 0 ) {
+        // Initialize our global capsule
         initialize_capsule_text( &cap_head );
 
+        // Read in and initialize the header variable
         read_header(file_contents, &header);
 
+        // If we have not loaded key info (again global), do so.
         if( aes_key_setup == false ) {
             res = find_key( &header, keyFile, &decrypt_op, &encrypt_op,
                             &hash_op, &symm_id, &symm_iv_len, &symm_key_len,
@@ -109,156 +114,143 @@ TEE_Result do_open( unsigned char* file_contents, int file_size ) {
             aes_key_setup = true;
         }
 
-        // MSG("Copying header (size %d)", sizeof(struct TrustedCap));
-        cap_head.header = header;
+        // Copy the header variable into our global struct
+        TEE_MemMove(&cap_head.header, &header, sizeof(struct TrustedCap));
         
-        // MSG("Decrypt the file");
         // Decrypt the entire file (starting after the header)
         res = process_aes_block(file_contents + sizeof(struct TrustedCap), 
                                 file_size - sizeof(struct TrustedCap), ptx, 
                                 &ptxlen, symm_iv, symm_iv_len, 
                                 init_ctr, true, true, decrypt_op);
-
+        // Insert null terminator for string
         ptx[ptxlen] = '\0';
 
-        // Parse out the file into specific buffers. Requires one pass to find all the
-        // delimiters. Start at the end of the header. 
-        // MSG("Separate the parts [%d], strlen [%d]", ptxlen, strlen((char*) ptx));
+        // Parse out the file into specific buffers. 
         sep_parts(ptx, ptxlen, &cap_head);
     }
 
-    // MSG("returning");
+    // Increase the reference count for this capsule
+    cap_head.ref_count++;
+
     return res;
 }
 
-unsigned char* do_close( TEE_Result policy_res, size_t *new_len, 
+unsigned char* do_close( TEE_Result policy_res, size_t *cap_to_write_len, 
                          bool flush_flag ) {
     TEE_Result      res = TEE_SUCCESS;
-    unsigned char  *unencrypted, *encrypted_file, *encrypted_data, *data, *kvstore;
-    size_t          datalen, 
-                    encrypt_len,
-                    kv_len,
-                    plt_len,
-                    total_len = 0,
-                    hlen = HASH_LEN;
-    int             last = 0, 
-                    init_ctr = 0;
-    unsigned char   hash[HASH_LEN];
+
+    unsigned char  *concatenated_data,  // Holds the concatenated data (policy, kv, log, data)
+                   *encrypted_data,     // encrypted version of concatenated data
+                   *cap_to_write,       // header + encrypted contents to write
+                   *data,               // capsule data (original data or shadow buf)
+                   *kvstore;            // key-value store string
+
+    size_t          datalen,            // length of data buffer
+                    encrypt_len,        // length of concatenated and encrypted buffers
+                    kv_len = 0,         // length of kv string
+                    header_len,         // size of header
+                    hlen = HASH_LEN;    // length of hash (should be 32)
+
+    int             last = 0,           // current append spot in concat data
+                    init_ctr = 0;       // initial counter for hash
+
+    unsigned char   hash[HASH_LEN];     // new hash for encrypted data
 
     if (policy_res != TEE_SUCCESS) {
-        // Use data buffer
+        // If the policy did not pass, use data buffer
         data = cap_head.data_buf;
         datalen = cap_head.data_len;
     } else {
+        // If the policy passed, we need to use the requested write data
         data = cap_head.data_shadow_buf;
         datalen = cap_head.data_shadow_len;
     }
 
-    // Figure out how large to make the buffer
-    // MSG("Calculate length");
+    // Figure out how large to make the key-value store buffer
     for (unsigned int i = 0; i < cap_head.kv_store_len; i++) {
-        total_len += cap_head.kv_store_buf[i].key_len + 1; // Key + :
-        total_len += cap_head.kv_store_buf[i].val_len + 1; // Val + ;
+        kv_len += cap_head.kv_store_buf[i].key_len + 1; // Key + :
+        kv_len += cap_head.kv_store_buf[i].val_len + 1; // Val + ;
     }
 
-    // MSG("KV string remalloc with length: %d", total_len);
-    kvstore = TEE_Malloc(total_len, 0);
+    // Allocate space for the kv store string buffer
+    kvstore = TEE_Malloc(kv_len, 0);
 
-    // MSG("Serialize kv store: %p", kvstore);
-    serialize_kv_store(kvstore, total_len);
-    // MSG("done serialize kv store %p", kvstore);
+    // Serialize the kv struct array into a string
+    serialize_kv_store(kvstore, kv_len);
 
     // Calculate lengths
-    kv_len = strlen( (char*) kvstore);
     encrypt_len = cap_head.policy_len + cap_head.log_len + 
                   kv_len + datalen + DELIMITER_SIZE*3 - 3;
-    plt_len = sizeof(cap_head.header);
-    *new_len = encrypt_len + plt_len;
-    // MSG("Lengths (%u, %u, %u)", encrypt_len, plt_len, *new_len);
+    header_len = sizeof(cap_head.header);
+    *cap_to_write_len = encrypt_len + header_len;
 
+    // Allocate buffer to fit new capsule
+    cap_to_write = TEE_Malloc( *cap_to_write_len, 0 );
 
-    // Reallocate buffer to fit new file (contains plaintext header and 
-    // encrypted data)
-    // MSG("Allocating encrypted_file with size %d", *new_len);
-    encrypted_file = TEE_Malloc( *new_len, 0 );
-    // MSG("encrypted_file %p", encrypted_file);
-
-    // MSG("Allocating unencrypted with size %d", encrypt_len);
-    // Allocate buffer to hold encrypted data
-    unencrypted = TEE_Malloc( encrypt_len, 0 );
+    // Allocate buffer to hold concatenated data and encrypted data
+    concatenated_data = TEE_Malloc( encrypt_len, 0 );
     encrypted_data = TEE_Malloc(encrypt_len, 0);
 
-    // Concatenate all the buffers for encryption
-    // MSG("Moving %d of policy to %d", cap_head.policy_len - 1, last);
-    TEE_MemMove(unencrypted, cap_head.policy_buf, cap_head.policy_len - 1);
+    // Concatenate all the buffers for encryption. Subtract 1 from the policy,
+    // k-v store, and log length (removes their null terminators).
+    TEE_MemMove(concatenated_data, cap_head.policy_buf, cap_head.policy_len - 1);
     last += cap_head.policy_len - 1;
-    // MSG("Moving %d of delimiter to %d", DELIMITER_SIZE, last);
-    TEE_MemMove(unencrypted + last, DELIMITER, DELIMITER_SIZE);
+    TEE_MemMove(concatenated_data + last, DELIMITER, DELIMITER_SIZE);
     last += DELIMITER_SIZE;
-    // MSG("Moving %d of kv store to %d", kv_len - 1, last);
-    TEE_MemMove(unencrypted + last, kvstore, kv_len - 1);
+    TEE_MemMove(concatenated_data + last, kvstore, kv_len - 1);
     last += kv_len - 1;
-    // MSG("Moving %d of delimiter to %d", DELIMITER_SIZE, last);
-    TEE_MemMove(unencrypted + last, DELIMITER, DELIMITER_SIZE);
+    TEE_MemMove(concatenated_data + last, DELIMITER, DELIMITER_SIZE);
     last += DELIMITER_SIZE;
-    // MSG("Moving %d of log to %d", cap_head.log_len - 1, last);
-    TEE_MemMove(unencrypted + last, cap_head.log_buf, cap_head.log_len - 1);
+    TEE_MemMove(concatenated_data + last, cap_head.log_buf, cap_head.log_len - 1);
     last += cap_head.log_len - 1;
-    // MSG("Moving %d of delimiter to %d", DELIMITER_SIZE, last);
-    TEE_MemMove(unencrypted + last, DELIMITER, DELIMITER_SIZE);
+    TEE_MemMove(concatenated_data + last, DELIMITER, DELIMITER_SIZE);
     last += DELIMITER_SIZE;
-    // MSG("Moving %d of data to %d", datalen, last);
-    TEE_MemMove(unencrypted + last, data, datalen);
+    TEE_MemMove(concatenated_data + last, data, datalen);
     last += datalen;
 
-    unencrypted[last] = '\0';
+    // Make sure the concatenated_data string ends with a null terminator
+    concatenated_data[last] = '\0';
 
-    // MSG("end size: %d", last);
-    // MSG("Log: %s", cap_head.log_buf);
-    // MSG("strlen(log): %d, log_len: %d", strlen(cap_head.log_buf), cap_head.log_len);
-
-    // MSG("Unencrypted data: %s", unencrypted + datastart);
-
-    // Encrypt the data into the file (leaving room for the header)
-    // MSG("Encrypt data (%u, %lu, %d)", symm_iv, symm_iv_len, init_ctr);
-    res = process_aes_block(unencrypted, encrypt_len, encrypted_data, 
+    // Encrypt the data into a temp string (encrypted_data)
+    res = process_aes_block(concatenated_data, encrypt_len, encrypted_data, 
                             &encrypt_len, symm_iv, symm_iv_len, init_ctr, true,
                             true, encrypt_op);
-
-    // TODO: add error handling
-    // Update header hash values and size
-    // MSG("Hash everything");
-    res = hash_block(encrypted_data, encrypt_len, hash, hlen, true, hash_op);
     if( res != TEE_SUCCESS ) {
-        MSG( "hash_block() Error" );
+        MSG( "process_aes_block() Error" );
         return NULL;
     }
 
-    for (unsigned int i = 0; i < hlen; i++) {
-        if (cap_head.header.hash[i] != hash[i]) {
-            MSG("%d: %02x != %02x", i, cap_head.header.hash[i], hash[i]);
-        }
+    // TODO: add better error handling
+    // Update header hash values and size
+    res = hash_block(encrypted_data, encrypt_len, hash, hlen, true, hash_op);
+    if( res != TEE_SUCCESS ) {
+        DMSG( "hash_block() Error" );
+        return NULL;
     }
+
+    // TA side check for no-op capsule (i.e., hash should not change)    
+    // for (unsigned int i = 0; i < hlen; i++) {
+    //     if (cap_head.header.hash[i] != hash[i]) {
+    //         DMSG("%d: %02x != %02x", i, cap_head.header.hash[i], hash[i]);
+    //     }
+    // }
 
     TEE_MemMove(&cap_head.header.hash, hash, hlen);
 
 
     // Fill in the new header
-    // MSG("Fill header");
     res = fill_header(&cap_head.header, encrypt_op, symm_iv, symm_iv_len, 
                       symm_id, hash, hlen, encrypt_len);
-
-    // Copy header over
-    // MSG("Copy header");
-    TEE_MemMove(encrypted_file, &cap_head.header, plt_len);
-
-    // MSG("Copying encrypted data");
-    TEE_MemMove(encrypted_file + plt_len, encrypted_data, encrypt_len);
-
     if( res != TEE_SUCCESS ) {
-        MSG( "process_aes_block() Error" );
+        MSG( "fill_header() Error" );
         return NULL;
     }
+
+    // Copy header to write buffer
+    TEE_MemMove(cap_to_write, &cap_head.header, header_len);
+
+    // Append encrypted data to write buffer
+    TEE_MemMove(cap_to_write + header_len, encrypted_data, encrypt_len);
 
     if (!flush_flag) {
         // If we are not just flushing, decrease the reference count
@@ -270,11 +262,8 @@ unsigned char* do_close( TEE_Result policy_res, size_t *new_len,
         finalize_capsule_text(&cap_head);
     }
 
-    // MSG("Free kvstore");
-    // TEE_Free(kvstore);
-
-    // MSG("returning");
-    return encrypted_file;
+    // Return the capsule to write
+    return cap_to_write;
 }
 
 /* Run the Lua policy function - if the policy was changed,

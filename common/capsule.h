@@ -17,7 +17,7 @@
 
 #define MAX_NUM_KEYS    10          // Maximum number of keys in the capsule key value store
 
-#define SHARED_MEM_SIZE BUFFER_SIZE // Used in tests
+#define SHARED_MEM_SIZE BUFFER_SIZE*4 // Used in tests
 
 #define DELIMITER "\n----\n"
 #define DELIMITER_SIZE 6

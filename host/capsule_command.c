@@ -131,22 +131,17 @@ TEEC_Result capsule_open( TEEC_Session *sess, TEEC_SharedMemory *in,
     TEEC_Operation op;
     TEEC_Result    res = TEEC_SUCCESS;
 
-    // printf("Clearing memory...\n");
     // Clear out memory
     memset( &op, 0, sizeof( TEEC_Operation ) );
     memset( in->buffer, 0, in->size );
     memset( inout->buffer, 0, inout->size );
 
-    // printf("Writing memory... (%d, %d)\n", name_len, file_len);
     // Copy data to shared buffers
     memcpy( in->buffer, filename, name_len );
     memcpy( inout->buffer, contents, file_len );
 
-    // printf("Setting up the parameters...\n");
-    /*
-     * Not sure if the partial is necessary or even advantageous considering
-     * we are not combining shared memory. 
-     */
+    // Not sure if the partial is necessary or even advantageous considering
+    // we are not combining shared memory. 
     op.paramTypes = TEEC_PARAM_TYPES( TEEC_MEMREF_PARTIAL_INPUT, // Filename
                                       TEEC_MEMREF_PARTIAL_INOUT, // File contents
                                       TEEC_NONE,
@@ -162,23 +157,17 @@ TEEC_Result capsule_open( TEEC_Session *sess, TEEC_SharedMemory *in,
     op.params[1].memref.offset = 0;
     op.params[1].memref.size = file_len;
 
-    // printf("Invoking command\n");
     // Invoke the command
     res = TEEC_InvokeCommand( sess, CAPSULE_OPEN, &op, 
                               &ret_orig );
     
     if( res == TEEC_SUCCESS ) {
-        // printf("Inout length: %u\n", op.params[1].memref.size);
         *decrypted_len = op.params[1].memref.size;
-        // printf("Remallocing decrypted_contents\n");
         decrypted_contents = realloc(decrypted_contents, *decrypted_len + 1);
         if ( decrypted_contents != NULL ) {
-            // printf("Inout->buffer: %.*s", op.params[1].memref.size, (char*) inout->buffer);
             memset(decrypted_contents, 0, *decrypted_len);
             memcpy( decrypted_contents, inout->buffer, *decrypted_len );
             decrypted_contents[*decrypted_len] = '\0';
-            // printf("Decrypted_contents: %.*s", *decrypted_len, decrypted_contents);
-            // printf("Decrypted_contents location: %p\n", &decrypted_contents);
         } else {
             *decrypted_len = 0;
             res = TEEC_ERROR_OUT_OF_MEMORY;
@@ -224,22 +213,12 @@ TEEC_Result capsule_close( TEEC_Session *sess, bool flush, char* contents,
     res = TEEC_InvokeCommand( sess, CAPSULE_CLOSE, &op, &ret_orig );
 
     if( res == TEEC_SUCCESS ) {
-        // printf("outsize: %d\n", op.params[2].memref.size);
         *out_size = op.params[2].memref.size;
         new_contents = realloc(new_contents, *out_size);
         if ( new_contents != NULL ) {
-            // printf("out->buffer: %.*s\n", op.params[2].memref.size, (char*) out->buffer);
             memset(new_contents, 0, *out_size);
             memcpy( new_contents, out->buffer, *out_size );
             new_contents[*out_size] = '\0';
-
-            // PRINT_INFO("new contents: ");
-            // for( int i = 0; i < *out_size; i++ ) {
-            //     PRINT_INFO( "%02x", new_contents[i] );
-            // }
-            // PRINT_INFO("\n");
-            // printf("New_contents: %.*s\n", *out_size, new_contents);
-            // printf("New_contents location: %p\n", &new_contents);
         } else {
             *out_size = 0;
             res = TEEC_ERROR_OUT_OF_MEMORY;

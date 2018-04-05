@@ -26,26 +26,37 @@ TEEC_Result test_03() {
     char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
     FILE           *fp = NULL;
     char           *encrypted_data, 
-                   *read_data = malloc(4096), 
-                   *write_data = malloc(4096), 
+                   *read_data,
+                   *write_data,
                    *decrypted_data,
                    *plain_text_data;
     uint32_t        encrypt_len = 0, 
                     read_len = 0, 
-                    write_len = 4096, // size of out buffer
+                    write_len = SHARED_MEM_SIZE,
                     decrypt_len = 0,
                     plt_len = 0;
-    int             i = 0, test_num = 3;
+    int             i = 0, 
+                    test_num = 3;
 
     // Need 4096 for test capsule (2013 bytes large encrypted, w/o log expansion)
-    TEEC_SharedMemory in_mem = { .size = 4096,
+
+    if (SHARED_MEM_SIZE < 500) {
+        res = TEEC_ERROR_GENERIC;
+        CHECK_RESULT( res, "test_%02d: SHARED_MEM_SIZE must be greater than 500"
+                           " for this test to run. It is %d", test_num, 
+                           SHARED_MEM_SIZE);
+    }
+
+    TEEC_SharedMemory in_mem = { .size = SHARED_MEM_SIZE,
                                  .flags = TEEC_MEM_INPUT, };
-    TEEC_SharedMemory inout_mem = { .size = 4096,
+    TEEC_SharedMemory inout_mem = { .size = SHARED_MEM_SIZE,
                                     .flags = TEEC_MEM_INPUT | TEEC_MEM_OUTPUT, };
-    TEEC_SharedMemory out_mem = { .size = 4096,
+    TEEC_SharedMemory out_mem = { .size = SHARED_MEM_SIZE,
                                   .flags = TEEC_MEM_OUTPUT, };
 
-    // printf("Setting up everything and opening session.\n");
+    read_data = malloc(SHARED_MEM_SIZE);
+    write_data = malloc(SHARED_MEM_SIZE);
+
     res = initializeContext( &ctx ) ;
     CHECK_RESULT( res, "test_%02d: initializeContext() failed", test_num );
 
@@ -62,7 +73,6 @@ TEEC_Result test_03() {
     res = openSession( &ctx, &sess, &uuid );
     CHECK_RESULT( res, "test_%02d: openSession() sess failed", test_num );
 
-    // printf("Reading %s contents\n", capsule);
     // Read in the capsule contents
     fp = fopen(capsule, "rb");
     fseek(fp, 0, SEEK_END);
@@ -75,7 +85,6 @@ TEEC_Result test_03() {
 
     encrypted_data[encrypt_len] = '\0';
 
-    // printf("Reading %s contents\n", ptx);
     // Read in data contents
     fp = fopen(ptx, "rb");
     fseek(fp, 0, SEEK_END);
@@ -88,63 +97,39 @@ TEEC_Result test_03() {
 
     plain_text_data[plt_len] = '\0';
 
-    // printf("Calling capsule open\n");
     res = capsule_open( &sess, &in_mem, &inout_mem, capsule, sizeof(capsule),
                         encrypted_data, encrypt_len, read_data, &read_len );
     CHECK_RESULT( res, "test_%02d: capsule_open() of capsule %s failed", 
                         test_num, capsule );
 
-    // printf("Copying to decrypted_data (size %d)\n", read_len);
     decrypted_data = malloc(read_len);
-    // printf("Read_data location: %p\n", &read_data);
     memset(decrypted_data, 0, read_len);
-    // printf("Data read: %.*s\n", read_len, read_data);
     memcpy(decrypted_data, read_data, read_len);
     decrypt_len = read_len;
-    // printf("Decrypted read: %.*s\n", decrypt_len, decrypted_data);
 
-    // printf("Comparing length (%d, %d)\n", strlen(decrypted_data), plt_len);
     // Compare decrypted data with plaintext data
     COMPARE_LEN( test_num, 1, read_len, plt_len );
 
-    // printf("Comparing data\n");
     COMPARE_TEXT( test_num, 1, i, decrypted_data, plain_text_data, read_len );
 
-    // printf("Calling close for %s\n", capsule);
     res = capsule_close( &sess, false, decrypted_data, decrypt_len, &in_mem,
                          &out_mem, &write_len, write_data );
     CHECK_RESULT( res, "test_%02d: capsule_close() %s failed", test_num,
                   capsule );
 
-    // printf("Write_data location: %p\n", &write_data);
-
-    // PRINT_INFO("Write data: ");
-    // for( int i = 0; i < write_len; i++ ) {
-    //     PRINT_INFO( "%02x", write_data[i] );
-    // }
-    // PRINT_INFO("\n");
-
     // Compare write data with encrypted data. 
-    // TODO: cannot compare byte wise because the log and KV store could be
-    //       changed. Unless we restrict this test to a no-op capsule.
-    // printf("Comparing length (%d, %d)\n", write_len, encrypt_len);
     COMPARE_LEN( test_num, 2, write_len, encrypt_len );
-    // printf("Comparing data\n");
     COMPARE_CAPSULE( test_num, 2, i, encrypted_data, write_data, write_len );
 
-
-    // printf("Closing session\n");
     res = closeSession( &sess );
     CHECK_RESULT( res, "test_%02d: closeSession() failed", test_num );
 
-    // printf("Freeing shared memory\n");
     res = freeSharedMem( &in_mem );
     CHECK_RESULT( res, "test_%02d: freeSharedMem() in_mem failed", test_num );
 
     res = freeSharedMem( &out_mem );
     CHECK_RESULT( res, "test_%02d: freeSharedMem() out_mem failed", test_num );
     
-    // printf("Finalizing context\n");
     res = finalizeContext( &ctx );
     CHECK_RESULT( res, "test_%02d: finalizeContext() failed", test_num );
 

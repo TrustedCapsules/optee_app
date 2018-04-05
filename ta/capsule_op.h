@@ -12,7 +12,8 @@ TEE_Result do_register_aes( uint32_t keyType, uint32_t id, uint32_t chSize,
  * Capsule operations
  */
 TEE_Result do_open( unsigned char* contents, int size );
-unsigned char* do_close( TEE_Result res, size_t* new_len, bool flush_flag );
+unsigned char* do_close( TEE_Result res, size_t* cap_to_write_len,
+						 bool flush_flag );
 
 /*
  * Policy operations

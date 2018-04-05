@@ -29,7 +29,6 @@ TEE_Result register_aes_key( uint32_t param_type,
     
     return do_register_aes( params[0].value.a, 
                             params[1].value.a,
-                            // params[1].value.b, 
                             params[0].value.b,
                             params[2].memref.buffer, 
                             params[2].memref.size,
@@ -59,9 +58,8 @@ TEE_Result set_state( uint32_t param_type,
                                         TEE_DATA_FLAG_ACCESS_WRITE |
                                         TEE_DATA_FLAG_ACCESS_WRITE_META,    
                                         &stateFile );
-        //MSG( "Opening statefile..." );
         if( res == TEE_ERROR_ITEM_NOT_FOUND ) {
-            //MSG( "First activation...creating state file...0x%08x", params[2].value.a );
+            DMSG( "First activation...creating state file...0x%08x", params[2].value.a );
             res = TEE_CreatePersistentObject( TEE_STORAGE_PRIVATE,
                                               &params[2].value.a, sizeof( uint32_t ),
                                               TEE_DATA_FLAG_ACCESS_READ | 
@@ -69,24 +67,19 @@ TEE_Result set_state( uint32_t param_type,
                                               TEE_DATA_FLAG_ACCESS_WRITE_META,
                                               0, NULL, 0, &stateFile );
             CHECK_GOTO( res, set_state_exit, "TEE_CreatePersistentObject() Error" );
-            //MSG( "State file...0x%08x created", params[2].value.a );
+            DMSG( "State file...0x%08x created", params[2].value.a );
         } else {
-            //MSG( "In check go to" );
             CHECK_GOTO( res, set_state_exit, "TEE_OpenPersistentObject() Error" );
         }
     }
 
-    //MSG( "Calling do_set_state" );
     res = do_set_state( params[0].memref.buffer, params[0].memref.size, 
                         params[1].memref.buffer, params[1].memref.size );
 set_state_exit:
-    //MSG( "set_state_exit" );
     if( close_after ) {
-        //MSG( "In close_after" );
         TEE_CloseObject( stateFile );
         stateFile = TEE_HANDLE_NULL;
     }
-    //MSG( "returning" );
     return res;
 
 }
@@ -114,7 +107,7 @@ TEE_Result get_state( uint32_t param_type,
                                         TEE_DATA_FLAG_ACCESS_WRITE_META,
                                         &stateFile );
         if( res == TEE_ERROR_ITEM_NOT_FOUND ) {
-            MSG( "First activation...creating state file...%x", params[2].value.a );
+            DMSG( "First activation...creating state file...%x", params[2].value.a );
             res = TEE_CreatePersistentObject( TEE_STORAGE_PRIVATE,
                                               &params[2].value.a, sizeof( uint32_t ),
                                               TEE_DATA_FLAG_ACCESS_READ | 
@@ -122,7 +115,7 @@ TEE_Result get_state( uint32_t param_type,
                                               TEE_DATA_FLAG_ACCESS_WRITE_META,
                                               0, NULL, 0, &stateFile );
             CHECK_GOTO( res, get_state_exit, "TEE_CreatePersistentObject() Error" );
-            MSG( "State file...%x created", params[2].value.a );
+            DMSG( "State file...%x created", params[2].value.a );
         } else {
             CHECK_GOTO( res, get_state_exit, "TEE_OpenPersistentObject() Error" );
         }
@@ -177,7 +170,6 @@ TEE_Result capsule_open( uint32_t param_type,
 
     // Create the file contents buffer
     file_len = params[1].memref.size + 1;
-    // MSG("Opening file with size %d", file_len);
     file_contents = TEE_Malloc( file_len, 0);
     TEE_MemMove( file_contents, params[1].memref.buffer, params[1].memref.size );
     file_contents[params[1].memref.size] = '\0';
@@ -231,26 +223,23 @@ TEE_Result capsule_open( uint32_t param_type,
         goto capsule_open_exit;
     }
 
-    // MSG("Copying over data to return param (len %d)", cap_head.data_shadow_len);
-    // MSG("Data: %.*s", cap_head.data_shadow_len, cap_head.data_shadow_buf);
     // Copy over shadow copy (policy can modify this buffer)
     // QUESTION: what happens if the buffer is bigger? Do we allow the policy to 
     //           add more data?
+    // If so, we should have a relloc on the buffer, not sure if that's possible?
     TEE_MemMove(params[1].memref.buffer, cap_head.data_shadow_buf, 
                 cap_head.data_shadow_len + 1); 
     params[1].memref.size = cap_head.data_shadow_len;
 
     // Increment reference counter for debugging
-    // MSG("Incrementing ref count");
     cap_head.ref_count++;
 
 capsule_open_exit:
     // Clean up malloc'd memory. File contents should have been copied
-    // into the capsule buffers.
-    // MSG("Freeing file_contents");
+    // into the capsule buffers. 
+    // NOTE: This throws a weird memory corruption error
     // TEE_Free(file_contents);
 
-    // MSG("return");
     return res;
 }
 
@@ -258,7 +247,7 @@ capsule_open_exit:
 TEE_Result capsule_close(uint32_t param_type, TEE_Param params[4]) {
 
     TEE_Result      res = TEE_SUCCESS;
-    unsigned char  *new_contents; // Create empty buffer
+    unsigned char  *new_contents;
     size_t          new_len = 0;
 
     if( capsule_name == NULL ) {
@@ -290,18 +279,14 @@ TEE_Result capsule_close(uint32_t param_type, TEE_Param params[4]) {
     // Construct the encrypted file and clear all buffers
     new_contents = do_close( res, &new_len, params[0].value.a );
 
-    // MSG("Copying over data to return param (len %d)", new_len);
-    // MSG("Data: %.*s", new_len, new_contents);
-
     // Setup return parameter with encrypted file
     TEE_MemMove(params[2].memref.buffer, new_contents, new_len);
-    // MSG("Setting size");
     params[2].memref.size = new_len;
 
     // Free allocated memory
+    // NOTE: this causes a memory corruption error when uncommented
     // TEE_Free(new_contents);
 
-    // MSG("returning");
     return res;
 }
 

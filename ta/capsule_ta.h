@@ -20,7 +20,6 @@ extern uint32_t 			symm_id;
 extern uint8_t         	   *symm_iv;
 extern uint32_t         	symm_iv_len;
 extern uint32_t         	symm_key_len;
-extern uint32_t             symm_chunk_size;
 extern bool                 aes_key_setup;
 
 /* Trusted Capsule file information */

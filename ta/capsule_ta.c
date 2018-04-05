@@ -23,7 +23,6 @@ uint32_t                symm_id = 0;
 uint8_t                *symm_iv = NULL;
 uint32_t                symm_iv_len = 0;
 uint32_t                symm_key_len = 0;
-uint32_t                symm_chunk_size = 0;
 bool                    aes_key_setup = false;
 
 /* Trusted Capsule file information */

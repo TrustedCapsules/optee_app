@@ -74,28 +74,6 @@ TEEC_Result pack_attrs( const TEE_Attribute *attrs,
 	return TEE_SUCCESS;
 }
 
-void create_rsa_key( TEEC_Operation *op, uint32_t max_key_size, 
-				     uint32_t key_type, TEE_Attribute *attrs, 
-					 size_t num_attrs, TEEC_SharedMemory* in ) {
-
-	uint8_t *buf = ( uint8_t* ) in->buffer;
-	size_t blen;
-
-	pack_attrs( attrs, num_attrs, buf, &blen, in->size );
-
-	op->params[0].value.a = key_type;
-	op->params[0].value.b = max_key_size;
-
-	op->params[1].memref.parent = in;
-	op->params[1].memref.offset = 0;
-	op->params[1].memref.size = blen;	
- 	
-	op->paramTypes = TEEC_PARAM_TYPES( TEEC_VALUE_INPUT, 
-		      						   TEEC_MEMREF_PARTIAL_INPUT,
-					  				   TEEC_NONE, TEEC_NONE );
-
-}
-
 void create_aes_key( TEEC_Operation *op, uint32_t max_key_size, 
 	                 uint32_t key_type, unsigned char* id, 
 					 TEE_Attribute *attrs, size_t num_attrs, 

@@ -173,10 +173,6 @@ void add_attr( size_t attr_count, TEE_Attribute *attrs,
 TEEC_Result pack_attrs( const TEE_Attribute *attrs, uint32_t attr_count,
 						uint8_t *buf, size_t *blen, size_t max_size );
 
-void create_rsa_key( TEEC_Operation *op, uint32_t max_key_size, 
-				     uint32_t key_type, TEE_Attribute *attrs, 
-					 size_t num_attrs, TEEC_SharedMemory* in );
-
 void create_aes_key( TEEC_Operation *op, uint32_t max_key_size, 
 				     uint32_t key_type, unsigned char* id, 
 					 TEE_Attribute *attrs, size_t num_attrs,

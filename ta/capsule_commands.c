@@ -29,7 +29,7 @@ TEE_Result register_aes_key( uint32_t param_type,
     
     return do_register_aes( params[0].value.a, 
                             params[1].value.a,
-                            params[1].value.b, 
+                            // params[1].value.b, 
                             params[0].value.b,
                             params[2].memref.buffer, 
                             params[2].memref.size,

@@ -100,7 +100,8 @@ void create_aes_key( TEEC_Operation *op, uint32_t max_key_size,
 	                 uint32_t key_type, unsigned char* id, 
 					 TEE_Attribute *attrs, size_t num_attrs, 
 					 uint8_t* iv, size_t iv_len, 
-					 TEEC_SharedMemory* in, uint32_t chunk_size ) {
+					 TEEC_SharedMemory* in//, uint32_t chunk_size 
+				    ) {
 	
 	uint8_t *buf = ( uint8_t* ) in->buffer;
 	size_t blen;
@@ -110,7 +111,7 @@ void create_aes_key( TEEC_Operation *op, uint32_t max_key_size,
 	op->params[0].value.a = key_type;
 	op->params[0].value.b = max_key_size;
 	op->params[1].value.a = * (uint32_t*) (void*) (id);
-	op->params[1].value.b = chunk_size;	
+	// op->params[1].value.b = chunk_size;	
 	op->params[2].memref.parent = in;
 	op->params[2].memref.offset = 0;
 	op->params[2].memref.size = blen;

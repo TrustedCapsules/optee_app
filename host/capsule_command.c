@@ -26,7 +26,7 @@ TEEC_Result freeSharedMem( TEEC_SharedMemory* mem ) {
 TEEC_Result register_aes_key( TEEC_Session *sess, unsigned char *id,
                               unsigned char *key, size_t keylen, 
                               unsigned char *iv, size_t ivlen, 
-                              uint32_t cSize, TEEC_SharedMemory *in ) {
+                              TEEC_SharedMemory *in ) {
     TEEC_Result    res;
     TEEC_Operation op;
     uint32_t       ret_orig;
@@ -42,7 +42,7 @@ TEEC_Result register_aes_key( TEEC_Session *sess, unsigned char *id,
     memset( in->buffer, 0, in->size ); 
     create_aes_key( &op, key_attr.content.ref.length * 8, 
                     TEE_TYPE_AES, id, &key_attr, 1, iv, ivlen, 
-                    in, cSize ); 
+                    in ); 
     res = TEEC_InvokeCommand( sess, CAPSULE_REGISTER_AES_KEY, &op, 
                               &ret_orig );
     

@@ -56,7 +56,7 @@ TEE_Result find_key( struct TrustedCap* h, TEE_ObjectHandle file,
                      TEE_OperationHandle* dec_op, TEE_OperationHandle* enc_op,
                      TEE_OperationHandle* sha_op,  uint32_t* gl_id, 
                      uint32_t* gl_iv_len, uint32_t* gl_key_len, 
-                     uint32_t* gl_chunk_size, uint8_t** gl_iv );
+                     uint8_t** gl_iv );
 
 /*
  * Header operations
@@ -65,7 +65,7 @@ TEE_Result fill_header( struct TrustedCap* cap, TEE_OperationHandle op,
                         uint8_t* iv, uint32_t iv_len, uint32_t id, 
                         unsigned char* hash, size_t hashlen, size_t fsize );
 void read_header( unsigned char* file_contents, struct TrustedCap* cap );
-int write_header( struct TrustedCap* cap );
+// int write_header( struct TrustedCap* cap );
 
 /*
  * Parsing operations

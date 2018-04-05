@@ -21,7 +21,7 @@ TEEC_Result finalizeContext( TEEC_Context *ctx );
 TEEC_Result register_aes_key( TEEC_Session *sess, unsigned char* id,
                               unsigned char* key, size_t keylen,
                               unsigned char* iv, size_t ivlen, 
-                              uint32_t cSize, TEEC_SharedMemory *in );
+                              TEEC_SharedMemory *in );
 
 /* State Operation */
 TEEC_Result capsule_set_state( TEEC_Session *sess, TEEC_SharedMemory *in, 

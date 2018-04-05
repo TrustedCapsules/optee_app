@@ -309,14 +309,14 @@ TEE_Result find_key( struct TrustedCap *h,
                      uint32_t *gl_id, 
                      uint32_t *gl_iv_len,
                      uint32_t *gl_key_len, 
-                     uint32_t *gl_chunk_size,
+                     // uint32_t *gl_chunk_size,
                      uint8_t **gl_iv ) {
     
     TEE_Result       res = TEE_SUCCESS;
     TEE_ObjectHandle handle = TEE_HANDLE_NULL;
     TEE_Attribute   *attrs = NULL;
     uint32_t         total_size, count, id, iv_len;
-    uint32_t         key_attr_len, key_len, chunk_size;
+    uint32_t         key_attr_len, key_len;//, chunk_size;
     uint32_t         attr_count, cap_id;
     uint8_t         *attr_buf = NULL, *it = NULL;
     uint8_t         *iv = NULL, *key_attr = NULL;
@@ -361,8 +361,8 @@ TEE_Result find_key( struct TrustedCap *h,
         it = attr_buf;
 
         // TODO: figure out where this order comes from. Maybe common/aes_keys.h
-        chunk_size = *(uint32_t*) (void*) it;
-        it += sizeof(uint32_t);
+        // chunk_size = *(uint32_t*) (void*) it;
+        // it += sizeof(uint32_t);
         key_len = *(uint32_t*) (void*) it;
         it += sizeof(uint32_t);
         id = *(uint32_t*) (void*) it;
@@ -423,7 +423,7 @@ TEE_Result find_key( struct TrustedCap *h,
             *gl_iv_len = iv_len;
             *gl_key_len = key_len;
             *gl_iv = TEE_Malloc( *gl_iv_len, 0 );
-            *gl_chunk_size = chunk_size;
+            // *gl_chunk_size = chunk_size;
             memcpy( *gl_iv, iv, iv_len );
             goto find_key_setup_keys;       
         }
@@ -507,18 +507,15 @@ TEE_Result fill_header( struct TrustedCap* cap,
 
 /* Read the TrustedCap header */
 void read_header( unsigned char* file_contents, struct TrustedCap* cap ) {
-    // Just copy the header size from the file contents into the struct
+    // Copy the header from the file contents into the struct
     memcpy( cap, file_contents, sizeof( struct TrustedCap ) );
-    // MSG("Header pad: %s\nHeader capsule size: %u\n", cap->pad, cap->capsize);
 }
 
 /* Write the TrustedCap header */
-int write_header( struct TrustedCap* cap ) {
-
-    memcpy(&cap_head.header, cap, sizeof(struct TrustedCap));
-
-    return 0;
-}
+// int write_header( struct TrustedCap* cap ) {
+//     memcpy(&cap_head.header, cap, sizeof(struct TrustedCap));
+//     return 0;
+// }
 
 void parse_kv_store( unsigned char* input, size_t inlen, 
                      struct capsule_text* cap ) {
@@ -534,97 +531,157 @@ void parse_kv_store( unsigned char* input, size_t inlen,
     unsigned char*  delim = (unsigned char*) ";";
     int             delim_len = strlen((char*) delim);
 
-    // MSG("Parsing KV pairs for [%s]", input);
-    // Parse into key value pairs
+    // First pass to parse into key value pairs
     do {
+        // Must set matched to false or find_delimiter will just return 0
         matched = false;
+
+        // Find the range at which the delimiter exists
         find_delimiter(input+last, inlen - last, &start, &end, &match_state, 
                        &matched, delim, delim_len);
 
+        // MAX_NUM_KEYS is a hack to avoid having to do two passes for KV pairs
+        // We could do away with MAX_NUM_KEYS and do one pass finding the number
+        // of delimiters, alloc the array, then fill it with the pairs. 
         if (total_num < MAX_NUM_KEYS) {
+            // Need to differentiate between all cases and the last case. 
             if (matched == true) {
+                // Since find_delimiter starts at input+last, start holds the
+                // size of the range (find_delimiter treats input+last as offset
+                // 0).
                 pairs[total_num] = TEE_Malloc(start * sizeof(unsigned char), 0);
+
+                // Copy over the range (starting at input+last and ending at 
+                // start) 
                 TEE_MemMove(pairs[total_num], input + last, start);
+
+                // Make sure it is null terminated, use start - 1 because we 
+                // want to get rid of the ';'
                 pairs[total_num][start - 1] = '\0';
+
+                // Advance the offset to check
                 last += end;
+
+                // Increment the total number of keys
                 total_num++;
             } else {
+                // This is a special case because it will not have a start and
+                // end value (because the match failed). So we assume it is the
+                // last range.
                 pairs[total_num] = TEE_Malloc((inlen - last) * sizeof(unsigned char), 0);
                 TEE_MemMove(pairs[total_num], input+last, (inlen - last));
+
+                // This removes the \n character
                 pairs[total_num][(inlen - last - 1)] = '\0';
+
+                // Increment the total number of keys
                 total_num++;
+
+                // Technically not necessary, as matched should equal false
                 break;
             }
         }
     } while(matched == true);
 
+    // Change the delimiter to the key, value pair delimiter
+    // Might want to think about making this a global variable
     delim = (unsigned char*) ":";
 
-    // MSG("Parsing each pair");
     // Parse each pair
     for (int i = 0; i < total_num; i++) {
+        // Get the length of the kv pair
         pair_len = strlen((char*) pairs[i]);
+
+        // Initialize the find_delimiter variables
         last = 0, start = 0, end = 0;
         matched = false;
 
         find_delimiter( pairs[i], pair_len, &start, &end, &match_state, 
                        &matched, delim, delim_len);
 
+        // Create memory for the key (size start)
         kv_store[i].key = TEE_Malloc(start * sizeof(unsigned char), 0);
-        TEE_MemMove(kv_store[i].key, pairs[i], start);
-        kv_store[i].key[start - 1] = '\0';
-        kv_store[i].key_len = strlen((char*) kv_store[i].key);
-        last += end;
 
+        // Copy the key (starting at pairs[i] with size start)
+        TEE_MemMove(kv_store[i].key, pairs[i], start);
+
+        // Null terminate the key (removing the delimiter)
+        kv_store[i].key[start - 1] = '\0';
+
+        // Update the key length
+        kv_store[i].key_len = strlen((char*) kv_store[i].key);
+
+        // Advance the offset and clear the matched variable
+        last += end;
         matched = false;
+
         find_delimiter( pairs[i]+last, pair_len - last, &start, &end, &match_state, 
                        &matched, delim, delim_len);
 
+        // Create memory for the value, since it doesn't have a delimiter,
+        // increase the size by one (for the null terminator)
         kv_store[i].value = TEE_Malloc((pair_len - last + 1) * sizeof(unsigned char), 0);
+
+        // Copy the value over (starting at pairs[i] + last with size pair_len -
+        // last)
         TEE_MemMove(kv_store[i].value, pairs[i] + last, (pair_len - last));
+        
+        // Null terminate the string
         kv_store[i].value[(pair_len - last)] = '\0';
+
+        // Update the length for value
         kv_store[i].val_len = strlen((char*) kv_store[i].value);
     }
 
-    // MSG("Mallocing kv_store_buf");
+    // Malloc the space for the array of KV pairs
     cap->kv_store_buf = TEE_Malloc(sizeof(struct kv_pair) * total_num, 0); // Allocate memory
-    // MSG("Moving memory");
+    
+    // Copy the temp array into the global one
     TEE_MemMove(cap->kv_store_buf, kv_store, sizeof(struct kv_pair) * total_num);
-    // MSG("Updating number of entries");
+    
+    // Update the number of items
     cap->kv_store_len = total_num;
 }
 
 void serialize_kv_store( unsigned char* kv_string, size_t total_len ) {
     int last = 0;
 
-    // MSG("Combine into string");
+    // Iterate through the list of key value pairs to create a string
     for (unsigned int i = 0; i < cap_head.kv_store_len; i++) {
+        // Size the kv pair string (key_len, val_len, 1 for ':', 1 for ';', and
+        // one for \0)
         int str_len = cap_head.kv_store_buf[i].key_len + 1 + 
-                      cap_head.kv_store_buf[i].val_len + 1 + 1; // +1 for delimiter + null
+                      cap_head.kv_store_buf[i].val_len + 1 + 1;
+
+        // Temp string
         char temp[str_len];
-        // MSG("Adding key: %s and value: %s\n", cap_head.kv_store_buf[i].key,
-        //     cap_head.kv_store_buf[i].value);
+
+        // Format the values into our temp string
         snprintf( temp, str_len, "%s:%s;", 
                  cap_head.kv_store_buf[i].key, cap_head.kv_store_buf[i].value);
-        // MSG("temp: %s", temp);
+        
+        // Copy the temp string into our final string
         TEE_MemMove(kv_string + last, temp, str_len);
-        // MSG("String so far: %s", kv_string);
-        last += str_len - 1; // don't want to include null character
+        
+        // Increase the offset, but subtract one to overwrite the null terminator
+        last += str_len - 1;
     }
 
-    kv_string[total_len] = '\0'; // Add null terminator at end
-    // MSG("End result: %s", kv_string);
-    // MSG("end ptr: %p", kv_string);
+    // Add null terminator at end
+    kv_string[total_len] = '\0';
 }
 
 /*
- * Finds the delimiter in a string
+ * Finds the delimiter in a string.
+ * The range given doesn't quite work for single character delimiters. See the
+ * kv parsing for how to use this with single character delimiters.
  */ 
 void find_delimiter( unsigned char* buf, size_t blen, int* dstart, 
                      int* dend, unsigned int* state, bool *matched, 
                      unsigned char* delim, size_t dlen ) {
     unsigned int n = 0;
 
+    // I'm not sure why this is here...
     if( *matched == true ) {
         *dstart = 0;
         *dend = 0;
@@ -660,34 +717,46 @@ void find_delimiter( unsigned char* buf, size_t blen, int* dstart,
 void sep_parts( unsigned char* input, size_t inlen, 
                 struct capsule_text* cap ) {
 
-    // Only four parts b/c the header is merged with the policy (no delimiter)
+    // Only four parts b/c we get input w/o header (policy, kv store, log, data)
     unsigned char  *parts[4];
-    int             last = 0, 
-                    index = 0, 
-                    start = 0, 
-                    end = 0;
+    int             last = 0,   // Offset tracker
+                    index = 0,  // Index of parts array
+                    start = 0,  // Start offset of delimiter (relative to input + last)
+                    end = 0;    // End offset of delimiter (relative to input + last)
     unsigned int    match_state = 0;
     bool            matched;
     unsigned char   delimiter[DELIMITER_SIZE] = DELIMITER;
 
-    // MSG("Parsing [%.*s] on delimiter [%s] with length [%u]", 10, input, delimiter, inlen);
+    // Loop to parse the parts
     do {
         matched = false;
         find_delimiter(input+last, inlen - last, &start, &end, &match_state, 
                        &matched, delimiter, DELIMITER_SIZE);
+
+        // We have a fixed number of capsule parts. 
+        // TODO: make 4 a global variable
         if (index < 4) {
             if (matched == true) {
+                // Create space for this part
                 parts[index] = TEE_Malloc(start * sizeof(unsigned char)+1, 0);
+
+                // Copy the data over
                 TEE_MemMove(parts[index], input + last, start);
-                // MSG("Part %d size: %d", index, start);
+
+                // Null terminate it
                 parts[index][start] = '\0';
+
+                // Move offset pointer forward
                 last += end;
+
+                // Increase the part array index
                 index++;
             } else {
+                // If we did not match, but still have parts left, this must be
+                // the last part.
                 parts[index] = TEE_Malloc((inlen - last) * sizeof(unsigned char)+1, 0);
                 TEE_MemMove(parts[index], input+last, (inlen - last));
                 parts[index][(inlen - last) * sizeof(unsigned char)] = '\0';
-                // MSG("Part %d size: %d", index, (inlen - last));
                 index++;
                 break;
             }
@@ -695,11 +764,14 @@ void sep_parts( unsigned char* input, size_t inlen,
     } while(matched == true);
 
     // Note you MUST + 1 to the sizes because of the added null character
+    // Set the policy length
     cap->policy_len = strlen((char *) parts[0]);
-    // MSG("policy len: %d", cap->policy_len);
+    // Create space, NOTE: you must +1 to include null terminator set in the loop
     cap->policy_buf = TEE_Malloc(cap->policy_len * sizeof(unsigned char) + 1, 0);
-    TEE_MemMove(cap->policy_buf, parts[0], cap->policy_len); // +1 to include \0
+    // Copy over the policy
+    TEE_MemMove(cap->policy_buf, parts[0], cap->policy_len);
 
+    // Pass the kv part to the parser
     parse_kv_store(parts[1], strlen((char *) parts[1]), cap);
 
     cap->log_len = strlen((char *) parts[2]);
@@ -710,16 +782,16 @@ void sep_parts( unsigned char* input, size_t inlen,
     cap->data_buf = TEE_Malloc(cap->data_len * sizeof(unsigned char) + 1, 0);
     TEE_MemMove(cap->data_buf, parts[3], cap->data_len);
 
-    // Copy data into the shadow buffer
+    // Copy data into the shadow buffer, this is used if the close policy fails
+    // so the close function can just write back the same capsule
     cap->data_shadow_buf = TEE_Malloc(cap->data_len * sizeof(unsigned char), 0);
     TEE_MemMove(cap->data_shadow_buf, cap->data_buf, cap->data_len);
     cap->data_shadow_len = cap->data_len;
 
-    // MSG("Freeing parts");
+    // Free the parts
     for (int i = 0; i < 4; i++) {
         TEE_Free(parts[i]);
     }
-    // MSG("Returning");
 }
 
 /* De-serialize the AES key */

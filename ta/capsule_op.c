@@ -14,7 +14,7 @@
 
 // TODO: remove chunksize
 TEE_Result do_register_aes( uint32_t keyType, uint32_t id, 
-                            uint32_t chSize, uint32_t keyLen, 
+                            uint32_t keyLen, 
                             uint8_t* attr, uint32_t attrlen,
                             uint8_t* iv, uint32_t ivlen ) {
 
@@ -47,25 +47,25 @@ TEE_Result do_register_aes( uint32_t keyType, uint32_t id,
 
         //total_size less size of total_size 
         *(uint32_t*) (void*) it = total_size - sizeof(uint32_t);
-        //MSG( "First 4 bytes: %u", *(uint32_t*)(void*) it );       
+        DMSG( "First 4 bytes: %u", *(uint32_t*)(void*) it );       
         it += sizeof(uint32_t);
 
         //chunk_size -- REMOVE
-        *(uint32_t*) (void*) it = chSize;
-        //MSG( "Second 4 bytes: %u", *(uint32_t*)(void*) it );
-        it += sizeof(uint32_t);
+        // *(uint32_t*) (void*) it = chSize;
+        // DMSG( "Second 4 bytes: %u", *(uint32_t*)(void*) it );
+        // it += sizeof(uint32_t);
 
         //key_len
         *(uint32_t*) (void*) it = keyLen;                
-        //MSG( "Second 4 bytes: %u", *(uint32_t*)(void*) it );       
+        DMSG( "Second 4 bytes: %u", *(uint32_t*)(void*) it );       
         it += sizeof(uint32_t);
         //key_id
         *(uint32_t*) (void*) it = id;               
-        //MSG( "Third 4 bytes: %08x", *(uint32_t*)(void*) it );    
+        DMSG( "Third 4 bytes: %08x", *(uint32_t*)(void*) it );    
         it += sizeof(uint32_t);
         //iv_size
         *(uint32_t*) (void*) it = ivlen;            
-        //MSG( "Fourth 4 bytes: %u", *(uint32_t*)(void*) it );      
+        DMSG( "Fourth 4 bytes: %u", *(uint32_t*)(void*) it );      
         it += sizeof(uint32_t);
         //iv
         memcpy( it, iv, ivlen );
@@ -109,7 +109,7 @@ TEE_Result do_open( unsigned char* file_contents, int file_size ) {
         if( aes_key_setup == false ) {
             res = find_key( &header, keyFile, &decrypt_op, &encrypt_op,
                             &hash_op, &symm_id, &symm_iv_len, &symm_key_len,
-                            &symm_chunk_size, &symm_iv );
+                            &symm_iv );
             CHECK_SUCCESS( res, "Find_key() Error" );   
             aes_key_setup = true;
         }

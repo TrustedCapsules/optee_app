@@ -38,8 +38,7 @@ TEEC_Result test_03() {
     int             i = 0, 
                     test_num = 3;
 
-    // Need 4096 for test capsule (2013 bytes large encrypted, w/o log expansion)
-
+    // Need 4096 for test capsule (489 bytes large encrypted, w/o log expansion)
     if (SHARED_MEM_SIZE < 500) {
         res = TEEC_ERROR_GENERIC;
         CHECK_RESULT( res, "test_%02d: SHARED_MEM_SIZE must be greater than 500"
@@ -127,6 +126,9 @@ TEEC_Result test_03() {
     res = freeSharedMem( &in_mem );
     CHECK_RESULT( res, "test_%02d: freeSharedMem() in_mem failed", test_num );
 
+    res = freeSharedMem( &inout_mem );
+    CHECK_RESULT( res, "test_%02d: freeSharedMem() inout_mem failed", test_num );
+
     res = freeSharedMem( &out_mem );
     CHECK_RESULT( res, "test_%02d: freeSharedMem() out_mem failed", test_num );
     
@@ -179,7 +181,7 @@ TEEC_Result test_02() {
         res = register_aes_key( &sess, capsule_data_array[i].id,
                                 key_std, sizeof(key_std),
                                 iv_std, sizeof(iv_std), 
-                                capsule_data_array[i].chunk_size,
+                                // capsule_data_array[i].chunk_size,
                                 &in_mem );
         CHECK_RESULT( res, "test_%02d: register_aes_key() %s failed", test_num,
                            capsule_data_array[i].str );

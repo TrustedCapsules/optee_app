@@ -4,7 +4,7 @@
 /*
  * For testing, registers the capsule keys
  */
-TEE_Result do_register_aes( uint32_t keyType, uint32_t id, uint32_t chSize, 
+TEE_Result do_register_aes( uint32_t keyType, uint32_t id, 
 							uint32_t keyLen, uint8_t* attr, uint32_t attrlen, 
 							uint8_t* iv, uint32_t ivlen );
 

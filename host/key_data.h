@@ -181,5 +181,5 @@ void create_aes_key( TEEC_Operation *op, uint32_t max_key_size,
 				     uint32_t key_type, unsigned char* id, 
 					 TEE_Attribute *attrs, size_t num_attrs,
 					 uint8_t* iv, size_t iv_len, 
-					 TEEC_SharedMemory* in, uint32_t chunk_size );
+					 TEEC_SharedMemory* in );
 #endif /*KEY_DATA*/

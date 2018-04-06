@@ -48,5 +48,6 @@ TEE_Result do_set_state( unsigned char* key, uint32_t klen,
 						 unsigned char* val, uint32_t vlen );
 TEE_Result do_get_state( unsigned char* key, unsigned char* val, 
 						 uint32_t vlen );
+char* do_get_buffer( BUF_TYPE t, size_t *len, TEE_Result *res );
 
 #endif /* CAPSULE_OP_H */

@@ -119,6 +119,52 @@ TEEC_Result capsule_set_state( TEEC_Session *sess, TEEC_SharedMemory *in,
                          ret_orig );
 }
 
+/*
+ * Test command to get internal TA buffer. Should not be used outside of testing
+ * buf must be void* because we can get either char* (policy, log, data, 
+ * shadow_data) or struct kv_pair*. 
+ */
+TEEC_Result capsule_get_buffer( TEEC_Session *sess, TEEC_SharedMemory *out, 
+                                uint32_t *out_size, char* buf, BUF_TYPE t) {
+    uint32_t ret_orig;
+    TEEC_Operation op;
+    TEEC_Result res;
+
+    memset( &op, 0, sizeof( TEEC_Operation ));
+    memset( out->buffer, 0, out->size );
+
+    op.paramTypes = TEEC_PARAM_TYPES ( TEEC_VALUE_INPUT,            // Buf type
+                                       TEEC_MEMREF_PARTIAL_OUTPUT,  // Return buf
+                                       TEEC_NONE,
+                                       TEEC_NONE );
+
+    op.params[0].value.a = t;
+    op.params[1].memref.parent = out;
+    op.params[1].memref.offset = 0;
+    op.params[1].memref.size = *out_size;
+
+    res = TEEC_InvokeCommand( sess, CAPSULE_GET_BUFFER, &op, &ret_orig );
+
+    if( res == TEEC_SUCCESS ) {
+        *out_size = op.params[1].memref.size;
+        buf = realloc(buf, *out_size);
+        if (buf != NULL) {
+            memset(buf, 0, *out_size);
+            memcpy(buf, out->buffer, *out_size);
+            buf[*out_size] = '\0';
+            *out_size = *out_size - 1;
+        } else {
+            *out_size = 0;
+            res = TEEC_ERROR_OUT_OF_MEMORY;
+            ret_orig = TEEC_ORIGIN_API;
+        }
+    }
+
+    return check_result( res,"TEEC_InvokeCommand->CAPSULE_GET_BUFFER", 
+                         ret_orig );
+}
+
+
 /* Test command to decrypt a capsule into plain text. Given a filename,
  * it reads the file and outputs the data. 
  */

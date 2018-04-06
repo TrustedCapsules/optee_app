@@ -10,7 +10,7 @@ struct capsule_entry {
 	uint32_t 	   id;
 	uint8_t 	  *iv;
 	uint32_t	   iv_len;
-	uint32_t 	   chunk_size;
+	// uint32_t 	   chunk_size;
 	uint32_t       version;
 	int (*reply)( int, int, AMessage*, char* );
 };

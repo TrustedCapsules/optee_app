@@ -12,6 +12,228 @@
 #include "capsule_benchmark.h"
 #include "capsule_command.h"
 
+/*
+ * Testing to see if internal buffers are set correctly for the capsule.
+ */
+TEEC_Result test_08() {
+    TEEC_Result     res = TEEC_SUCCESS;
+    TEEC_Context    ctx;
+    TEEC_Session    sess;
+    TEEC_UUID       uuid = CAPSULE_UUID;
+    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
+    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
+    char            kv[] = "/etc/use_case_capsules/test_bio_ehrpatient.kvstore";
+    char            log[] = "/etc/use_case_capsules/test_bio_ehrpatient.log";
+    char            policy[] = "/etc/use_case_capsules/test_bio_ehrpatient.policy";
+    FILE           *fp = NULL;
+    char           *encrypted_data, 
+                   *read_data,
+                   *write_data,
+                   *plain_text_data,
+                   *kv_string_copy,
+                   *log_copy,
+                   *policy_copy,
+                   *buf;
+    uint32_t        encrypt_len = 0,
+                    buf_len = SHARED_MEM_SIZE, 
+                    read_len = 0, 
+                    write_len = SHARED_MEM_SIZE,
+                    plt_len = 0,
+                    kv_len = 0,
+                    log_len = 0,
+                    policy_len = 0;
+    int             i = 0,
+                    num = 1,        // test part 
+                    test_num = 8;
+
+    PRINT_INFO("test_%02d: internal buffer check using open and close\n",
+                test_num);
+
+    // Need 4096 for test capsule (489 bytes large encrypted, w/o log expansion)
+    if (SHARED_MEM_SIZE < 500) {
+        res = TEEC_ERROR_GENERIC;
+        CHECK_RESULT( res, "test_%02d: SHARED_MEM_SIZE must be greater than 500"
+                           " for this test to run. It is %d", test_num, 
+                           SHARED_MEM_SIZE);
+    }
+
+    TEEC_SharedMemory in_mem = { .size = SHARED_MEM_SIZE,
+                                 .flags = TEEC_MEM_INPUT, };
+    TEEC_SharedMemory inout_mem = { .size = SHARED_MEM_SIZE,
+                                    .flags = TEEC_MEM_INPUT | TEEC_MEM_OUTPUT, };
+    TEEC_SharedMemory out_mem = { .size = SHARED_MEM_SIZE,
+                                  .flags = TEEC_MEM_OUTPUT, };
+
+    read_data = malloc(SHARED_MEM_SIZE);
+    write_data = malloc(SHARED_MEM_SIZE);
+    buf = malloc(SHARED_MEM_SIZE);
+
+    res = initializeContext( &ctx ) ;
+    CHECK_RESULT( res, "test_%02d: initializeContext() failed", test_num );
+
+    res = allocateSharedMem( &ctx, &in_mem );
+    CHECK_RESULT( res, "test_%02d: allocateSharedMem() in_mem failed", 
+                       test_num);
+    res = allocateSharedMem( &ctx, &out_mem );
+    CHECK_RESULT( res, "test_%02d: allocateSharedMem() out_mem failed",
+                       test_num);
+    res = allocateSharedMem( &ctx, &inout_mem );
+    CHECK_RESULT( res, "test_%02d: allocateSharedMem() inout_mem failed",
+                       test_num);
+
+    res = openSession( &ctx, &sess, &uuid );
+    CHECK_RESULT( res, "test_%02d: openSession() sess failed", test_num );
+
+    // Read in the capsule contents
+    fp = fopen(capsule, "rb");
+    fseek(fp, 0, SEEK_END);
+    encrypt_len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    encrypted_data = malloc(encrypt_len + 1);
+    fread(encrypted_data, encrypt_len, 1, fp);
+    fclose(fp);
+
+    encrypted_data[encrypt_len] = '\0';
+
+    // Read in data contents
+    fp = fopen(ptx, "rb");
+    fseek(fp, 0, SEEK_END);
+    plt_len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    plain_text_data = malloc(plt_len + 1);
+    fread(plain_text_data, plt_len, 1, fp);
+    fclose(fp);
+
+    plain_text_data[plt_len] = '\0';
+
+    // Read in kvstore string
+    fp = fopen(kv, "rb");
+    fseek(fp, 0, SEEK_END);
+    kv_len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    kv_string_copy = malloc(kv_len + 1);
+    fread(kv_string_copy, kv_len, 1, fp);
+    fclose(fp);
+
+    kv_string_copy[kv_len] = '\0';
+
+    // Read in log
+    fp = fopen(log, "rb");
+    fseek(fp, 0, SEEK_END);
+    log_len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    log_copy = malloc(log_len + 1);
+    fread(log_copy, log_len, 1, fp);
+    fclose(fp);
+
+    log_copy[log_len] = '\0';
+
+    // Read in policy
+    fp = fopen(policy, "rb");
+    fseek(fp, 0, SEEK_END);
+    policy_len = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    policy_copy = malloc(policy_len + 1);
+    fread(policy_copy, policy_len, 1, fp);
+    fclose(fp);
+
+    policy_copy[policy_len] = '\0';
+
+    // Open capsule
+    res = capsule_open( &sess, &in_mem, &inout_mem, capsule, sizeof(capsule),
+                        encrypted_data, encrypt_len, read_data, &read_len );
+    CHECK_RESULT( res, "test_%02d: capsule_open() of capsule %s failed", 
+                        test_num, capsule );
+
+    // Compare decrypted data with plaintext data
+    COMPARE_LEN( test_num, num, read_len, plt_len );
+    COMPARE_TEXT( test_num, num, i, read_data, plain_text_data, read_len );
+    num++;
+    /*
+     * Read in each buffer, check to see if it matches its copy
+     */
+
+    // Get policy buffer
+    res = capsule_get_buffer( &sess, &out_mem, &buf_len, buf, POLICY );
+    CHECK_RESULT( res, "test_%02d: capsule_get_buffer() of %d failed", test_num,
+                       POLICY );
+
+    COMPARE_LEN( test_num, num, buf_len, policy_len );
+    COMPARE_TEXT( test_num, num, i, buf, policy_copy, buf_len );
+    
+    // Prep everything for next test
+    // NOTE: a realloc is necessary because log is larger than kv store
+    // otherwise the realloc in the capsule_get_buffer does not work
+    num++;
+    memset(buf, 0, buf_len);
+    buf = realloc(buf, SHARED_MEM_SIZE);
+    buf_len = SHARED_MEM_SIZE;
+
+    // Get kv buffer
+    res = capsule_get_buffer( &sess, &out_mem, &buf_len, buf, KV_STRING );
+    CHECK_RESULT( res, "test_%02d: capsule_get_buffer() of %d failed", test_num,
+                       KV_STRING );
+
+    COMPARE_LEN( test_num, num, buf_len, kv_len );
+    COMPARE_TEXT( test_num, num, i, buf, kv_string_copy, buf_len );
+    
+    // Prep everything for next test
+    num++;
+    memset(buf, 0, buf_len);
+    buf = realloc(buf, SHARED_MEM_SIZE);
+    buf_len = SHARED_MEM_SIZE;
+
+    // Get log buffer
+    res = capsule_get_buffer( &sess, &out_mem, &buf_len, buf, LOG );
+    CHECK_RESULT( res, "test_%02d: capsule_get_buffer() of %d failed", test_num,
+                       LOG );
+
+    COMPARE_LEN( test_num, num, buf_len, log_len );
+    COMPARE_TEXT( test_num, num, i, buf, log_copy, buf_len );
+    
+    // Prep everything for next test
+    num++;
+    memset(buf, 0, buf_len);
+    buf_len = SHARED_MEM_SIZE;
+
+    //  Close capsule
+    res = capsule_close( &sess, false, read_data, read_len, &in_mem,
+                         &out_mem, &write_len, write_data );
+    CHECK_RESULT( res, "test_%02d: capsule_close() %s failed", test_num,
+                  capsule );
+
+    // Compare write data with encrypted data. 
+    COMPARE_LEN( test_num, num, write_len, encrypt_len );
+    COMPARE_CAPSULE( test_num, num, i, encrypted_data, write_data, write_len );
+    num++;
+
+    res = closeSession( &sess );
+    CHECK_RESULT( res, "test_%02d: closeSession() failed", test_num );
+
+    res = freeSharedMem( &in_mem );
+    CHECK_RESULT( res, "test_%02d: freeSharedMem() in_mem failed", test_num );
+
+    res = freeSharedMem( &inout_mem );
+    CHECK_RESULT( res, "test_%02d: freeSharedMem() inout_mem failed", test_num );
+
+    res = freeSharedMem( &out_mem );
+    CHECK_RESULT( res, "test_%02d: freeSharedMem() out_mem failed", test_num );
+    
+    res = finalizeContext( &ctx );
+    CHECK_RESULT( res, "test_%02d: finalizeContext() failed", test_num );
+
+    free(read_data);
+    free(write_data);
+
+    return res;
+
+}
+
 /* Test with multiple opens and closes of different no-op capsules.
  */
 TEEC_Result test_07() {
@@ -27,14 +249,18 @@ TEEC_Result test_07() {
     FILE           *fp = NULL;
     char           *encrypted_data1, 
                    *encrypted_data2, 
+                   *decrypted_data1, 
+                   *decrypted_data2, 
                    *read_data,
                    *write_data,
                    *plain_text_data1,
                    *plain_text_data2;
-    uint32_t        encrypt_len1 = 0, 
-                    encrypt_len2 = 0, 
+    uint32_t        encrypted_len1 = 0,
+                    encrypted_len2 = 0,
+                    decrypted_len1 = 0,
+                    decrypted_len2 = 0,
                     read_len = 0, 
-                    write_len = 10000, // Short story is 8547
+                    write_len = SHARED_MEM_SIZE, // Short story is 8547
                     plt_len1 = 0,
                     plt_len2 = 0;
     int             i = 0, 
@@ -43,23 +269,23 @@ TEEC_Result test_07() {
     PRINT_INFO("test_%02d: multiple capsules (open/close)\n",
                 test_num);
 
-    // Need 4096 for test capsule (489 bytes large encrypted, w/o log expansion)
-    if (SHARED_MEM_SIZE < 500) {
+    // Need 10000 for short story capsule
+    if (SHARED_MEM_SIZE < 1000) {
         res = TEEC_ERROR_GENERIC;
         CHECK_RESULT( res, "test_%02d: SHARED_MEM_SIZE must be greater than 500"
                            " for this test to run. It is %d", test_num, 
                            SHARED_MEM_SIZE);
     }
 
-    TEEC_SharedMemory in_mem = { .size = 10000,
+    TEEC_SharedMemory in_mem = { .size = SHARED_MEM_SIZE,
                                  .flags = TEEC_MEM_INPUT, };
-    TEEC_SharedMemory inout_mem = { .size = 10000,
+    TEEC_SharedMemory inout_mem = { .size = SHARED_MEM_SIZE,
                                     .flags = TEEC_MEM_INPUT | TEEC_MEM_OUTPUT, };
-    TEEC_SharedMemory out_mem = { .size = 10000,
+    TEEC_SharedMemory out_mem = { .size = SHARED_MEM_SIZE,
                                   .flags = TEEC_MEM_OUTPUT, };
 
-    read_data = malloc(10000);
-    write_data = malloc(10000);
+    read_data = malloc(SHARED_MEM_SIZE);
+    write_data = malloc(SHARED_MEM_SIZE);
 
     res = initializeContext( &ctx ) ;
     CHECK_RESULT( res, "test_%02d: initializeContext() failed", test_num );
@@ -85,14 +311,14 @@ TEEC_Result test_07() {
     // Read in the capsule contents
     fp = fopen(capsule, "rb");
     fseek(fp, 0, SEEK_END);
-    encrypt_len1 = ftell(fp);
+    encrypted_len1 = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    encrypted_data1 = malloc(encrypt_len1 + 1);
-    fread(encrypted_data1, encrypt_len1, 1, fp);
+    encrypted_data1 = malloc(encrypted_len1 + 1);
+    fread(encrypted_data1, encrypted_len1, 1, fp);
     fclose(fp);
 
-    encrypted_data1[encrypt_len1] = '\0';
+    encrypted_data1[encrypted_len1] = '\0';
 
     // Read in data contents
     fp = fopen(ptx, "rb");
@@ -109,14 +335,14 @@ TEEC_Result test_07() {
     // Read in the capsule contents
     fp = fopen(capsule2, "rb");
     fseek(fp, 0, SEEK_END);
-    encrypt_len2 = ftell(fp);
+    encrypted_len2 = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    encrypted_data2 = malloc(encrypt_len2 + 1);
-    fread(encrypted_data2, encrypt_len2, 1, fp);
+    encrypted_data2 = malloc(encrypted_len2 + 1);
+    fread(encrypted_data2, encrypted_len2, 1, fp);
     fclose(fp);
 
-    encrypted_data2[encrypt_len2] = '\0';
+    encrypted_data2[encrypted_len2] = '\0';
 
     // Read in data contents
     fp = fopen(ptx2, "rb");
@@ -132,23 +358,17 @@ TEEC_Result test_07() {
 
     // First read
     res = capsule_open( &sess, &in_mem, &inout_mem, capsule, sizeof(capsule),
-                        encrypted_data1, encrypt_len1, read_data, &read_len );
+                        encrypted_data1, encrypted_len1, read_data, &read_len );
     CHECK_RESULT( res, "test_%02d: first capsule_open() of capsule %s failed", 
                         test_num, capsule );
 
+    decrypted_data1 = malloc(read_len);
+    memcpy(decrypted_data1, read_data, read_len);
+    decrypted_len1 = read_len;
+
     // Compare decrypted data with plaintext data
-    COMPARE_LEN( test_num, 1, read_len, plt_len1 );
-    COMPARE_TEXT( test_num, 1, i, read_data, plain_text_data1, read_len );
-
-    // First close
-    res = capsule_close( &sess, false, read_data, read_len, &in_mem,
-                         &out_mem, &write_len, write_data );
-    CHECK_RESULT( res, "test_%02d: first capsule_close() %s failed", test_num,
-                  capsule );
-
-    // Compare write data with encrypted data. 
-    COMPARE_LEN( test_num, 2, write_len, encrypt_len1 );
-    COMPARE_CAPSULE( test_num, 2, i, encrypted_data1, write_data, write_len );
+    COMPARE_LEN( test_num, 1, decrypted_len1, plt_len1 );
+    COMPARE_TEXT( test_num, 1, i, decrypted_data1, plain_text_data1, decrypted_len1 );
 
     // Second read
     // NOTE: cannot memset for SHARED_MEM_SIZE b/c capsule_open realloc'd the
@@ -157,25 +377,39 @@ TEEC_Result test_07() {
     read_len = 0;
 
     res = capsule_open( &sess2, &in_mem, &inout_mem, capsule2, sizeof(capsule2),
-                        encrypted_data2, encrypt_len2, read_data, &read_len );
+                        encrypted_data2, encrypted_len2, read_data, &read_len );
     CHECK_RESULT( res, "test_%02d: second capsule_open() of capsule %s failed", 
                         test_num, capsule2 );
 
+    decrypted_data2 = malloc(read_len);
+    memcpy(decrypted_data2, read_data, read_len);
+    decrypted_len2 = read_len;
+
     // Compare decrypted data with plaintext data
-    COMPARE_LEN( test_num, 1, read_len, plt_len2 );
-    COMPARE_TEXT( test_num, 1, i, read_data, plain_text_data2, read_len );
+    COMPARE_LEN( test_num, 1, decrypted_len2, plt_len2 );
+    COMPARE_TEXT( test_num, 1, i, decrypted_data2, plain_text_data2, decrypted_len2 );
+
+    // First close
+    res = capsule_close( &sess, false, decrypted_data1, decrypted_len1, &in_mem,
+                         &out_mem, &write_len, write_data );
+    CHECK_RESULT( res, "test_%02d: first capsule_close() %s failed", test_num,
+                  capsule );
+
+    // Compare write data with encrypted data. 
+    COMPARE_LEN( test_num, 2, write_len, encrypted_len1 );
+    COMPARE_CAPSULE( test_num, 2, i, encrypted_data1, write_data, write_len );
     
     // Second close
     memset(write_data, 0, write_len);
-    write_len = 10000;
+    write_len = SHARED_MEM_SIZE;
 
-    res = capsule_close( &sess2, false, read_data, read_len, &in_mem,
+    res = capsule_close( &sess2, false, decrypted_data2, decrypted_len2, &in_mem,
                          &out_mem, &write_len, write_data );
     CHECK_RESULT( res, "test_%02d: second capsule_close() %s failed", test_num,
                   capsule2 );
 
     // Compare write data with encrypted data. 
-    COMPARE_LEN( test_num, 2, write_len, encrypt_len2 );
+    COMPARE_LEN( test_num, 2, write_len, encrypted_len2 );
     COMPARE_CAPSULE( test_num, 2, i, encrypted_data2, write_data, write_len );
 
     res = closeSession( &sess );
@@ -454,6 +688,12 @@ TEEC_Result test_05() {
     // Compare decrypted data with plaintext data
     COMPARE_LEN( test_num, 1, read_len, plt_len );
     COMPARE_TEXT( test_num, 1, i, read_data, plain_text_data, read_len );
+
+    // Clean up capsule state by closing again
+    res = capsule_close( &sess, false, read_data, read_len, &in_mem,
+                         &out_mem, &write_len, write_data );
+    CHECK_RESULT( res, "test_%02d: second capsule_close() %s failed", test_num,
+                  capsule );
 
     res = closeSession( &sess );
     CHECK_RESULT( res, "test_%02d: closeSession() failed", test_num );
@@ -912,9 +1152,6 @@ TEEC_Result test_01() {
     res = openSession( &ctx, &sess1, &uuid );
     CHECK_RESULT( res, "test_%02d: openSession() sess1 failed", test_num );
 
-    // Race condition with opening two sessions
-    sleep(3);
-
     res = openSession( &ctx, &sess2, &uuid );
     CHECK_RESULT( res, "test_%02d: openSession() sess2 failed", test_num );
     
@@ -1051,6 +1288,11 @@ int main(int argc, char *argv[]) {
 
         test_num = 7;
         res = test_07();
+        CHECK_RESULT( res, "test_%02d: failed", test_num );
+        PRINT_INFO( "test_%02d: passed\n", test_num );
+
+        test_num = 8;
+        res = test_08();
         CHECK_RESULT( res, "test_%02d: failed", test_num );
         PRINT_INFO( "test_%02d: passed\n", test_num );
     

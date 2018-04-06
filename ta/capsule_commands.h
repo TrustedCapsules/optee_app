@@ -12,13 +12,12 @@ TEE_Result register_aes_key( uint32_t param_type,
  */
 TEE_Result get_state( uint32_t param_type, TEE_Param params[4] );
 TEE_Result set_state( uint32_t param_type, TEE_Param params[4] );
+TEE_Result get_buffer( uint32_t param_type, TEE_Param params[4] );
 
 /*
  * Actual capsule operations
  */
 TEE_Result capsule_close( uint32_t param_type, TEE_Param params[4] );
-// TEE_Result capsule_create( uint32_t param_type, 
-// 				    	   TEE_Param params[4] );
 TEE_Result capsule_open( uint32_t param_type, TEE_Param params[4] );
 
 /*

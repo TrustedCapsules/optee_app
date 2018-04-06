@@ -139,28 +139,28 @@ void TA_CloseSessionEntryPoint(void *sess_ctx) {
     
     //MSG( "Closing Trusted Capsule %s session", capsule_name );
     
-    MSG( "\n   [e h s r p]            \n"
-         "%d: %llu %llu %llu %llu %llu\n" 
-         "%d: %llu %llu %llu %llu %llu\n" 
-         "%d: %llu %llu %llu %llu %llu\n" 
-         "%d: %llu %llu %llu %llu %llu\n"     
-         "%d: %llu %llu %llu %llu %llu\n",
-         0, timestamps[0].encryption, timestamps[0].hashing,
-         timestamps[0].secure_storage, timestamps[0].rpc_calls,
-         timestamps[0].policy_eval,
-         1, timestamps[1].encryption, timestamps[1].hashing,
-         timestamps[1].secure_storage, timestamps[1].rpc_calls,
-         timestamps[1].policy_eval,
-         2, timestamps[2].encryption, timestamps[2].hashing,
-         timestamps[2].secure_storage, timestamps[2].rpc_calls,
-         timestamps[2].policy_eval,
-         3, timestamps[3].encryption, timestamps[3].hashing,
-         timestamps[3].secure_storage, timestamps[3].rpc_calls,
-         timestamps[3].policy_eval,
-         4, timestamps[4].encryption, timestamps[4].hashing,
-         timestamps[4].secure_storage, timestamps[4].rpc_calls,
-         timestamps[4].policy_eval
-       );
+    // MSG( "\n   [e h s r p]            \n"
+    //      "%d: %llu %llu %llu %llu %llu\n" 
+    //      "%d: %llu %llu %llu %llu %llu\n" 
+    //      "%d: %llu %llu %llu %llu %llu\n" 
+    //      "%d: %llu %llu %llu %llu %llu\n"     
+    //      "%d: %llu %llu %llu %llu %llu\n",
+    //      0, timestamps[0].encryption, timestamps[0].hashing,
+    //      timestamps[0].secure_storage, timestamps[0].rpc_calls,
+    //      timestamps[0].policy_eval,
+    //      1, timestamps[1].encryption, timestamps[1].hashing,
+    //      timestamps[1].secure_storage, timestamps[1].rpc_calls,
+    //      timestamps[1].policy_eval,
+    //      2, timestamps[2].encryption, timestamps[2].hashing,
+    //      timestamps[2].secure_storage, timestamps[2].rpc_calls,
+    //      timestamps[2].policy_eval,
+    //      3, timestamps[3].encryption, timestamps[3].hashing,
+    //      timestamps[3].secure_storage, timestamps[3].rpc_calls,
+    //      timestamps[3].policy_eval,
+    //      4, timestamps[4].encryption, timestamps[4].hashing,
+    //      timestamps[4].secure_storage, timestamps[4].rpc_calls,
+    //      timestamps[4].policy_eval
+    //    );
 
     TEE_CloseObject( keyFile );
     TEE_CloseObject( stateFile );
@@ -188,7 +188,6 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx,
                                       uint32_t cmd_id,
                                       uint32_t param_type, 
                                       TEE_Param params[4]) {
-    
     UNUSED( sess_ctx );
 
     curr_ts = 5;
@@ -201,6 +200,8 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx,
         return set_state(param_type, params);
     case CAPSULE_GET_STATE:
         return get_state(param_type, params);
+    case CAPSULE_GET_BUFFER:
+        return get_buffer(param_type, params);
     // Actual capsule operations
     case CAPSULE_OPEN:
         curr_ts = 0;

@@ -1,6 +1,8 @@
 #ifndef CAPSULE_H
 #define CAPSULE_H
 
+#include <inttypes.h>
+
 #define CAPSULE_UUID { 0xffa39702, 0x9ce0, 0x47e0, \
     { 0xa1, 0xcb, 0x40, 0x48, 0xcf, 0xdb, 0x84, 0x7d} }
 
@@ -17,7 +19,7 @@
 
 #define MAX_NUM_KEYS    10          // Maximum number of keys in the capsule key value store
 
-#define SHARED_MEM_SIZE BUFFER_SIZE*4 // Used in tests
+#define SHARED_MEM_SIZE BUFFER_SIZE*10 // Used in tests - 10 KB buffer size
 
 #define DELIMITER "\n----\n"
 #define DELIMITER_SIZE 6
@@ -39,6 +41,13 @@ typedef enum {
     CUR,
     END
 } FILE_POS; 
+
+struct kv_pair {
+    uint32_t key_len;
+    uint32_t val_len;
+    char* key;
+    char* value;
+};
 
 struct TrustedCap {
     char          pad[11];      // bytes 0 - 11 
@@ -70,6 +79,7 @@ enum command {
     CAPSULE_REGISTER_AES_KEY,
     CAPSULE_SET_STATE,
     CAPSULE_GET_STATE,
+    CAPSULE_GET_BUFFER,
     CAPSULE_OPEN,
     CAPSULE_CLOSE,
     CAPSULE_OPEN_CONNECTION,
@@ -80,6 +90,14 @@ enum command {
     CAPSULE_RECV_HEADER,
     CAPSULE_RECV_PAYLOAD,
 };
+
+typedef enum {
+    POLICY,
+    KV_STRING,
+    LOG,
+    DATA,
+    DATA_SHADOW,
+} BUF_TYPE;
 
 struct benchmarking_ta {
     unsigned long long  encryption;

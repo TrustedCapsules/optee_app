@@ -132,6 +132,46 @@ get_state_exit:
     return res;
 }
 
+TEE_Result get_buffer( uint32_t param_type, TEE_Param params[4] ) {
+    TEE_Result res = TEE_SUCCESS;
+    char *buf;
+    size_t len;
+
+    ASSERT_PARAM_TYPE(
+            TEE_PARAM_TYPES( TEE_PARAM_TYPE_VALUE_INPUT,    // Buf type
+                             TEE_PARAM_TYPE_MEMREF_OUTPUT,  // Return buf
+                             TEE_PARAM_TYPE_NONE,
+                             TEE_PARAM_TYPE_NONE
+                            ) );
+
+    if( capsule_name == NULL )   {
+        res = TEE_ERROR_ITEM_NOT_FOUND;
+        CHECK_SUCCESS( res, "No capsule was previously opened" );
+    }
+
+    if (cap_head.ref_count == 0) {
+        res = TEE_ERROR_ITEM_NOT_FOUND;
+        CHECK_SUCCESS( res, "Capsule state already cleared" );
+    }
+
+    buf = do_get_buffer( (BUF_TYPE) params[0].value.a, &len, &res );
+
+    switch( (BUF_TYPE) params[0].value.a) {
+        case POLICY:
+        case KV_STRING:
+        case LOG: 
+        case DATA:
+        case DATA_SHADOW:
+            TEE_MemMove(params[1].memref.buffer, buf, len);
+            params[1].memref.size = len;
+            break;
+        default:
+            res = TEE_ERROR_NOT_SUPPORTED;
+    }
+
+    return res;
+}
+
 /* Opens a capsule for this TA session */
 TEE_Result capsule_open( uint32_t param_type, 
                          TEE_Param params[4] ) {

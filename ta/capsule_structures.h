@@ -1,13 +1,6 @@
 #ifndef STRUCTURE_H
 #define STRUCTURE_H
 
-struct kv_pair {
-    int key_len;
-    int val_len;
-    char* key;
-    char* value;
-};
-
 struct capsule_text {
     int                 ref_count;          // Number of times the capsule has been opened
 

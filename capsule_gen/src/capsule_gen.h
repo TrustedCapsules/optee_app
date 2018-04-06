@@ -6,7 +6,7 @@ void append_header( char* infile, char* outfile, unsigned char* aes_key,
 void strip_header( FILE* in, unsigned char* aes_key, 
 				   struct TrustedCap *h );
 void concatenate( char* datafile, char* policyfile, char* kvfile, char* ptx,
-                  char* datacopy, char* policycopy, char* kvstorecopy,
+                  char* datacopy, char* policycopy, char* kvstorecopy, char* logcopy,
                   char* keyname );
 int encrypt_file( char* ptx );
 int decrypt_file( char* ctx );

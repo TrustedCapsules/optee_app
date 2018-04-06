@@ -111,7 +111,7 @@ void append_header( char *infile, char *outfile,
 
 /* Pre-processing step of combining the policy and data of a file */
 void concatenate( char* datafile, char* policyfile, char* kvfile, char* ptx,
-                  char* datacopy, char* policycopy, char* kvstorecopy,
+                  char* datacopy, char* policycopy, char* kvstorecopy, char* logcopy,
                   char* keyname ) {
     FILE   *data, 
            *policy, 
@@ -119,7 +119,8 @@ void concatenate( char* datafile, char* policyfile, char* kvfile, char* ptx,
            *temp, 
            *data_temp, 
            *policy_temp, 
-           *kv_temp;
+           *kv_temp,
+           *log_temp;
     size_t  nr,nw;
     char    buf[1024];
     char   *kv_string;
@@ -142,7 +143,8 @@ void concatenate( char* datafile, char* policyfile, char* kvfile, char* ptx,
     temp = fopen( ptx, "wb" );
     data_temp = fopen( datacopy, "wb" );
     policy_temp = fopen( policycopy, "wb" );
-    kv_temp = fopen( kvstorecopy, "wb" );    
+    kv_temp = fopen( kvstorecopy, "wb" );
+    log_temp = fopen( logcopy, "wb" );
 
     // Read in policy file and write it to the temp file
     while( ( ch = fgetc( policy ) ) != EOF ) {
@@ -176,6 +178,7 @@ void concatenate( char* datafile, char* policyfile, char* kvfile, char* ptx,
 
     // Write default log
     fprintf( temp, "%s - CREATED %s [ %s ]", timestamp, keyname, kv_string );
+    fprintf( log_temp, "%s - CREATED %s [ %s ]", timestamp, keyname, kv_string );
 
     // Write delimiter
     fprintf( temp, DELIMITER );
@@ -197,6 +200,7 @@ void concatenate( char* datafile, char* policyfile, char* kvfile, char* ptx,
     fclose( data_temp );
     fclose( policy_temp );
     fclose( kv_temp );
+    fclose( log_temp );
 
     // Free kv string
     free(kv_string);
@@ -342,7 +346,7 @@ static void usage( char *command, char* message) {
                 "\tkvfile:       input key value store file\n"
                 "\toutfolder:    output folder\n"
                 "decode args: -n <capsulename>\n"
-                "\tcapsulename:  capsule to decode (with .capsule extension)\n",
+                "\tcapsulename:  capsule to decode (w/o .capsule extension)\n",
                 message, command );
 }
 
@@ -415,11 +419,12 @@ int main( int argc, char *argv[] ) {
         char *datacopy = filename_concat(outpath, "data", "."); 
         char *policycopy = filename_concat(outpath, "policy", ".");
         char *kvstorecopy = filename_concat(outpath, "kvstore", "."); 
+        char *logcopy = filename_concat(outpath, "log", ".");
 
         PRINT_INFO( "Concatenating %s with %s and %s into %s\n", 
                     datafile, policyfile, kvfile, ptx );
         concatenate( datafile, policyfile, kvfile, ptx, datacopy, policycopy, 
-                     kvstorecopy, keyname );
+                     kvstorecopy, logcopy, keyname );
 
         PRINT_INFO( "Encrypting %s...\n", ptx );        
         encrypt_file( ptx );

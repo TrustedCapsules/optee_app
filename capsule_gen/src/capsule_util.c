@@ -5,11 +5,6 @@
 #include <capsule.h>
 #include "capsule_util.h"
 
-struct kv_pair {
-    char* key;
-    char* value;
-};
-
 void parse_kvstore( unsigned char* input, size_t inlen ) {
     unsigned char* pairs[MAX_NUM_KEYS]; // Make array of maximum key, value pairs
 

@@ -163,11 +163,8 @@ unsigned char* do_close( TEE_Result policy_res, size_t *cap_to_write_len,
         datalen = cap_head.data_shadow_len;
     }
 
-    // Figure out how large to make the key-value store buffer
-    for (unsigned int i = 0; i < cap_head.kv_store_len; i++) {
-        kv_len += cap_head.kv_store_buf[i].key_len + 1; // Key + :
-        kv_len += cap_head.kv_store_buf[i].val_len + 1; // Val + ;
-    }
+    // Get length of KV string
+    kv_len = get_kv_string_len();
 
     // Allocate space for the kv store string buffer
     kvstore = TEE_Malloc(kv_len, 0);
@@ -714,4 +711,46 @@ TEE_Result do_get_state( unsigned char* key, unsigned char* val,
         CHECK_SUCCESS( res, "key %s not found", key );
     }
     return res; 
+}
+
+char* do_get_buffer( BUF_TYPE t, size_t *len, TEE_Result *res ) {
+    char* buffer;
+
+    *res = TEE_SUCCESS;
+
+    switch(t) {
+        case POLICY:
+            buffer = TEE_Malloc(cap_head.policy_len, 0);
+            TEE_MemMove(buffer, cap_head.policy_buf, cap_head.policy_len);
+            *len = cap_head.policy_len;
+            return buffer;
+        case KV_STRING:
+             // Get length of KV string
+            *len = get_kv_string_len();
+            buffer = TEE_Malloc(*len, 0);
+            serialize_kv_store((unsigned char*)buffer, *len);
+            // buffer[*len] = '\0';
+            return buffer;
+        case LOG:
+            buffer = TEE_Malloc(cap_head.log_len + 1, 0);
+            TEE_MemMove(buffer, cap_head.log_buf, cap_head.log_len);
+            // buffer[cap_head.log_len] = '\0';
+            *len = cap_head.log_len;
+            return buffer;
+        case DATA:
+            buffer = TEE_Malloc(cap_head.data_len + 1, 0);
+            TEE_MemMove(buffer, cap_head.data_buf, cap_head.data_len);
+            // buffer[cap_head.data_len] = '\0';
+            *len = cap_head.data_len;
+            return buffer;
+        case DATA_SHADOW:
+            buffer = TEE_Malloc(cap_head.data_shadow_len + 1, 0);
+            TEE_MemMove(buffer, cap_head.data_shadow_buf, cap_head.data_shadow_len);
+            // buffer[cap_head.data_shadow_len] = '\0';
+            *len = cap_head.data_shadow_len;
+            return buffer;
+        default:
+            *res = TEE_ERROR_NOT_SUPPORTED;
+            return NULL;
+    }
 }

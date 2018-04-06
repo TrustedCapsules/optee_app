@@ -65,7 +65,6 @@ TEE_Result fill_header( struct TrustedCap* cap, TEE_OperationHandle op,
                         uint8_t* iv, uint32_t iv_len, uint32_t id, 
                         unsigned char* hash, size_t hashlen, size_t fsize );
 void read_header( unsigned char* file_contents, struct TrustedCap* cap );
-// int write_header( struct TrustedCap* cap );
 
 /*
  * Parsing operations
@@ -73,6 +72,7 @@ void read_header( unsigned char* file_contents, struct TrustedCap* cap );
 void serialize_kv_store( unsigned char* kv_string, size_t length );
 void parse_kv_store( unsigned char* input, size_t length, 
                      struct capsule_text* cap );
+int get_kv_string_len( void );
 
 void find_delimiter( unsigned char* buf, size_t blen, int* dstart, 
                      int* dend, unsigned int* state, bool *matched, 

@@ -74,7 +74,7 @@ void register_capsule_entry(void){
 		capsule_entry_map[i].key = key_std;
 		capsule_entry_map[i].id = change_endianness(capsule_data_array[i].id);
 		capsule_entry_map[i].iv = iv_std;
-		capsule_entry_map[i].chunk_size = capsule_data_array[i].chunk_size;	
+		// capsule_entry_map[i].chunk_size = capsule_data_array[i].chunk_size;	
 		capsule_entry_map[i].key_len = sizeof(key_std); 
 		capsule_entry_map[i].iv_len = sizeof(iv_std);
 		capsule_entry_map[i].version = 1;
@@ -117,7 +117,7 @@ void register_capsule_entry(void){
 
 		PRINT_INFO( "REGISTER_CAPSULE_TO_KEY_ENTRY(): id 0x%08x,"
 		        	" chunk_size %d, key_len %d, iv_len %d\n", 
-		       		capsule_entry_map[i].id, capsule_entry_map[i].chunk_size,
+		       		capsule_entry_map[i].id, //capsule_entry_map[i].chunk_size,
 		       		capsule_entry_map[i].key_len, capsule_entry_map[i].iv_len );
 	}
 }

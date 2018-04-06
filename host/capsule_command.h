@@ -31,6 +31,9 @@ TEEC_Result capsule_set_state( TEEC_Session *sess, TEEC_SharedMemory *in,
 TEEC_Result capsule_get_state( TEEC_Session *sess, TEEC_SharedMemory *in, 
                                TEEC_SharedMemory *out, char* key, uint32_t klen, 
                                char* val, uint32_t vlen, uint32_t id ); 
+TEEC_Result capsule_get_buffer( TEEC_Session *sess, TEEC_SharedMemory *out, 
+                                uint32_t *out_size, char* buf, BUF_TYPE t);
+
 /* Capsule Operation */
 TEEC_Result capsule_open( TEEC_Session *sess, TEEC_SharedMemory *in, 
                           TEEC_SharedMemory *inout, char* filename, 

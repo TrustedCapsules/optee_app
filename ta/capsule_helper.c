@@ -661,6 +661,16 @@ void serialize_kv_store( unsigned char* kv_string, size_t total_len ) {
     kv_string[total_len] = '\0';
 }
 
+int get_kv_string_len( void ) {
+    int kv_len = 0;
+    // Figure out how large to make the key-value store buffer
+    for (unsigned int i = 0; i < cap_head.kv_store_len; i++) {
+        kv_len += cap_head.kv_store_buf[i].key_len + 1; // Key + :
+        kv_len += cap_head.kv_store_buf[i].val_len + 1; // Val + ;
+    }
+    return kv_len;
+}
+
 /*
  * Finds the delimiter in a string.
  * The range given doesn't quite work for single character delimiters. See the

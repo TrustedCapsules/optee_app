@@ -1,12 +1,12 @@
 ARMCC ?= gcc
-LUALIB ?= ../../lua
+LUALIB ?= ../../luacopy
 CFLAGS = -std=gnu99 -O2 -Wall -Wcast-align -Wsuggest-attribute=noreturn \
 		 -Wfloat-equal -Wswitch-default -Wformat-nonliteral -Wextra \
 		 -I$(LUALIB)
 
 
 TARGET = lua_program
-OBJECTS = main.o 
+OBJECTS = main.o lua_helpers.o fakeoptee.o capsule_lua_ext.o test_driver.o 
 LIBS = $(LUALIB)/refbuild/liblua.a
 
 %.o: %.c

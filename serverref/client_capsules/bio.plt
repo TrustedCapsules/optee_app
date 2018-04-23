@@ -18,3 +18,16 @@ function evaluate_policy( op )
 	end 
 
 end
+
+----
+location: Vancouver, BC
+----
+Sun Apr 22 21:28:26 2018 - CREATED bio [ location: Vancouver, BC ]
+----
+Name: Peter Chen
+Age: 25
+Gender: Male
+Address: 1234 High Park Avenue, Baltimore, MD
+Occupation: Student
+Blood Type: A+
+Illness: none

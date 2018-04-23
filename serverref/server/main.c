@@ -1,0 +1,140 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <sys/wait.h>
+#include <signal.h>
+
+#include "fakekeys.h"
+//#include "server_op.h"
+#include "server_helper.h"
+
+static void* get_in_addr( struct sockaddr *sa ) {
+	if( sa->sa_family == AF_INET ) {
+		return &((( struct sockaddr_in* ) sa )->sin_addr );
+	}
+
+	return &((( struct sockaddr_in6*) sa)->sin6_addr );
+}
+
+static int handle_connections( int sockfd, enum MODE mode ) {
+	struct sockaddr_storage   their_addr;
+	socklen_t    			  sin_size = sizeof(their_addr);
+	char 					  s[INET6_ADDRSTRLEN];
+	int                       new_fd;
+
+	printf( "Server waiting for connections...\n" );
+	while(1) {
+		
+		new_fd = accept( sockfd, (struct sockaddr *) &their_addr,
+						 &sin_size );
+		if( new_fd == -1 ) {
+			PRINT_ERR( "accept() error: %s\n", strerror( errno ) );
+			continue;
+		}
+
+		inet_ntop( their_addr.ss_family,
+				   get_in_addr( (struct sockaddr*) &their_addr ),
+				   s, sizeof( s ) );
+
+		printf( "Server got connection from %s\n", s );
+		
+		/* FIXME: change to pthreads */
+		if( !fork() ) {
+			close( sockfd );
+			//capsule_process( new_fd );
+			printf( "Server closed connection %s\n", s );
+			close( new_fd );
+			exit(0);
+		}
+		close( new_fd );
+	}
+	return 0;
+}
+
+static void set_hints( struct addrinfo *hints ) {
+	memset( hints, 0, sizeof(struct addrinfo) );
+	hints->ai_family = AF_UNSPEC;
+	hints->ai_socktype = SOCK_STREAM;
+	hints->ai_flags = AI_PASSIVE;
+}
+
+
+static int make_connection( struct addrinfo *servinfo,
+	   						struct addrinfo **p ) {
+	int              sockfd, rv;
+	int              yes = 1;
+
+	for( *p = servinfo; *p != NULL; *p = (*p)->ai_next ) {
+		
+		sockfd = socket( (*p)->ai_family, (*p)->ai_socktype, (*p)->ai_protocol );
+		if( sockfd == -1 ) {
+			fprintf( stderr, "socket() error: %s\n", strerror( errno ) );
+			continue;
+		}	
+
+		rv = setsockopt( sockfd, SOL_SOCKET, SO_REUSEADDR, 
+						 &yes, sizeof(int) );
+		if( rv == -1 ) {
+			fprintf( stderr, "setsockopt() error: %s\n", strerror( errno ) );
+		}
+
+		rv = bind( sockfd, (*p)->ai_addr, (*p)->ai_addrlen );
+		if( rv == -1 ) {
+			close( sockfd );
+			fprintf( stderr, "bind() error: %s\n", strerror( errno ) );
+			continue;
+		}
+
+		break;
+	}
+
+	freeaddrinfo( servinfo );
+	return sockfd;
+}
+
+static void print_usage() {
+	PRINT_INFO( "USAGE: ./capsule_server <port>\n" );
+}
+
+int main( int argc, char** argv ) {
+
+	struct addrinfo		hints, *servinfo, *p = NULL;
+	char               *service;
+	int                 rv, sockfd;
+
+	if( argc != 2 ) {
+		print_usage();
+		return -1;
+	}
+
+	register_capsule_entry();
+	register_state();
+
+	set_hints( &hints );
+	service = argv[1];
+
+	if( (rv = getaddrinfo( NULL, service, &hints, &servinfo ) ) != 0 ) {
+		fprintf( stderr, "getaddrinfo: %s\n", gai_strerror(rv) );
+		return -1;
+	}
+
+	sockfd = make_connection( servinfo, &p );	
+	if( p == NULL ) {
+		fprintf( stderr, "getaddrinfo() error: nothing to bind to\n" );
+		return -1;
+	}
+
+	if( listen(sockfd, 10) == -1 ) {
+		fprintf( stderr, "listen() error: %s\n", strerror( errno ) );
+		return -1;
+	}
+
+	return handle_connections( sockfd );
+}

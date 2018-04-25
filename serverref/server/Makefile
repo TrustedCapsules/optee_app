@@ -17,7 +17,7 @@ LIBTOMCRYPT_SRC_DIR = ../capsule_gen/src
 default: $(SERVER)
 all: default
 
-OBJECTS_TARGET = main.o server_helper.o
+OBJECTS_TARGET = main.o server_helper.o hash.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

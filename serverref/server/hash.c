@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "fakekeys.h"
+#include "fakeoptee.h"
 #include "hash.h"
 #include "server_helper.h"
 
@@ -44,7 +45,7 @@ uint32_t stateHash( stateTable* t, const char* key, size_t len ) {
   	int i = 0;
   	int l = len / 4; // chunk length
 
-  	h = seed;
+  	h = 1; //seed
 
   	chunks = (const uint32_t *) (d + l * 4); // body
   	tail = (const uint8_t *) (d + l * 4); // last 8 byte chunk of `key'
@@ -90,12 +91,12 @@ uint32_t stateHash( stateTable* t, const char* key, size_t len ) {
   	return h % t->size;
 }
 
-void stateInsert( stateTable* st, uint32_t key, stateEntry* e ) {
-	uint32_t pos = stateHash( key % st.size );
+void stateInsert( stateTable* st, char* key, size_t len, stateEntry* e ) {
+	uint32_t pos = stateHash( st, key, len );
 	
-	stateEntry* s = st.data[ pos ];
+	stateEntry* s = st->data[ pos ];
 	if( s == NULL ) {
-		t.data[pos] = e;
+		st->data[pos] = e;
 		return;
 	}	
 	
@@ -106,10 +107,23 @@ void stateInsert( stateTable* st, uint32_t key, stateEntry* e ) {
 	s->next = e;	
 }
 
+stateEntry* stateSearch( stateTable* st, char* key, size_t len ) {
+	uint32_t pos = stateHash( st, key, len );
+	
+	stateEntry* s = st->data[ pos ];
+	
+	do {
+		if( strcmp( key, s->key ) == 0 ) return s;
+		s = s->next;
+	} while( s != NULL );
+
+	return NULL;
+}
+
 // capsuleEntry* delete( capsuleTable *t, uint32_t key )
 // no need to support right now
 
-stateTable* newCapsuleTable( size_t sz ) {
+capsuleTable* newCapsuleTable( size_t sz ) {
 	capsuleTable *c = (struct capsuleTable*) malloc( sizeof(capsuleTable) + 
 												sz * sizeof(capsuleEntry*) );
 	c->size = sz; 
@@ -124,10 +138,10 @@ capsuleEntry* newCapsuleEntry( uint32_t capsuleID, const char* name, size_t len 
 
 	// For now, all our capsules use the same key/iv for implementation
 	// simplicity
-	c->key = std_key;
-	c->keyLen = sizeof( key_std );
-	c->iv = std_iv;
-	c->ivLen = sizeof( iv_std );
+	c->key = keyDefault;
+	c->keyLen = sizeof( keyDefault );
+	c->iv = ivDefault;
+	c->ivLen = sizeof( ivDefault );
 
 	c->capsuleID = capsuleID;
 
@@ -135,23 +149,23 @@ capsuleEntry* newCapsuleEntry( uint32_t capsuleID, const char* name, size_t len 
 
 	// policyVersion is set to 1 for all capsules for implementation 
 	// simplicity
-	c->policyVerison = 1;
+	c->policyVersion = 1;
 	
 	// create 10 state slots for each capsule
-	c->stateMap = newStateTable( 10 );;
+	c->stateMap = newStateTable( 10 );
 	
 	c->next = NULL;
 	return c;
 }
 
 uint32_t capsuleHash( capsuleTable* t, uint32_t key ) {
-	return key % t.size;
+	return key % t->size;
 }
 
 capsuleEntry* capsuleSearch( capsuleTable* t, uint32_t key ) {
-	uint32_t pos = hashCode( key % t.size );
+	uint32_t pos = capsuleHash( t, key % t->size );
 	
-	capsuleEntry* c = t.data[ pos ];
+	capsuleEntry* c = t->data[ pos ];
 	
 	do {
 		if( c->capsuleID == key ) return c;
@@ -162,11 +176,11 @@ capsuleEntry* capsuleSearch( capsuleTable* t, uint32_t key ) {
 }
 
 void capsuleInsert( capsuleTable* t, uint32_t key, capsuleEntry* e ) {
-	uint32_t pos = hashCode( key % t.size );
+	uint32_t pos = capsuleHash( t, key % t->size );
 	
-	capsuleEntry* c = t.data[ pos ];
+	capsuleEntry* c = t->data[ pos ];
 	if( c == NULL ) {
-		t.data[pos] = e;
+		t->data[pos] = e;
 		return;
 	}	
 	

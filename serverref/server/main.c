@@ -11,7 +11,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#include "fakekeys.h"
+#include "fakeoptee.h"
 //#include "server_op.h"
 #include "server_helper.h"
 
@@ -23,7 +23,7 @@ static void* get_in_addr( struct sockaddr *sa ) {
 	return &((( struct sockaddr_in6*) sa)->sin6_addr );
 }
 
-static int handle_connections( int sockfd, enum MODE mode ) {
+static int handleConnections( int sockfd ) {
 	struct sockaddr_storage   their_addr;
 	socklen_t    			  sin_size = sizeof(their_addr);
 	char 					  s[INET6_ADDRSTRLEN];
@@ -35,7 +35,7 @@ static int handle_connections( int sockfd, enum MODE mode ) {
 		new_fd = accept( sockfd, (struct sockaddr *) &their_addr,
 						 &sin_size );
 		if( new_fd == -1 ) {
-			PRINT_ERR( "accept() error: %s\n", strerror( errno ) );
+			fprintf( stderr, "accept() error: %s\n", strerror( errno ) );
 			continue;
 		}
 
@@ -66,7 +66,7 @@ static void set_hints( struct addrinfo *hints ) {
 }
 
 
-static int make_connection( struct addrinfo *servinfo,
+static int makeConnection( struct addrinfo *servinfo,
 	   						struct addrinfo **p ) {
 	int              sockfd, rv;
 	int              yes = 1;
@@ -100,7 +100,7 @@ static int make_connection( struct addrinfo *servinfo,
 }
 
 static void print_usage() {
-	PRINT_INFO( "USAGE: ./capsule_server <port>\n" );
+	printf( "USAGE: ./capsule_server <port>\n" );
 }
 
 int main( int argc, char** argv ) {
@@ -114,8 +114,7 @@ int main( int argc, char** argv ) {
 		return -1;
 	}
 
-	register_capsule_entry();
-	register_state();
+	registerCapsules();
 
 	set_hints( &hints );
 	service = argv[1];
@@ -125,7 +124,7 @@ int main( int argc, char** argv ) {
 		return -1;
 	}
 
-	sockfd = make_connection( servinfo, &p );	
+	sockfd = makeConnection( servinfo, &p );	
 	if( p == NULL ) {
 		fprintf( stderr, "getaddrinfo() error: nothing to bind to\n" );
 		return -1;
@@ -136,5 +135,5 @@ int main( int argc, char** argv ) {
 		return -1;
 	}
 
-	return handle_connections( sockfd );
+	return handleConnections( sockfd );
 }

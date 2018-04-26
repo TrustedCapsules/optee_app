@@ -11,7 +11,10 @@
 #include <sys/wait.h>
 #include <signal.h>
 
+#include <capsule_util.h>
+
 #include "fakeoptee.h"
+#include "hash.h"
 #include "server_op.h"
 #include "server_helper.h"
 

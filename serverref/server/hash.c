@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <capsule_util.h>
 
 #include "fakeoptee.h"
 #include "hash.h"
@@ -24,6 +25,8 @@ stateEntry* newStateEntry( const char* key, size_t keyLen,
 	// We assume that key/val length are less than the statically sized
 	// key/value members of stateEntry. Because writing boundary checks
 	// is annoying and I have to meet a friend.
+	memset( s->key, 0, sizeof(s->key) );
+	memset( s->value, 0, sizeof(s->value) );
 	memcpy( s->key, key, keyLen );
 	memcpy( s->value, val, valLen );
 
@@ -92,6 +95,13 @@ uint32_t stateHash( stateTable* t, const char* key, size_t len ) {
   	return h % t->size;
 }
 
+bool keycmp( char *key1, char *key2, size_t len ) {
+	for( int i = 0; i < len; i++ ) {
+		if( key1[i] != key2[i] ) return false;
+	}
+	return true;
+}
+
 void stateInsert( stateTable* st, char* key, size_t len, stateEntry* e ) {
 	uint32_t pos = stateHash( st, key, len );
 	
@@ -100,8 +110,14 @@ void stateInsert( stateTable* st, char* key, size_t len, stateEntry* e ) {
 		st->data[pos] = e;
 		return;
 	}	
-	
+
 	while( s->next != NULL ) {
+		// check if the state already exists
+		if( keycmp( key, s->key, len ) == true ) {
+			memcpy( s->value, e->value, sizeof(s->value) );		
+			free( e );
+			return;
+		}
 		s = s->next;
 	}	
 	
@@ -114,7 +130,7 @@ stateEntry* stateSearch( stateTable* st, char* key, size_t len ) {
 	stateEntry* s = st->data[ pos ];
 	
 	do {
-		if( strcmp( key, s->key ) == 0 ) return s;
+		if( keycmp( key, s->key, len ) == 0 ) return s;
 		s = s->next;
 	} while( s != NULL );
 

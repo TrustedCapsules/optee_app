@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <tomcrypt.h>
+#include <capsule_util.h>
  
 #include "fakeoptee.h"
 #include "hash.h"
@@ -9,7 +11,15 @@
 capsuleTable* capsules = NULL;
 
 size_t append_file( const char* filename, char *buf, size_t len ) {
+	FILE	*fp;
+	
+	fp = fopen( filename, "a" );
+	if( fp == NULL ) {
+		printf( "Could not append to file %s\n", filename );
+		return 0;
+	}
 
+	return fwrite( buf, sizeof(char), len, fp );
 }
 
 size_t open_file( const char* filename, char *buf, size_t len ) {
@@ -120,12 +130,14 @@ static void process_data( void *ptx, void *ctx, size_t len, capsuleEntry *e ) {
 					 e->key, e->keyLen, 0, e->iv, e->ivLen, &ctr_encrypt );
 }
 
-int encryptData( void* ptx, void *ctx, size_t len, capsuleEntry *e ) {
-	return process_data( ptx, ctx, len, e );
+void encryptData( void* ptx, void *ctx, size_t len, capsuleEntry *e ) {
+	process_data( ptx, ctx, len, e );
+	return;
 }
 
-int decryptData( void* ctx, void *ptx, size_t len, capsuleEntry *e ) {
-	return process_data( ctx, ptx, len, e );
+void decryptData( void* ctx, void *ptx, size_t len, capsuleEntry *e ) {
+	process_data( ctx, ptx, len, e );
+	return;
 }
 
 int sendData( int fd, void *buf, size_t len ) {
@@ -134,7 +146,7 @@ int sendData( int fd, void *buf, size_t len ) {
 		nw = send( fd, ( (unsigned char*) buf ) + written, len - written, 0 );
 		if( nw <= 0 ) {
 			fprintf( stderr, "sendData(): connection closed or aborted, wrote %s" 
-							 " before connection closed\n", buf );
+							 " before connection closed\n", (char*) buf );
 			return nw;
 		}
 
@@ -151,7 +163,7 @@ int recvData( int fd, void *buf, size_t len ) {
 		nr = recv( fd, ( (unsigned char*) buf ) + read, len - read, 0 );
 		if( nr <= 0 ) {
 			fprintf( stderr, "recvData(): connection closed or aborted, read %s"
-							 " before connection closed\n", buf );
+							 " before connection closed\n", (char*) buf );
 			return nr;	
 		}
 		read += nr;
@@ -159,4 +171,3 @@ int recvData( int fd, void *buf, size_t len ) {
 
 	return read;
 }
-

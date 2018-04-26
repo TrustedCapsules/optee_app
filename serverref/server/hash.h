@@ -18,7 +18,7 @@ typedef struct stateTable {
 // serves
 typedef struct capsuleEntry {
 	char				 name[45];
-	unsigned const char *key;
+	unsigned char 		*key;
 	uint32_t	   	     keyLen;
 	uint8_t 	  		*iv;
 	uint32_t	   		 ivLen;

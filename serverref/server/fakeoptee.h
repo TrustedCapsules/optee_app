@@ -2,14 +2,10 @@
 #define FAKEOPTEE_H
 
 #define HASHLEN             256
+#define POLICY_MAX_SIZE 	2048
 
 typedef unsigned int 		uint32_t;
 typedef unsigned char  		uint8_t;
-
-typedef enum {
-	true,
-	false,
-} bool;
 
 static unsigned char keyDefault[] = { 0x00, 0x01, 0x02, 0x03, 
 							  		  0x04, 0x05, 0x06, 0x07, 
@@ -33,7 +29,7 @@ typedef enum {
 	GET_STATE,
 	SET_STATE,
 	POLICY_UPDATE,
-	LOG,
+	LOG_ENTRY,
 } SERVER_REQ;
 
 typedef enum {
@@ -45,13 +41,13 @@ typedef struct encryptedReqHeader {
 	uint32_t 		deviceID;
 	int				req;
 	int				nonce;
-	unsigned char 	hash[32];
+	unsigned char 	hash[HASHLEN];
 	// ECHO 	 		-   0
 	// GET_STATE 		-   length of key
 	// SET_STATE 		-   length of key:value
 	// POLICY_UPDATE 	- 	length of int version
 	// LOG				-   length of []byte
-	int				payloadLen;
+	size_t			payloadLen;
 } encryptedReqHeader;
 
 typedef struct msgReqHeader {
@@ -61,10 +57,10 @@ typedef struct msgReqHeader {
 
 typedef struct msgReplyHeader {
 	uint32_t 		capsuleID;
-	uint32_t 		deviceID;
 	int				response;
 	int				nonce;
-	unsigned char 	hash[32];
+	unsigned char 	hash[HASHLEN];
+	// This is the length of msgPayload->payload
 	// ECHO 	 		-   0
 	// GET_STATE 		-   len of value
 	// SET_STATE 		-   0
@@ -74,11 +70,11 @@ typedef struct msgReplyHeader {
 	int				payloadLen;
 } msgReplyHeader;
 
-typedef struct payload {
+typedef struct msgPayload {
 	int 			nonce;
-	unsigned char	hash[32];
+	unsigned char	hash[HASHLEN];
 	char			payload[0];
-} payload
+} msgPayload;
 
 
 #endif

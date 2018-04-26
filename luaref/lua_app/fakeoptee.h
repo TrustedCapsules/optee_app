@@ -103,8 +103,8 @@ typedef enum {
 } RESULT;
 
 typedef enum {
-	true,
 	false,
+	true,
 } bool;
 
 typedef unsigned int uint32_t;

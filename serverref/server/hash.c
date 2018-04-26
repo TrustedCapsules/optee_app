@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "fakeoptee.h"
 #include "hash.h"
@@ -153,6 +154,7 @@ capsuleEntry* newCapsuleEntry( uint32_t capsuleID, const char* name, size_t len 
 	
 	// create 10 state slots for each capsule
 	c->stateMap = newStateTable( 10 );
+	pthread_mutex_init( &c->stateMapMutex, NULL ); 
 	
 	c->next = NULL;
 	return c;

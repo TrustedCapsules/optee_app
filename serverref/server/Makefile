@@ -1,6 +1,6 @@
 SERVER = capsule_server
 PORT ?= 3490
-LIBS = -ltomcrypt -ltfm 
+LIBS = -ltomcrypt -ltfm -lpthread 
 CC = gcc
 CFLAGS = -Wall -DTFM_DESC -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable -I../../capsule_gen/src/
 

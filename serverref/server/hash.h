@@ -24,6 +24,7 @@ typedef struct capsuleEntry {
 	uint32_t	   		 ivLen;
 	uint32_t 	   		 capsuleID;
 	uint32_t       		 policyVersion;
+	pthread_mutex_t      stateMapMutex;
 	stateTable*          stateMap;
 	struct capsuleEntry* next;
 } capsuleEntry;

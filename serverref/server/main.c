@@ -12,7 +12,7 @@
 #include <signal.h>
 
 #include "fakeoptee.h"
-//#include "server_op.h"
+#include "server_op.h"
 #include "server_helper.h"
 
 static void* get_in_addr( struct sockaddr *sa ) {
@@ -48,7 +48,7 @@ static int handleConnections( int sockfd ) {
 		/* FIXME: change to pthreads */
 		if( !fork() ) {
 			close( sockfd );
-			//capsule_process( new_fd );
+			handleCapsule( new_fd );
 			printf( "Server closed connection %s\n", s );
 			close( new_fd );
 			exit(0);

@@ -1,8 +1,15 @@
 #ifndef FAKEOPTEE_H
 #define FAKEOPTEE_H
 
+#define HASHLEN             256
+
 typedef unsigned int 		uint32_t;
 typedef unsigned char  		uint8_t;
+
+typedef enum {
+	true,
+	false,
+} bool;
 
 static unsigned char keyDefault[] = { 0x00, 0x01, 0x02, 0x03, 
 							  		  0x04, 0x05, 0x06, 0x07, 
@@ -20,5 +27,58 @@ typedef struct capsuleManifestEntry {
 static capsuleManifestEntry manifest[] = {
  { "bio", { 0x12,0x31,0x2b,0xf1 } },
 };
+
+typedef enum {
+	ECHO = 0,
+	GET_STATE,
+	SET_STATE,
+	POLICY_UPDATE,
+	LOG,
+} SERVER_REQ;
+
+typedef enum {
+	SUCCESS = 0,
+	FAILURE,
+} SERVER_REPLY;
+
+typedef struct encryptedReqHeader {
+	uint32_t 		deviceID;
+	int				req;
+	int				nonce;
+	unsigned char 	hash[32];
+	// ECHO 	 		-   0
+	// GET_STATE 		-   length of key
+	// SET_STATE 		-   length of key:value
+	// POLICY_UPDATE 	- 	length of int version
+	// LOG				-   length of []byte
+	int				payloadLen;
+} encryptedReqHeader;
+
+typedef struct msgReqHeader {
+	uint32_t 				capsuleID;
+	encryptedReqHeader      encHeader;
+} msgHeader;
+
+typedef struct msgReplyHeader {
+	uint32_t 		capsuleID;
+	uint32_t 		deviceID;
+	int				response;
+	int				nonce;
+	unsigned char 	hash[32];
+	// ECHO 	 		-   0
+	// GET_STATE 		-   len of value
+	// SET_STATE 		-   0
+	// POLICY_UPDATE 	- 	payloadLen = 0 if no upload OR 
+	//                      size of policy file
+	// LOG				-  	0
+	int				payloadLen;
+} msgReplyHeader;
+
+typedef struct payload {
+	int 			nonce;
+	unsigned char	hash[32];
+	char			payload[0];
+} payload
+
 
 #endif

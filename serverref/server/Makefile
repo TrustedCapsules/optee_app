@@ -16,7 +16,7 @@ endif
 default: $(SERVER)
 all: default
 
-OBJECTS_TARGET = main.o server_helper.o server_op.o hash.o
+OBJECTS_TARGET = main.o server_helper.o server_op.o hash.o linkedlist.o
 OBJECTS_EXTERNAL = $(LIBTOMCRYPT_SRC_DIR)/capsule_util.o
 
 %.o: %.c

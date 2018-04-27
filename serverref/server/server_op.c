@@ -1,16 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include <sys/socket.h>
+
+// TODO: remove dependency once common is re-written
 #include <capsule_util.h>
 
 #include "fakeoptee.h"
 #include "hash.h"
+#include "linkedlist.h"
 #include "server_helper.h"
 
 extern capsuleTable* capsules;
 
-void reply( int fd, msgHeader *reqHeader, capsuleEntry *e, 
+void reply( int fd, msgReqHeader *reqHeader, capsuleEntry *e, 
 			SERVER_REPLY sr, size_t payloadLen, char* payload ) {
 	
 	msgReplyHeader replyHeader;
@@ -18,7 +22,7 @@ void reply( int fd, msgHeader *reqHeader, capsuleEntry *e,
 	// Create header
 	replyHeader.capsuleID = reqHeader->capsuleID;
 	replyHeader.response = sr;
-	replyHeader.nonce = reqHeader->encHeader.nonce;
+	replyHeader.nonce = reqHeader->nonce;
 	replyHeader.payloadLen = payloadLen;
 	memset( replyHeader.hash, 0, sizeof(replyHeader.hash) );
 
@@ -38,7 +42,7 @@ void reply( int fd, msgHeader *reqHeader, capsuleEntry *e,
 	if( payloadLen > 0 ) {
 		msgPayload 	 *p = ( msgPayload* ) malloc( sizeof( msgPayload ) + payloadLen );
 		if( p == NULL ) return;
-		p->nonce = reqHeader->encHeader.nonce;
+		p->nonce = reqHeader->nonce;
 		hashData( (void*) payload, payloadLen, p->hash, sizeof(p->hash) );
 		memcpy( p->payload, payload, payloadLen );
 
@@ -48,9 +52,9 @@ void reply( int fd, msgHeader *reqHeader, capsuleEntry *e,
 	}
 }
 
-msgPayload* recvPayload( int fd, msgHeader *reqHeader, capsuleEntry *e ) {
+msgPayload* recvPayload( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	unsigned char hash[HASHLEN];
-	size_t 		  payloadLen = reqHeader->encHeader.payloadLen;	
+	size_t 		  payloadLen = reqHeader->payloadLen;	
 	msgPayload *p = ( msgPayload* ) malloc( sizeof( msgPayload ) + payloadLen );	
 	int nr = recvData( fd, (void*) p, sizeof( msgPayload ) + payloadLen );
 	if( nr != (int) sizeof( msgPayload ) + payloadLen ) {
@@ -65,7 +69,7 @@ msgPayload* recvPayload( int fd, msgHeader *reqHeader, capsuleEntry *e ) {
 		return NULL;
 	}
 
-	if( reqHeader->encHeader.nonce != p->nonce ) {
+	if( reqHeader->nonce != p->nonce ) {
 		free( p );
 		return NULL;
 	}
@@ -73,19 +77,20 @@ msgPayload* recvPayload( int fd, msgHeader *reqHeader, capsuleEntry *e ) {
 	return p;
 }
 
-void handleEcho( int fd, msgHeader *reqHeader, capsuleEntry *e ) {
+void handleEcho( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	reply( fd, reqHeader, e, SUCCESS, 0, NULL );
 }
 
-void handleGetState( int fd, msgHeader *reqHeader, capsuleEntry *e ) {
+void handleGetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	msgPayload *p = recvPayload( fd, reqHeader, e );
 	if( p == NULL ) {
 		reply( fd, reqHeader, e, FAILURE, 0, NULL );
 		return;
 	}
-	
-	stateEntry *s = stateSearch( e->stateMap, p->payload, 
-								 reqHeader->encHeader.payloadLen );
+
+	pthread_mutex_lock( &e->stateMapMutex );	
+	stateEntry *s = stateSearch( e->stateMap, p->payload, reqHeader->payloadLen );
+	pthread_mutex_unlock( &e->stateMapMutex );	
 	if( s == NULL ) {
 		reply( fd, reqHeader, e, FAILURE, 0, NULL );
 	}
@@ -95,20 +100,22 @@ void handleGetState( int fd, msgHeader *reqHeader, capsuleEntry *e ) {
 	free( p );
 }
 
-void handleSetState( int fd, msgHeader *reqHeader, capsuleEntry *e ) {
+void handleSetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	msgPayload *p = recvPayload( fd, reqHeader, e );
 	if( p == NULL ) {
 		reply( fd, reqHeader, e, FAILURE, 0, NULL );
 		return;
 	} 
 
-	registerStates( e, p->payload, reqHeader->encHeader.payloadLen );
+	pthread_mutex_lock( &e->stateMapMutex );	
+	registerStates( e, p->payload, reqHeader->payloadLen );
+	pthread_mutex_unlock( &e->stateMapMutex );	
 
 	reply( fd, reqHeader, e, SUCCESS, 0, NULL );	
 	free( p );
 }
 
-void handlePolicyUpdate( int fd, msgHeader *reqHeader, capsuleEntry *e ) {
+void handlePolicyUpdate( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	msgPayload *p = recvPayload( fd, reqHeader, e );
 	if( p == NULL ) {
 		reply( fd, reqHeader, e, FAILURE, 0, NULL );
@@ -136,7 +143,7 @@ void handlePolicyUpdate( int fd, msgHeader *reqHeader, capsuleEntry *e ) {
 	free( p );	
 }
 
-void handleLog( int fd, msgHeader *reqHeader, capsuleEntry *e ) {
+void handleLog( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	msgPayload *p = recvPayload( fd, reqHeader, e );
 	if( p == NULL ) {
 		reply( fd, reqHeader, e, FAILURE, 0, NULL );
@@ -147,16 +154,16 @@ void handleLog( int fd, msgHeader *reqHeader, capsuleEntry *e ) {
 	memcpy( logFile, "../server_capsules/", 19 );
 	strcat( logFile, e->name );
 	strcat( logFile, ".log" );	
-	size_t len = append_file( logFile, p->payload, reqHeader->encHeader.payloadLen );
+	size_t len = append_file( logFile, p->payload, reqHeader->payloadLen );
 	
 	reply( fd, reqHeader, e, 
-		   len == reqHeader->encHeader.payloadLen ? SUCCESS : FAILURE, 
+		   len == reqHeader->payloadLen ? SUCCESS : FAILURE, 
 		   0, NULL );
 	free( p );	
 }
 
 void handleCapsule( int fd ) {
-	msgHeader 	  h = {0};
+	msgReqHeader 	  h = {0};
 	unsigned char hHash[HASHLEN];
 	unsigned char dHash[HASHLEN];
 
@@ -165,18 +172,20 @@ void handleCapsule( int fd ) {
 		return;
 	}
 
-	capsuleEntry *e = capsuleSearch( capsules, h.capsuleID );
-	if( e == NULL ) return;
+	capsuleEntry *e = capsuleSearch( capsules, &h );
+	if( e == NULL ) { 
+		return;
+	}
 	
-	decryptData( &h.encHeader, &h.encHeader, sizeof( encryptedReqHeader ), e );
-	memcpy( dHash, h.encHeader.hash, sizeof(dHash) );
-	memset( h.encHeader.hash, 0, sizeof(h.encHeader.hash) );
+	memcpy( dHash, h.hash, sizeof(dHash) );
+	memset( h.hash, 0, sizeof(h.hash) );
 	hashData( (void*) &h, sizeof( h ), hHash, sizeof(hHash) );
 	if( compareHash( hHash, dHash, sizeof(hHash) ) == false ) {
+		reply( fd, &h, e, FAILURE, 0, NULL );
 		return;
 	}
 
-	switch( h.encHeader.req ) {
+	switch( h.req ) {
 		case ECHO: 
 			handleEcho( fd, &h, e );
 			return;

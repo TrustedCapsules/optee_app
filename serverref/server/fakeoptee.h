@@ -37,23 +37,19 @@ typedef enum {
 	FAILURE,
 } SERVER_REPLY;
 
-typedef struct encryptedReqHeader {
-	uint32_t 		deviceID;
-	int				req;
-	int				nonce;
-	unsigned char 	hash[HASHLEN];
+typedef struct msgReqHeader {
+	uint32_t 				capsuleID;
+	uint32_t 				deviceID;
+	int						req;
+	int						nonce;
+	unsigned char 			hash[HASHLEN];
 	// ECHO 	 		-   0
 	// GET_STATE 		-   length of key
 	// SET_STATE 		-   length of key:value
 	// POLICY_UPDATE 	- 	length of int version
 	// LOG				-   length of []byte
-	size_t			payloadLen;
-} encryptedReqHeader;
-
-typedef struct msgReqHeader {
-	uint32_t 				capsuleID;
-	encryptedReqHeader      encHeader;
-} msgHeader;
+	size_t					payloadLen;
+} msgReqHeader;
 
 typedef struct msgReplyHeader {
 	uint32_t 		capsuleID;
@@ -75,6 +71,5 @@ typedef struct msgPayload {
 	unsigned char	hash[HASHLEN];
 	char			payload[0];
 } msgPayload;
-
 
 #endif

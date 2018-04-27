@@ -7,6 +7,7 @@
  
 #include "fakeoptee.h"
 #include "hash.h"
+#include "linkedlist.h"
 
 capsuleTable* capsules = NULL;
 
@@ -45,6 +46,51 @@ size_t open_file( const char* filename, char *buf, size_t len ) {
 
 	fclose( fp );
 	return sz;	
+}
+
+int policyVersion( const char* name ) {
+	char policyFile[255];
+	memcpy( policyFile, "../server_capsules/", 19 );
+	strcat( policyFile, name );
+	strcat( policyFile, ".policy" );
+
+	char policy[POLICY_MAX_SIZE] = {0};
+	open_file( policyFile, policy, sizeof(policy) );
+
+	char* pv = strstr( policy, "policy_version" ); 
+	if( pv == NULL ) return -1;
+
+	char* eq = strchr( pv, '=' );
+	if( eq == NULL ) return -1;
+	
+	char* nl = strchr( eq, '\n' );
+	if( nl == NULL ) return -1;
+
+	// Remove white spaces between = and \n
+	char* numStart = eq+1;
+	for( int i=0; i < nl - eq; i++ ) {
+		if( *numStart == ' ') numStart++;
+		else if( *numStart == '\n' ) return -1;
+		else break;
+	}
+	
+	char* numEnd = nl - 1;
+	for( int i=numEnd-numStart; i > 0 ; i-- ) {
+		if( *numEnd == ' ' ) numEnd--;
+		else break;
+	}
+	
+	// Convert string into number
+	int version = 0;
+	int base = 1;
+	char* digit = numEnd;
+	while( digit >= numStart ) {
+		version += ( *digit - '0' ) * base; 
+		base = base * 10;
+		digit--;
+	}
+
+	return version;	
 }
 
 uint32_t littleEndianToUint( const unsigned char *id ) {
@@ -92,9 +138,10 @@ void registerCapsules(void){
 		uint32_t id = littleEndianToUint( manifest[i].id );
 		capsuleEntry* ce = newCapsuleEntry( id, manifest[i].name, 
 											sizeof( manifest[i].name ) );
-		capsuleInsert( capsules, id, ce );
+		capsuleInsert( capsules, ce );
 		
-		printf( "Capsule %s (0x%x): \n", manifest[i].name, id ); 
+		printf( "Capsule %s (0x%x): version %u \n", 
+				manifest[i].name, id, ce->policyVersion ); 
 
 		char stateFile[255] = {0};
 		char states[1024] = {0};

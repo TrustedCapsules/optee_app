@@ -11,10 +11,12 @@
 #include <sys/wait.h>
 #include <signal.h>
 
+// TODO: remove dependency on capsule_util.h once common is re-written
 #include <capsule_util.h>
 
 #include "fakeoptee.h"
 #include "hash.h"
+#include "linkedlist.h"
 #include "server_op.h"
 #include "server_helper.h"
 

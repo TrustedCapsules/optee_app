@@ -18,6 +18,7 @@ void reply( int fd, msgReqHeader *reqHeader, capsuleEntry *e,
 			SERVER_REPLY sr, size_t payloadLen, char* payload ) {
 	
 	msgReplyHeader replyHeader;
+	unsigned char 	hHash[HASHLEN];
 	
 	// Create header
 	replyHeader.capsuleID = reqHeader->capsuleID;
@@ -27,7 +28,8 @@ void reply( int fd, msgReqHeader *reqHeader, capsuleEntry *e,
 	memset( replyHeader.hash, 0, sizeof(replyHeader.hash) );
 
 	hashData( (void*) &replyHeader, sizeof(replyHeader), 
-			  replyHeader.hash, sizeof(replyHeader.hash) );
+			  hHash, sizeof(hHash) );
+	memcpy( replyHeader.hash, hHash, sizeof(hHash) );
 
 	encryptData( (void*) &replyHeader, 
 				 (void*) &replyHeader, 

@@ -20,7 +20,7 @@ capsuleTable* newCapsuleTable( size_t sz ) {
 }
 
 capsuleEntry* newCapsuleEntry( uint32_t capsuleID, const char* name, size_t len ) {
-	capsuleEntry* c = (struct capsuleEntry*) malloc( sizeof(capsuleEntry) );
+	capsuleEntry* c = (capsuleEntry*) malloc( sizeof(capsuleEntry) );
 
 	// For now, all our capsules use the same key/iv for implementation
 	// simplicity

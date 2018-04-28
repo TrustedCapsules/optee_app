@@ -3,8 +3,10 @@
 
 #define HASHLEN             256
 #define POLICY_MAX_SIZE 	2048
+#define DEVICE_ID_LEN 		32
 
 typedef unsigned int 		uint32_t;
+typedef unsigned short		uint16_t;
 typedef unsigned char  		uint8_t;
 
 static unsigned char keyDefault[] = { 0x00, 0x01, 0x02, 0x03, 
@@ -39,7 +41,7 @@ typedef enum {
 
 typedef struct msgReqHeader {
 	uint32_t 				capsuleID;
-	uint32_t 				deviceID;
+	char	 				deviceID[DEVICE_ID_LEN];
 	int						req;
 	int						nonce;
 	unsigned char 			hash[HASHLEN];
@@ -47,7 +49,7 @@ typedef struct msgReqHeader {
 	// GET_STATE 		-   length of key
 	// SET_STATE 		-   length of key:value
 	// POLICY_UPDATE 	- 	length of int version
-	// LOG				-   length of []byte
+	// LOG				-   length of []char
 	size_t					payloadLen;
 } msgReqHeader;
 

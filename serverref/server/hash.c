@@ -116,13 +116,15 @@ void stateInsert( stateTable* st, char* key, size_t len, stateEntry* e ) {
 	while( s->next != NULL ) {
 		// check if the state already exists
 		if( keycmp( key, s->key, len ) == true ) {
-			memcpy( s->value, e->value, sizeof(s->value) );		
+			printf( "stateInsert(): %s (%s->%s)\n", key, s->value, e->value );
+			memcpy( s->value, e->value, sizeof(s->value) );
 			free( e );
 			return;
 		}
 		s = s->next;
 	}	
 	
+	printf( "stateInsert(): %s (NULL->%s)\n", key, e->value );
 	s->next = e;	
 }
 
@@ -133,11 +135,13 @@ stateEntry* stateSearch( stateTable* st, char* key, size_t len ) {
 	
 	do {
 		if( keycmp( key, s->key, len ) == 0 ) {
+			printf( "stateSearch(): %s (%s)\n", key, s->value );
 			return s;
 		}
 		s = s->next;
 	} while( s != NULL );
 
+	printf( "stateSearch(): %s (NULL)\n", key );
 	return NULL;
 }
 

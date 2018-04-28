@@ -120,9 +120,9 @@ void registerStates( capsuleEntry *e, char* buf, size_t len ) {
 		
 		stateEntry* se = newStateEntry( keyStart, keyEnd - keyStart, 
 										valStart, valEnd - valStart );
+		printf( "\tAdd (%p) key: %s val: %s\n", se, se->key, se->value );
 
-		stateInsert( e->stateMap, keyStart, keyEnd - keyStart, se );
-		printf( "\tAdd key: %s val: %s\n", se->key, se->value );
+		stateInsert( e->stateMap, se, keyEnd - keyStart );
 
 		lineStart = lineEnd + 1;	
 		lineEnd = strchr( lineStart, '\n' );

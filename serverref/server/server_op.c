@@ -130,6 +130,7 @@ void handleGetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 void handleSetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	msgPayload *p = recvPayload( fd, reqHeader, e );
 	if( p == NULL ) {
+		printf( "handleSetState(): payload recv() error\n" );
 		reply( fd, reqHeader, e, FAILURE, 0, NULL );
 		return;
 	} 
@@ -189,21 +190,22 @@ void handleLog( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	free( p );	
 }
 
-void handleCapsule( int fd ) {
-	msgReqHeader 	  h = {0};
-	unsigned char hHash[HASHLEN] = {0};
-	unsigned char dHash[HASHLEN] = {0};
+void* handleCapsule( void* ptr ) {
+	int					fd = *(int*) ptr;
+	msgReqHeader 	  	h = {0};
+	unsigned char 		hHash[HASHLEN] = {0};
+	unsigned char 		dHash[HASHLEN] = {0};
 
 	int nr = recvData( fd, (void*) &h, sizeof(h) );
 	if( nr != (int) sizeof(h) ) {
 		printf( "handleCapsule(): nr %d != msgReqHeader size %zu\n", nr, sizeof(h) );
-		return;
+		return NULL;
 	}
 
 	capsuleEntry *e = capsuleSearch( capsules, &h );
 	if( e == NULL ) { 
 		printf( "handleCapsule(): no capsule found\n" );
-		return;
+		return NULL;
 	}
 	
 	memcpy( dHash, h.hash, sizeof(h.hash) );
@@ -235,28 +237,31 @@ void handleCapsule( int fd ) {
 		printf( "\n" );
 		*/
 		reply( fd, &h, e, FAILURE, 0, NULL );
-		return;
+		return NULL;
 	}
 
 	switch( h.req ) {
 		case ECHO:
 			printf( "handleCapsule(): handleEcho\n" ); 
 			handleEcho( fd, &h, e );
-			return;
+			return NULL;
 		case GET_STATE: 
 			printf( "handleCapsule(): handleGetState\n" );
 			handleGetState( fd, &h, e );
-			return;
-		case SET_STATE: 
+			return NULL;
+		case SET_STATE:
+			printf( "handleCapsule(): handleSetState\n" ); 
 			handleSetState( fd, &h, e );
-			return;
+			return NULL;
 		case POLICY_UPDATE: 
 			handlePolicyUpdate( fd, &h, e );
-			return;
+			return NULL;
 		case LOG_ENTRY: 
 			handleLog( fd, &h, e );
-			return;
+			return NULL;
 		default: 
 			 reply( fd, &h, e, FAILURE, 0, NULL );
 	}
+
+	return NULL;
 }

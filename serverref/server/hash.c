@@ -104,44 +104,53 @@ bool keycmp( char *key1, char *key2, size_t len ) {
 	return true;
 }
 
-void stateInsert( stateTable* st, char* key, size_t len, stateEntry* e ) {
-	uint32_t pos = stateHash( st, key, len );	
+void stateInsert( stateTable* st, stateEntry* e, size_t len ) {
+	uint32_t pos = stateHash( st, e->key, len );	
+	//printf( "stateInsert(): pos %u\n", pos );
+	printf( "stateInsert(): key %s (%zu B) to (%p)\n", e->key, len, st );	
 
 	stateEntry* s = st->data[ pos ];
 	if( s == NULL ) {
+		printf( "stateInsert(): first entry %s (NULL->%s)\n", e->key, e->value );
 		st->data[pos] = e;
 		return;
 	}	
 
-	while( s->next != NULL ) {
+	stateEntry* prev = NULL;
+	while( s != NULL ) {
 		// check if the state already exists
-		if( keycmp( key, s->key, len ) == true ) {
-			printf( "stateInsert(): %s (%s->%s)\n", key, s->value, e->value );
+		if( keycmp( e->key, s->key, len ) == true ) {
+			printf( "stateInsert(): %p\n", s );
+			printf( "stateInsert(): %s %s->", s->key, s->value );
 			memcpy( s->value, e->value, sizeof(s->value) );
+			printf( "%s\n", s->value );
 			free( e );
 			return;
 		}
+		prev = s;
 		s = s->next;
 	}	
 	
-	printf( "stateInsert(): %s (NULL->%s)\n", key, e->value );
-	s->next = e;	
+	printf( "stateInsert(): %s (NULL->%s)\n", e->key, e->value );
+	prev->next = e;	
 }
 
 stateEntry* stateSearch( stateTable* st, char* key, size_t len ) {
 	uint32_t pos = stateHash( st, key, len );
+	//printf( "stateSearch(): pos %u\n", pos );
 	
 	stateEntry* s = st->data[ pos ];
 	
 	while( s != NULL ) {
 		if( keycmp( key, s->key, len ) == true ) {
-			printf( "stateSearch(): %s (%s)\n", key, s->value );
+			printf( "stateSearch(): %p\n", s );
+			printf( "stateSearch(): %s->%s\n", key, s->value );
 			return s;
 		}
 		s = s->next;
 	} 
 
-	printf( "stateSearch(): %s (NULL)\n", key );
+	printf( "stateSearch(): %s->NULL\n", key );
 	return NULL;
 }
 

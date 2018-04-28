@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/wait.h>
+#include <pthread.h>
 #include <signal.h>
 
 // TODO: remove dependency on capsule_util.h once common is re-written
@@ -48,18 +49,17 @@ static int handleConnections( int sockfd ) {
 				   get_in_addr( (struct sockaddr*) &their_addr ),
 				   s, sizeof( s ) );
 
-		printf( "Server got connection from %s\n", s );
+		printf( "Server got connection from %s\n\n", s );
 		
-		/* FIXME: change to pthreads */
-		if( !fork() ) {
-			close( sockfd );
-			handleCapsule( new_fd );
-			printf( "Server closed connection %s\n", s );
-			close( new_fd );
-			exit(0);
-		}
-		close( new_fd );
+		pthread_t thread_id;
+        if( pthread_create( &thread_id , NULL , handleCapsule , (void*) &new_fd ) < 0) {
+            fprintf( stderr, "pthread_create() could not create new thread\n" );
+            continue;
+        }
 	}
+
+	//TODO: pthread_join should be called to collect pthreads so parent doesn't exit 
+	//		before child
 	return 0;
 }
 

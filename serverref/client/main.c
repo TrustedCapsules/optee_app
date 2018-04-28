@@ -131,18 +131,24 @@ int main( int argc, char** argv ) {
 	//sendReqAndRecvReply( ECHO, port, t.head, NULL, 0 );	
 
 	// GET_STATE test with first capsule in manifest
-	char key1[] = "credential";
-	sendReqAndRecvReply( GET_STATE, port, t.head, key1, strlen(key1) );
-	char key2[] = "alreadyOpened";
-	sendReqAndRecvReply( GET_STATE, port, t.head, key2, strlen(key2) );
-	char key3[] = "nonExistentKey";
-	sendReqAndRecvReply( GET_STATE, port, t.head, key3, strlen(key3) );
+	//char key1[] = "credential";
+	//sendReqAndRecvReply( GET_STATE, port, t.head, key1, strlen(key1) );
+	//char key2[] = "alreadyOpened";
+	//sendReqAndRecvReply( GET_STATE, port, t.head, key2, strlen(key2) );
+	//char key3[] = "nonExistentKey";
+	//sendReqAndRecvReply( GET_STATE, port, t.head, key3, strlen(key3) );
 	
 	// SET_STATE test with first capsule in manifest
-	//char keyval1[] = "credential:Dr.SimonHowell";
-	//sendReqAndRecvReply( SET_STATE, port, t.head, keyval1, strlen(keyval1) );
-	//char keyval2[] = "newState:newStateVal";
-	//sendReqAndRecvReply( SET_STATE, port, t.head, keyval2, strlen(keyval2) );
+	char keyval1[] = "credential:Dr.SimonHowell\n";
+	sendReqAndRecvReply( SET_STATE, port, t.head, keyval1, strlen(keyval1) );
+	char keyval2[] = "newState:newStateVal\n";
+	sendReqAndRecvReply( SET_STATE, port, t.head, keyval2, strlen(keyval2) );
+	char keyCredential[] = "credential";
+	sendReqAndRecvReply( GET_STATE, port, t.head, 
+						 	keyCredential, strlen(keyCredential) );
+	char keyNewState[] = "newState";
+	sendReqAndRecvReply( GET_STATE, port, t.head, 
+							keyNewState, strlen(keyNewState) );
 
 	// POLICY_UPDATE test with first capsule in manifest
 	//int version = 0;

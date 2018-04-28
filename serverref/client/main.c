@@ -103,7 +103,10 @@ void sendReqAndRecvReply( SERVER_REQ q, uint16_t port, capsuleEntry *e,
 
 	// recv payload
 	msgPayload* fromPayload = recvPayload( fd, nonce, &reply, e );
-	if( fromPayload == NULL ) return;
+	if( fromPayload == NULL ) {
+		printf( "payload: (none)\n" );
+		return;
+	}
 
 	// print payload
 	printf( "payload:\n" );
@@ -139,28 +142,28 @@ int main( int argc, char** argv ) {
 	//sendReqAndRecvReply( GET_STATE, port, t.head, key3, strlen(key3) );
 	
 	// SET_STATE test with first capsule in manifest
-	char keyval1[] = "credential:Dr.SimonHowell\n";
-	sendReqAndRecvReply( SET_STATE, port, t.head, keyval1, strlen(keyval1) );
-	char keyval2[] = "newState:newStateVal\n";
-	sendReqAndRecvReply( SET_STATE, port, t.head, keyval2, strlen(keyval2) );
-	char keyCredential[] = "credential";
-	sendReqAndRecvReply( GET_STATE, port, t.head, 
-						 	keyCredential, strlen(keyCredential) );
-	char keyNewState[] = "newState";
-	sendReqAndRecvReply( GET_STATE, port, t.head, 
-							keyNewState, strlen(keyNewState) );
+	//char keyval1[] = "credential:Dr.SimonHowell\n";
+	//sendReqAndRecvReply( SET_STATE, port, t.head, keyval1, strlen(keyval1) );
+	//char keyval2[] = "newState:newStateVal\n";
+	//sendReqAndRecvReply( SET_STATE, port, t.head, keyval2, strlen(keyval2) );
+	//char keyCredential[] = "credential";
+	//sendReqAndRecvReply( GET_STATE, port, t.head, 
+	//					 	keyCredential, strlen(keyCredential) );
+	//char keyNewState[] = "newState";
+	//sendReqAndRecvReply( GET_STATE, port, t.head, 
+	//						keyNewState, strlen(keyNewState) );
 
 	// POLICY_UPDATE test with first capsule in manifest
 	//int version = 0;
 	//sendReqAndRecvReply( POLICY_UPDATE, port, t.head, 
-	//						 (void*) &version, sizeof(version) );
+	//					 (void*) &version, sizeof(version) );
 	//version = 2;
 	//sendReqAndRecvReply( POLICY_UPDATE, port, t.head, 
 	//					 (void*) &version, sizeof(version) );
 
 	// LOG_ENTRY TEST with first capsule in manifest
-	//char log[] = "THIS IS A NEW LOG ENTRY\nRANDOM WORDS\n";
-	//sendReqAndRecvReply( POLICY_UPDATE, port, t.head, log, strlen(log) );
+	char log[] = "THIS IS A NEW LOG ENTRY\nRANDOM WORDS\n";
+	sendReqAndRecvReply( LOG_ENTRY, port, t.head, log, strlen(log) );
 
 	return 0;
 }

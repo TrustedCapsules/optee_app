@@ -49,7 +49,7 @@ typedef struct msgReqHeader {
 	// GET_STATE 		-   length of key
 	// SET_STATE 		-   length of key:value
 	// POLICY_UPDATE 	- 	length of int version
-	// LOG				-   length of []char
+	// LOG_ENTRY		-   length of []char
 	size_t					payloadLen;
 } msgReqHeader;
 
@@ -64,7 +64,7 @@ typedef struct msgReplyHeader {
 	// SET_STATE 		-   0
 	// POLICY_UPDATE 	- 	payloadLen = 0 if no upload OR 
 	//                      size of policy file
-	// LOG				-  	0
+	// LOG_ENTRY		-  	0
 	int				payloadLen;
 } msgReplyHeader;
 

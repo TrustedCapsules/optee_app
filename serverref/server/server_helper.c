@@ -20,7 +20,9 @@ size_t append_file( const char* filename, char *buf, size_t len ) {
 		return 0;
 	}
 
-	return fwrite( buf, sizeof(char), len, fp );
+	size_t n = fwrite( buf, sizeof(char), len, fp );
+	fflush( fp );
+	return n;
 }
 
 size_t open_file( const char* filename, char *buf, size_t len ) {

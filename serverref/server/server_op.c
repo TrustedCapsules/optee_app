@@ -181,7 +181,8 @@ void handleLog( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	char logFile[255] = {0};
 	memcpy( logFile, "../server_capsules/", 19 );
 	strcat( logFile, e->name );
-	strcat( logFile, ".log" );	
+	strcat( logFile, ".log" );
+	printf( "%s\n", p->payload );	
 	size_t len = append_file( logFile, p->payload, reqHeader->payloadLen );
 	
 	reply( fd, reqHeader, e, 
@@ -254,9 +255,11 @@ void* handleCapsule( void* ptr ) {
 			handleSetState( fd, &h, e );
 			return NULL;
 		case POLICY_UPDATE: 
+			printf( "handleCapsule(): handlePolicyUpdate\n" ); 
 			handlePolicyUpdate( fd, &h, e );
 			return NULL;
 		case LOG_ENTRY: 
+			printf( "handleCapsule(): handleLog\n" ); 
 			handleLog( fd, &h, e );
 			return NULL;
 		default: 

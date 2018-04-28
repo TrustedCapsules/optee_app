@@ -14,11 +14,26 @@
 
 extern capsuleTable* capsules;
 
+void printHash( const unsigned char* h, size_t len ) {
+	for( int i = 0; i < len; i ++ ) {
+		if( i != 0 && i % 4 == 0 ) {
+			printf( " " );
+		}
+		printf( "%02x", h[i] );
+	}
+}
+
+void printChars( const char* h, size_t len ) {
+	for( int i = 0; i < len; i ++ ) {
+		printf( "%c", h[i] );
+	}
+}
+
 void reply( int fd, msgReqHeader *reqHeader, capsuleEntry *e, 
 			SERVER_REPLY sr, size_t payloadLen, char* payload ) {
 	
 	msgReplyHeader replyHeader;
-	unsigned char 	hHash[HASHLEN];
+	unsigned char 	hHash[HASHLEN] = {0};
 	
 	// Create header
 	replyHeader.capsuleID = reqHeader->capsuleID;
@@ -55,23 +70,26 @@ void reply( int fd, msgReqHeader *reqHeader, capsuleEntry *e,
 }
 
 msgPayload* recvPayload( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
-	unsigned char hash[HASHLEN];
-	size_t 		  payloadLen = reqHeader->payloadLen;	
-	msgPayload *p = ( msgPayload* ) malloc( sizeof( msgPayload ) + payloadLen );	
-	int nr = recvData( fd, (void*) p, sizeof( msgPayload ) + payloadLen );
-	if( nr != (int) sizeof( msgPayload ) + payloadLen ) {
+	unsigned char hash[HASHLEN] = {0};
+	size_t 		  payloadLen = sizeof( msgPayload ) + reqHeader->payloadLen;	
+	msgPayload *p = ( msgPayload* ) malloc( payloadLen );	
+	int nr = recvData( fd, (void*) p, payloadLen );
+	if( nr != (int) payloadLen ) {
+		printf( "recvPayload(): expected %zu (B) got %d (B)\n", payloadLen, nr );
 		free( p );
 		return NULL;
 	}
 	
-	decryptData( (void*) p, (void*) p, sizeof( msgPayload ) + payloadLen, e );
-	hashData( (void*) p->payload, payloadLen, hash, sizeof(hash) );
+	decryptData( (void*) p, (void*) p, payloadLen, e );
+	hashData( (void*) p->payload, reqHeader->payloadLen, hash, sizeof(hash) );
 	if( compareHash( hash, p->hash, sizeof(hash) ) == false ) {
+		printf( "recvPayload(): hash does not match\n" );
 		free( p );
 		return NULL;
 	}
 
 	if( reqHeader->nonce != p->nonce ) {
+		printf( "recvPayload(): nonce does not match\n" );
 		free( p );
 		return NULL;
 	}
@@ -86,20 +104,27 @@ void handleEcho( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 void handleGetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	msgPayload *p = recvPayload( fd, reqHeader, e );
 	if( p == NULL ) {
+		printf( "handleGetState(): payload recv() error\n" );
 		reply( fd, reqHeader, e, FAILURE, 0, NULL );
 		return;
 	}
 
-	pthread_mutex_lock( &e->stateMapMutex );	
-	stateEntry *s = stateSearch( e->stateMap, p->payload, reqHeader->payloadLen );
+	char *key = (char*) malloc( reqHeader->payloadLen + 1 );
+	memset( key, 0, reqHeader->payloadLen + 1 );
+	memcpy( key, p->payload, reqHeader->payloadLen );
+	free( p );
+
+	pthread_mutex_lock( &e->stateMapMutex );
+		
+	stateEntry *s = stateSearch( e->stateMap, key, reqHeader->payloadLen );
 	pthread_mutex_unlock( &e->stateMapMutex );	
 	if( s == NULL ) {
+		printf( "handleGetState(): state %s not found\n", key );
 		reply( fd, reqHeader, e, FAILURE, 0, NULL );
 	}
 
 	reply( fd, reqHeader, e, SUCCESS, strlen( s->value ), s->value ); 
-
-	free( p );
+	free( key );
 }
 
 void handleSetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
@@ -166,32 +191,60 @@ void handleLog( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 
 void handleCapsule( int fd ) {
 	msgReqHeader 	  h = {0};
-	unsigned char hHash[HASHLEN];
-	unsigned char dHash[HASHLEN];
+	unsigned char hHash[HASHLEN] = {0};
+	unsigned char dHash[HASHLEN] = {0};
 
 	int nr = recvData( fd, (void*) &h, sizeof(h) );
 	if( nr != (int) sizeof(h) ) {
+		printf( "handleCapsule(): nr %d != msgReqHeader size %zu\n", nr, sizeof(h) );
 		return;
 	}
 
 	capsuleEntry *e = capsuleSearch( capsules, &h );
 	if( e == NULL ) { 
+		printf( "handleCapsule(): no capsule found\n" );
 		return;
 	}
 	
-	memcpy( dHash, h.hash, sizeof(dHash) );
+	memcpy( dHash, h.hash, sizeof(h.hash) );
 	memset( h.hash, 0, sizeof(h.hash) );
+		
+	/*	
+	printf( "capsuleSearch(): decrypted header\n");
+	printf( "\tcapsuleID = 0x%x\n", h.capsuleID );
+	printf( "\tdeviceID = " );
+	printChars( h.deviceID, DEVICE_ID_LEN );
+	printf( "\n" );
+	printf( "\treq = %d\n", h.req );
+	printf( "\tnonce = %d\n", h.nonce );
+	printf( "\thash = " );
+	printHash( h.hash, HASHLEN );
+	printf( "\n" );
+	printf( "\tpayload length= %zu\n", h.payloadLen );
+	*/	
+	
 	hashData( (void*) &h, sizeof( h ), hHash, sizeof(hHash) );
-	if( compareHash( hHash, dHash, sizeof(hHash) ) == false ) {
+	if( compareHash( hHash, dHash, sizeof(dHash) ) == false ) {
+		/*
+		printf( "handleCapsule(): header hash does not match\n" );
+		printf( "\tExpected - " );
+		printHash( dHash, HASHLEN );
+		printf( "\n" );
+		printf( "\tGot      - " );
+		printHash( hHash, HASHLEN );
+		printf( "\n" );
+		*/
 		reply( fd, &h, e, FAILURE, 0, NULL );
 		return;
 	}
 
 	switch( h.req ) {
-		case ECHO: 
+		case ECHO:
+			printf( "handleCapsule(): handleEcho\n" ); 
 			handleEcho( fd, &h, e );
 			return;
 		case GET_STATE: 
+			printf( "handleCapsule(): handleGetState\n" );
 			handleGetState( fd, &h, e );
 			return;
 		case SET_STATE: 

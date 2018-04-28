@@ -1,14 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <arpa/inet.h>
 #include <inttypes.h>
-#include <types.h>
 #include <time.h>
 
+// TODO: remove this dependency once common is re-written
+#include <capsule_util.h>
+
 #include "../server/fakeoptee.h"
-#include "../server/server_helper.h"
+#include "../server/hash.h"
 #include "../server/linkedlist.h"
+#include "../server/server_helper.h"
 #include "client_helper.h"
 
 capsuleTable t = {0}; 
@@ -37,14 +42,14 @@ int connectToServer( char* ipAddr, uint16_t port ) {
 // initCapsuleEntries register only the first capsule in manifest
 void initCapsuleEntries() {
 	capsuleEntry* e = (capsuleEntry*) malloc( sizeof(capsuleEntry) );
-	memcpy( e.name, manifest[0].name, sizeof(manifest[0].name) );
+	memcpy( e->name, manifest[0].name, sizeof(manifest[0].name) );
 	e->key = keyDefault;
 	e->keyLen = sizeof(keyDefault);
 	e->iv = ivDefault;
 	e->ivLen = sizeof(ivDefault);
 	e->capsuleID = littleEndianToUint( manifest[0].id );
-	e->policyVerison = 0;
-	e->stateTable = NULL;
+	e->policyVersion = 0;
+	e->stateMap = NULL;
 	e->next = NULL;	
 
 	t.size = 1;
@@ -56,12 +61,18 @@ static void usage() {
 	printf( "USAGE: ./capsule_client <port>\n" );
 }
 
-void sendReqAndRecvReply( SERVER_REQ q, int fd, capsuleEntry *e, 
+void sendReqAndRecvReply( SERVER_REQ q, uint16_t port, capsuleEntry *e, 
 						  char* str, size_t strLen ) {
+	
+	int fd = connectToServer( "127.0.0.1", port );
+	if( fd == -1 ) {
+		return;
+	}
+	
 	// send data
 	msgReqHeader h = {0};
 	int nonce = createReqHeader( &h, e, q, strLen );
-	ssize_t n = send( fd, (void*) h, sizeof( h ), 0 );
+	ssize_t n = send( fd, (void*) &h, sizeof( h ), 0 );
 	if( n < 0 ) {
 		printf( "send(): req header failed\n" );
 		return;
@@ -69,8 +80,8 @@ void sendReqAndRecvReply( SERVER_REQ q, int fd, capsuleEntry *e,
 
 	// send payload
 	if( strLen > 0 && str != NULL ) {
-		msgPayload* toPayload = createReqPayload( nonce, str, strLen );
-		n = send( fd, (void*) toPayload, sizeof( msgPayload ) + strLen );
+		msgPayload* toPayload = createReqPayload( nonce, str, strLen, e );
+		n = send( fd, (void*) toPayload, sizeof( msgPayload ) + strLen, 0 );
 		if( n < 0 ) {
 			printf( "send(): req payload failed\n" );
 			free( toPayload );
@@ -81,7 +92,7 @@ void sendReqAndRecvReply( SERVER_REQ q, int fd, capsuleEntry *e,
 
 	// recv reply
 	msgReplyHeader reply;
-	ssize_t r = recv( fd, (void*) reply, sizeof( reply ), 0 );
+	ssize_t r = recv( fd, (void*) &reply, sizeof( reply ), 0 );
 	if( r < 0 ) {
 		printf( "recv(): reply header failed\n" );
 		return;
@@ -91,7 +102,7 @@ void sendReqAndRecvReply( SERVER_REQ q, int fd, capsuleEntry *e,
 	}
 
 	// recv payload
-	msgPayload* fromPayload = recvPayload( nonce, &reply, e );
+	msgPayload* fromPayload = recvPayload( fd, nonce, &reply, e );
 	if( fromPayload == NULL ) return;
 
 	// print payload
@@ -105,44 +116,45 @@ void sendReqAndRecvReply( SERVER_REQ q, int fd, capsuleEntry *e,
 }
 
 
-void main( int argc, char** argv ) {
+int main( int argc, char** argv ) {
 	
-	if( argc != 1 ) {
+	if( argc != 2 ) {
 		usage();
+		return 0;
 	}	
 
 	initCapsuleEntries();
 
 	uint16_t port = strtoumax( argv[1], NULL, 10 );
-	int fd = connectToServer( "127.0.0.1", port );
-	if( fd == -1 ) return;
 
 	// ECHO test with first capsule in manifest
-	sendReqAndRecvReply( ECHO, fd, t->head, NULL, 0 );	
+	//sendReqAndRecvReply( ECHO, port, t.head, NULL, 0 );	
 
 	// GET_STATE test with first capsule in manifest
 	char key1[] = "credential";
-	sendReqAndRecvReply( GET_STATE, fd, t->head, key1, strlen(key1) );
+	sendReqAndRecvReply( GET_STATE, port, t.head, key1, strlen(key1) );
 	char key2[] = "alreadyOpened";
-	sendReqAndRecvReply( GET_STATE, fd, t->head, key2, strlen(key2) );
+	sendReqAndRecvReply( GET_STATE, port, t.head, key2, strlen(key2) );
 	char key3[] = "nonExistentKey";
-	sendReqAndRecvReply( GET_STATE, fd, t->head, key3, strlen(key3) );
+	sendReqAndRecvReply( GET_STATE, port, t.head, key3, strlen(key3) );
 	
 	// SET_STATE test with first capsule in manifest
-	char keyval1[] = "credential:Dr.SimonHowell";
-	sendReqAndRecvReply( SET_STATE, fd, t->head, keyval1, strlen(keyval1) );
-	char keyval2[] = "newState:newStateVal";
-	sendReqAndRecvReply( SET_STATE, fd, t->head, keyval2, strlen(keyval2) );
+	//char keyval1[] = "credential:Dr.SimonHowell";
+	//sendReqAndRecvReply( SET_STATE, port, t.head, keyval1, strlen(keyval1) );
+	//char keyval2[] = "newState:newStateVal";
+	//sendReqAndRecvReply( SET_STATE, port, t.head, keyval2, strlen(keyval2) );
 
 	// POLICY_UPDATE test with first capsule in manifest
-	int version = 0;
-	sendReqAndRecvReply( POLICY_UPDATE, fd, t->head, 
-						 (void*) &version, sizeof(version) );
-	int version = 2;
-	sendReqAndRecvReply( POLICY_UPDATE, fd, t->head, 
-						 (void*) &version, sizeof(version) );
+	//int version = 0;
+	//sendReqAndRecvReply( POLICY_UPDATE, port, t.head, 
+	//						 (void*) &version, sizeof(version) );
+	//version = 2;
+	//sendReqAndRecvReply( POLICY_UPDATE, port, t.head, 
+	//					 (void*) &version, sizeof(version) );
 
 	// LOG_ENTRY TEST with first capsule in manifest
-	char log[] = "THIS IS A NEW LOG ENTRY\nRANDOM WORDS\n";
-	sendReqAndRecvReply( POLICY_UPDATE, fd, t->head, log, strlen(log) );
+	//char log[] = "THIS IS A NEW LOG ENTRY\nRANDOM WORDS\n";
+	//sendReqAndRecvReply( POLICY_UPDATE, port, t.head, log, strlen(log) );
+
+	return 0;
 }

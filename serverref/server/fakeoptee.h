@@ -1,7 +1,7 @@
 #ifndef FAKEOPTEE_H
 #define FAKEOPTEE_H
 
-#define HASHLEN             256
+#define HASHLEN             32
 #define POLICY_MAX_SIZE 	2048
 #define DEVICE_ID_LEN 		32
 
@@ -44,7 +44,7 @@ typedef struct msgReqHeader {
 	char	 				deviceID[DEVICE_ID_LEN];
 	int						req;
 	int						nonce;
-	unsigned char 			hash[HASHLEN];
+	unsigned char			hash[HASHLEN];
 	// ECHO 	 		-   0
 	// GET_STATE 		-   length of key
 	// SET_STATE 		-   length of key:value
@@ -57,7 +57,7 @@ typedef struct msgReplyHeader {
 	uint32_t 		capsuleID;
 	int				response;
 	int				nonce;
-	unsigned char 	hash[HASHLEN];
+	unsigned char	hash[HASHLEN];
 	// This is the length of msgPayload->payload
 	// ECHO 	 		-   0
 	// GET_STATE 		-   len of value

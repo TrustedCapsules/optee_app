@@ -133,13 +133,13 @@ stateEntry* stateSearch( stateTable* st, char* key, size_t len ) {
 	
 	stateEntry* s = st->data[ pos ];
 	
-	do {
-		if( keycmp( key, s->key, len ) == 0 ) {
+	while( s != NULL ) {
+		if( keycmp( key, s->key, len ) == true ) {
 			printf( "stateSearch(): %s (%s)\n", key, s->value );
 			return s;
 		}
 		s = s->next;
-	} while( s != NULL );
+	} 
 
 	printf( "stateSearch(): %s (NULL)\n", key );
 	return NULL;

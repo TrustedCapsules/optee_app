@@ -158,6 +158,17 @@ void hashData( void* buf, size_t lBuf, unsigned char* hash, size_t lHash ) {
 	hash_state md;
 
 	/* We only support SHA256 for now */
+	/*
+	printf( "hashData(): buf %zu (B)\n", lBuf );
+	printf( "hashData(): got - %zu expected - %d\n", lHash, HASHLEN );
+	printf( "hashData(): buf\n\t" );
+	char *p = buf;
+	for( int i = 0; i < lBuf; i++ ) {
+		printf( "%02x", p[i] );
+	}
+	printf( "\n" );
+	*/	
+
 	assert( lHash == HASHLEN );
 	
 	sha256_init( &md );

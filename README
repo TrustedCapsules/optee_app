@@ -1,0 +1,78 @@
+genref/
+-------------------------------------------------------------------------------
+Separate the provisioning of state/credentials from host/ into genref/cmd/cprov.
+The program cprov should take a <capsuleName>.state file similar to 
+serverref/server_capsules/bio.state and register the keys in secure storage.
+Each capsule contains its own file and stores in its metadata whether a secure
+storage file exists under its capsule ID. This is checked during access control
+validation by trusted application. If a secure storage file should exist but 
+does not exist, then operation is denied. Further, the secure storage file can
+be used as a canary to detect concurrently open on the same trusted capsule
+by capsule ID (works even for copies). 
+
+This will replace capsule_gen/.
+-------------------------------------------------------------------------------
+test/
+
+This is currently host/. It should be broken into functional testing, benchmark
+testing. Also benchmarking_scripts/ should be folded in as well. 
+
+Function testing: 	open/close capsules with different policies. 
+Benchmark testing: 	open/close breakdown -> hash, encrption, policy evaluation, 
+					world switch
+
+This will replace host/, benchmarking_scripts/, test_app/.
+-------------------------------------------------------------------------------
+commonref/
+
+Currently this has all the common headers needed by genref/, luaref/, serverref/.
+Other headers needed by ta/, host/ should be included as the new ta/ is 
+developed.
+
+Like common/, commonref/capsuleKeys.h contain a manifest of capsules we support
+and their IDs. 
+
+This will replace common/.
+-------------------------------------------------------------------------------
+luaref/
+
+This is the reference policy engine for ta/. The file luaref/fakeoptee.h should
+be implemented by actual optee trusted application. More detailed descriptions
+are in that file. The folder luacopy/ is currently a copy of lua/ which does not
+contain optee modifications. The actual ta/ and luaref/ should be tied to lua/ 
+rather than luacopy/ (I just didn't bother with installing the optee dependencies
+for my local build).
+-------------------------------------------------------------------------------
+serverref/
+
+This would replace capsule_server/. The optee_client and optee_os need to be 
+modified such that only one world switch is required to transmit a request and
+receive a reply from the capsule server. The protocol and operations that are
+supported can be found in commonref/. Further a test client is written in 
+serverref/ for reference. This reference can be used for ta/, optee_os/ and
+optee_client/ modifications.
+
+The list of capsules on the server is defined by commonref/capsuleKeys.h. For 
+each such capsule, we create a *.state, *.log, *.policy file in 
+serverref/server_capsules. The *.log file is where log is appended to on the 
+server. The *.policy file is the policy file that exists on the server (e.g.,
+for updates). The *.state file contains the server states for that capsule
+with entry format '<key>:<value>\n'   
+
+This will replace capsule_server/
+------------------------------------------------------------------------------
+luacopy/
+
+This is a temp copy of lua/ without optee dependencies because I was too lazy 
+to install the prerequisites. Luaref/ currently points to luacopy, you can 
+change it to lua/ if you have the prerequisites. 
+------------------------------------------------------------------------------
+Makefile, optee_register.sh, optee_setup.sh, run.sh, README
+
+Modify as required.
+------------------------------------------------------------------------------
+protobuf_common/
+
+Remove.
+------------------------------------------------------------------------------
+

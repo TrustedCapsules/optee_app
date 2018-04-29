@@ -1,0 +1,7 @@
+#!/bin/bash
+
+for capsule in `ls testdata`; do
+    name=$(basename "$capsule")
+    echo "Making $name"
+    cmd/cgen/cgen encode -n $name -p testdata/$name/ -o testdata/$name/
+done

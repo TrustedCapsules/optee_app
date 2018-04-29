@@ -3,6 +3,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <tomcrypt.h>
+
+// TODO: remove dependency
 #include <capsule_util.h>
  
 #include "fakeoptee.h"

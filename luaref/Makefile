@@ -1,8 +1,9 @@
 ARMCC ?= gcc
-LUALIB ?= ../../luacopy
+LUALIB ?= ../luacopy
+COMMON = ../commonref
 CFLAGS = -std=gnu99 -O2 -Wall -Wcast-align -Wsuggest-attribute=noreturn \
 		 -Wfloat-equal -Wswitch-default -Wformat-nonliteral -Wextra \
-		 -I$(LUALIB)
+		 -I$(LUALIB) -I$(COMMON)
 
 
 TARGET = lua_program

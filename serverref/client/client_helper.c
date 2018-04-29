@@ -3,14 +3,17 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <time.h>
+#include <stdint.h>
+#include <string.h>
 
-// TODO: remove dependency when common is re-written
-#include <capsule_util.h>
+#include <tomcrypt.h>
 
-#include "../server/fakeoptee.h"
-#include "../server/hash.h"
-#include "../server/linkedlist.h"
-#include "../server/server_helper.h"
+#include <capsuleCommon.h>
+#include <capsuleServerProtocol.h>
+#include <capsuleCrypt.h>
+
+#include "../common/entry.h"
+#include "../common/serverTomCrypt.h"
 
 void printHash( const unsigned char* h, size_t len ) {
 	for( int i = 0; i < len; i++ ) {

@@ -2,11 +2,14 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
+#include <stdint.h>
 
-// TODO: remove dependency once common is re-written
-#include <capsule_util.h>
+#include <capsuleCommon.h>
+#include <capsuleServerProtocol.h>
+#include <capsuleKeys.h>
 
-#include "fakeoptee.h"
+#include "../common/entry.h"
+#include "../common/serverTomCrypt.h"
 #include "hash.h"
 #include "linkedlist.h"
 #include "server_helper.h"

@@ -4,9 +4,11 @@
 
 #include <tomcrypt.h>
 
-#include "fakeoptee.h"
+#include <capsuleCrypt.h>
+#include <capsuleCommon.h>
+#include <capsuleKeys.h>
+
 #include "gen_helper.h"
-#include "crypt.h"
 
 void aesEncrypt( const unsigned char *ptx, unsigned char *ctx, size_t len,
 				 capsuleEntry *e ) {

@@ -4,6 +4,8 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
+#include <capsulePolicy.h>
+
 #include "fakeoptee.h"
 
 // TEE_getLocation queries the device location from 

@@ -12,10 +12,10 @@
 #include <pthread.h>
 #include <signal.h>
 
-// TODO: remove dependency on capsule_util.h once common is re-written
-#include <capsule_util.h>
+#include <capsuleCommon.h>
+#include <capsuleServerProtocol.h>
 
-#include "fakeoptee.h"
+#include "../common/entry.h"
 #include "hash.h"
 #include "linkedlist.h"
 #include "server_op.h"

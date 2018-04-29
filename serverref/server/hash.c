@@ -1,14 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
-// TODO: remove dependency once common is re-written
-#include <capsule_util.h>
+#include <capsuleCommon.h>
 
-#include "fakeoptee.h"
-#include "hash.h"
-#include "linkedlist.h"
-#include "server_helper.h"
+#include "../common/entry.h"
+#include "../common/serverTomCrypt.h"
 
 stateTable* newStateTable( size_t sz ) {
 	stateTable *s = (struct stateTable*) malloc( sizeof(stateTable) + 

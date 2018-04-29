@@ -4,8 +4,9 @@
 
 #include <tomcrypt.h>
 
-#include "crypt.h"
-#include "fakeoptee.h"
+#include "capsuleCommon.h"
+#include "capsuleCrypt.h"
+#include "capsuleKeys.h"
 
 // process_ctr_aes processes an AES encryption/decryption operation.
 // It is modified AES encryption/decryption which allows mid-block 

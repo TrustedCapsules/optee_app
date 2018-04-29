@@ -7,13 +7,11 @@
 #include <inttypes.h>
 #include <time.h>
 
-// TODO: remove this dependency once common is re-written
-#include <capsule_util.h>
+#include <capsuleCommon.h>
+#include <capsuleKeys.h>
+#include <capsuleServerProtocol.h>
 
-#include "../server/fakeoptee.h"
-#include "../server/hash.h"
-#include "../server/linkedlist.h"
-#include "../server/server_helper.h"
+#include "../common/entry.h"
 #include "client_helper.h"
 
 capsuleTable t = {0}; 

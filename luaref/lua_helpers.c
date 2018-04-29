@@ -6,6 +6,9 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
+#include <capsuleCommon.h>
+#include <capsulePolicy.h>
+
 #include "fakeoptee.h"
 
 void lua_start_context( lua_State **L ) {

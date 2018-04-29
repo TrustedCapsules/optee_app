@@ -6,6 +6,9 @@
 #include <luaconf.h>
 #include <lauxlib.h>
 
+#include <capsuleCommon.h>
+#include <capsulePolicy.h>
+
 #include "fakeoptee.h"
 #include "capsule_lua_ext.h"
 #include "lua_helpers.h"
@@ -14,7 +17,7 @@ static int luaE_getState( lua_State *L ) {
 	const char* key = luaL_checkstring( L, -2 );
 	const int   where = luaL_checkinteger( L, -1 );
 	
-	char 		value[ STATE_MAX_VALUE_SIZE ] = {0};
+	char 		value[ POLICY_STATE_MAX_VALUE_SIZE ] = {0};
 	size_t 		len = 0;
 	
 	RESULT res = TEE_getState( key, strlen(key), value, &len, where );
@@ -66,7 +69,8 @@ static int luaE_readOriginalCapsuleData( lua_State *L ) {
 	
 	char	*buf = NULL; 
 	int num = TEE_readCapsuleData( &buf, 
-				len < READ_MAX_SIZE ? len : READ_MAX_SIZE, offset, ORIGINAL );
+				len < POLICY_READ_MAX_SIZE ? len : POLICY_READ_MAX_SIZE, 
+				offset, ORIGINAL );
 
 	if ( num < 0 ) {
 		lua_pushlstring( L, NULL, 0 );
@@ -133,7 +137,8 @@ static int luaE_readNewCapsuleData( lua_State *L ) {
 	
 	char	*buf = NULL; 
 	int 	num = TEE_readCapsuleData( &buf, 
-				len < READ_MAX_SIZE ? len : READ_MAX_SIZE, offset, NEW );
+				len < POLICY_READ_MAX_SIZE ? len : POLICY_READ_MAX_SIZE, 
+				offset, NEW );
 
 	if ( num < 0 ) {
 		lua_pushlstring( L, NULL, 0 );

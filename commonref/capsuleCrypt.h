@@ -1,5 +1,5 @@
-#ifndef CRYPT_H
-#define CRYPT_H
+#ifndef CAPSULE_CRYPT_H
+#define CAPSULE_CRYPT_H
 
 #define CHECK_CRYPT_OK( err, name ) do { 					\
 	if ((err != CRYPT_OK )) { 								\

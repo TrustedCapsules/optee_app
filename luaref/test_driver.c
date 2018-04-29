@@ -6,6 +6,9 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
+#include <capsuleCommon.h>
+#include <capsulePolicy.h>
+
 #include "fakeoptee.h"
 	
 char fileData[] = "a really long string of random stuff";

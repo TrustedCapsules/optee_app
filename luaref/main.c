@@ -6,6 +6,9 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
+#include <capsuleCommon.h>
+#include <capsulePolicy.h>
+
 #include "fakeoptee.h"
 #include "capsule_lua_ext.h"
 #include "lua_helpers.h"

@@ -1,19 +1,6 @@
 #ifndef HASH_H
 #define HASH_H
 
-// capsuleState stores key/value mappings for a capsule
-typedef struct stateEntry {
-	char  				key[128];
-	char  				value[128];
-	struct stateEntry* 	next;
-} stateEntry;
-
-typedef struct stateTable {
-	size_t		 size;
-	stateEntry*  data[0];
-} stateTable;
-
-
 stateTable* newStateTable( size_t sz );
 stateEntry* newStateEntry( const char* key, size_t keyLen,
 						   const char* val, size_t valLen );

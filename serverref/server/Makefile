@@ -1,9 +1,10 @@
 SERVER = capsule_server
-PORT ?= 3490
 LIBS = -ltomcrypt -ltfm -lpthread 
-LIBTOMCRYPT_SRC_DIR = ../../capsule_gen/src
+COMMON = ../../commonref
+
 CC = gcc
-CFLAGS = -Wall -DTFM_DESC -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable -I$(LIBTOMCRYPT_SRC_DIR) -I../../common
+CFLAGS = -Wall -DTFM_DESC -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable \
+		 -I$(COMMON)
 
 ifdef DEBUG
 	CFLAGS += -g -DDEBUG
@@ -16,8 +17,8 @@ endif
 default: $(SERVER)
 all: default
 
-OBJECTS_TARGET = main.o server_helper.o server_op.o hash.o linkedlist.o
-OBJECTS_EXTERNAL = $(LIBTOMCRYPT_SRC_DIR)/capsule_util.o
+OBJECTS_TARGET = main.o server_helper.o server_op.o hash.o linkedlist.o ../common/serverTomCrypt.o
+OBJECTS_EXTERNAL = $(COMMON)/capsuleCrypt.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -28,7 +29,5 @@ $(SERVER): $(OBJECTS_TARGET) $(OBJECTS_EXTERNAL)
 
 clean:
 	-rm -f *.o
-	-rm -f $(SERVER) 
-
-server-test-capsule:
-	./capsule_server $(PORT)
+	-rm -f $(SERVER)
+	-rm -f ../common/*.o 

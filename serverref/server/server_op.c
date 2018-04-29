@@ -3,11 +3,17 @@
 #include <string.h>
 #include <pthread.h>
 #include <sys/socket.h>
+#include <stdint.h>
 
-// TODO: remove dependency once common is re-written
-#include <capsule_util.h>
+#include <tomcrypt.h>
 
-#include "fakeoptee.h"
+#include <capsuleCommon.h>
+#include <capsuleServerProtocol.h>
+#include <capsulePolicy.h>
+#include <capsuleCrypt.h>
+
+#include "../common/entry.h"
+#include "../common/serverTomCrypt.h"
 #include "hash.h"
 #include "linkedlist.h"
 #include "server_helper.h"

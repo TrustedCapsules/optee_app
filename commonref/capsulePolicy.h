@@ -1,20 +1,18 @@
-#ifndef FAKEOPTEE_H
-#define FAKEOPTEE_H
+#ifndef CAPSULE_POLICY_H
+#define CAPSULE_POLICY_H
 
-#define UNUSED(x)		   (void)(x)
+#define POLICY_STATE_MAX_KEY_SIZE       128
+#define POLICY_STATE_MAX_VALUE_SIZE	 	128
 
-#define STATE_MAX_KEY_SIZE       128
-#define STATE_MAX_VALUE_SIZE	 128
+#define POLICY_REPLACE_STR_MAX_SIZE		1024
 
-#define REPLACE_STR_MAX_SIZE	1024
+#define POLICY_READ_MAX_SIZE			2048
 
-#define READ_MAX_SIZE			2048
-
-#define POLICY_MAX_SIZE 		4096
-#define POLICY_COMMENT_SIZE 	 128
-#define POLICY_BLACKLIST_SIZE  	 128
-#define POLICY_STATE_SIZE        128
-#define POLICY_IP_SIZE            16
+#define POLICY_MAX_SIZE 				4096
+#define POLICY_COMMENT_SIZE 	 		128
+#define POLICY_BLACKLIST_SIZE  	 		128	
+#define POLICY_STATE_SIZE        		128
+#define POLICY_IP_SIZE            		16
 
 #define POLICY_FUNC   			"evaluate_policy"
 #define POLICY_RESULT 			"policy_result"
@@ -24,8 +22,6 @@
 #define POLICY_SERVER           "remote_server"
 #define POLICY_VERSION          "policy_version"
 #define POLICY_OP				"op"
-
-#define POLICY_UPDATED_ERROR_MSG "updated"
 
 typedef enum {
 	POLICY_NIL,	
@@ -103,60 +99,10 @@ typedef enum {
 } RESULT;
 
 typedef enum {
-	false,
-	true,
-} bool;
-
-typedef unsigned int uint32_t;
-
-typedef enum {
 	ORIGINAL,
 	NEW,
 } CAPSULE;
 
-// TEE<->Lua API
-RESULT 		TEE_getLocation( int* longitude, int* latitude, const WHERE w );
-RESULT 		TEE_getTime( uint32_t* ts, const WHERE w );
-RESULT 		TEE_getState( const char* key, size_t keyLen, 
-				 		  char* value, size_t *valueLen, const WHERE w );
-RESULT 		TEE_setState( const char* key, size_t keyLen, 
-				   		  const char* value, size_t valueLen, const WHERE w );
-RESULT 		TEE_deleteCapsule(void);
-int 		TEE_capsuleLength( CAPSULE c );
-RESULT 		TEE_appendToBlacklist( const char* str, size_t strLen, const WHERE w );
-RESULT 		TEE_removeFromBlacklist( const char* str, size_t strLen, const WHERE w );
-RESULT 		TEE_redact( const size_t start, const size_t end, 
-				  	    const char* replaceStr, size_t len );
-RESULT 		TEE_updatePolicy( lua_State *L );
-int 		TEE_readCapsuleData( char** buf, size_t len, size_t offset, CAPSULE c );
-SYSCALL_OP 	TEE_get_op();
-
-// Testdriver dummy functions
-extern RESULT (*dummy_location_fn)(int* longitude, int* latitude);
-
-extern RESULT (*dummy_time_fn)(uint32_t* ts);
-
-extern RESULT (*dummy_getState_fn)( const char* key, size_t keyLen, 
-							 char* value, size_t* len );
-
-extern RESULT (*dummy_setState_fn)( const char* key, size_t keyLen, 
-							 const char* value, size_t valueLen );
-
-extern void   (*dummy_deleteCapsule_fn)(void);
-
-extern int (*dummy_capsuleLength_fn)(void);
-
-extern RESULT (*dummy_appendBlacklist_fn)( const char* key, size_t strLen );
-
-extern RESULT (*dummy_removeBlacklist_fn)( const char* key, size_t strLen );
-
-extern RESULT (*dummy_redact_fn)( const size_t start, const size_t end, 
-						const char* replaceStr, size_t len );
-
-extern RESULT (*dummy_update_fn)( lua_State *L );
-
-extern int (*dummy_readCapsuleData_fn)( char** buf, size_t len, size_t offset );
-
-extern SYSCALL_OP op;
+#define POLICY_UPDATED_ERROR_MSG		"update"
 
 #endif

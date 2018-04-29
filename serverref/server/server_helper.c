@@ -2,12 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <tomcrypt.h>
+#include <stdint.h>
 
-// TODO: remove dependency
-#include <capsule_util.h>
- 
-#include "fakeoptee.h"
+#include <capsulePolicy.h>
+#include <capsuleCommon.h>
+#include <capsuleServerProtocol.h>
+#include <capsuleKeys.h>
+
+#include "../common/entry.h"
 #include "hash.h"
 #include "linkedlist.h"
 
@@ -97,15 +99,6 @@ int policyVersion( const char* name ) {
 	return version;	
 }
 
-uint32_t littleEndianToUint( const unsigned char *id ) {
-	uint32_t int_id;
-	int_id = ((uint32_t) *id & 0xff) | 
-		( ((uint32_t) *(id+1) & 0xff) << 8 ) | 
-		( ((uint32_t) *(id+2) & 0xff) << 16 ) | 
-		( ((uint32_t) *(id+3) & 0xff) << 24 );
-	return int_id;
-}
-
 void registerStates( capsuleEntry *e, char* buf, size_t len ) {
 	
 	char* lineStart = buf;	
@@ -156,50 +149,6 @@ void registerCapsules(void){
 		if( len > 0 ) 
 			registerStates( ce , states, len );	
 	} 
-}
-
-void hashData( void* buf, size_t lBuf, unsigned char* hash, size_t lHash ) {
-	hash_state md;
-
-	/* We only support SHA256 for now */
-	/*
-	printf( "hashData(): buf %zu (B)\n", lBuf );
-	printf( "hashData(): got - %zu expected - %d\n", lHash, HASHLEN );
-	printf( "hashData(): buf\n\t" );
-	char *p = buf;
-	for( int i = 0; i < lBuf; i++ ) {
-		printf( "%02x", p[i] );
-	}
-	printf( "\n" );
-	*/	
-
-	assert( lHash == HASHLEN );
-	
-	sha256_init( &md );
-	sha256_process( &md, (const unsigned char*) buf, lBuf );
-	sha256_done( &md, hash );
-}
-
-bool compareHash( unsigned char* hash1, unsigned char* hash2, size_t lHash ) {
-	for( int i = 0; i < lHash; i++ ) {
-		if( hash1[i] != hash2[i] ) return false;
-	}
-	return true;
-}
-
-static void process_data( void *ptx, void *ctx, size_t len, capsuleEntry *e ) {
-	process_ctr_aes( (const unsigned char *) ptx, (unsigned char *) ctx, len, 
-					 e->key, e->keyLen, 0, e->iv, e->ivLen, &ctr_encrypt );
-}
-
-void encryptData( void* ptx, void *ctx, size_t len, capsuleEntry *e ) {
-	process_data( ptx, ctx, len, e );
-	return;
-}
-
-void decryptData( void* ctx, void *ptx, size_t len, capsuleEntry *e ) {
-	process_data( ctx, ptx, len, e );
-	return;
 }
 
 int sendData( int fd, void *buf, size_t len ) {

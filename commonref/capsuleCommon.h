@@ -12,6 +12,7 @@
 
 #define HASHLEN    					32
 
+// From capsule_gen/src/capsule_util.h
 typedef enum {
 	false,
 	true,

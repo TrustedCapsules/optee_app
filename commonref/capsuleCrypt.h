@@ -1,6 +1,7 @@
 #ifndef CAPSULE_CRYPT_H
 #define CAPSULE_CRYPT_H
 
+// From capsule_gen/src/capsule_util.h
 #define CHECK_CRYPT_OK( err, name ) do { 					\
 	if ((err != CRYPT_OK )) { 								\
 		printf( "%s: %s\n", name, error_to_string( err ) );	\

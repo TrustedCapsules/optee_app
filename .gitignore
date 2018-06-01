@@ -18,3 +18,5 @@ main
 *.ta
 *.lds
 *.swp
+*.capsule
+*.plaintext

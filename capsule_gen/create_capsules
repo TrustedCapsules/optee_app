@@ -1,5 +1,6 @@
 #!/bin/bash
 
+#Change this so it isn't dependent on the folder name
 for capsule in `ls testdata`; do
     name=$(basename "$capsule")
     echo "Making $name"

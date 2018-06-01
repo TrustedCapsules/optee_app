@@ -30,18 +30,18 @@ bool getCapsuleKeys( char* capsuleName, capsuleEntry* c ) {
 
     for( int i = 0; i < numCapsules; i++ ) {
         if( strcmp( capsuleName, capsule_data_array[i].name ) == 0 ) {
-			// For now, we use the same key:iv pair for all capsules. 
+		// For now, we use the same key:iv pair for all capsules. 
     		memset( c->name, 0, sizeof( c->name ) );
-			memset( c->id, 0, sizeof( c->id ) );
-			memcpy( c->name, capsule_data_array[i].name, sizeof( capsule_data_array[i].name ) );
-			memcpy( c->id, capsule_data_array[i].id, sizeof( capsule_data_array[i].id ) );
+		memset( c->id, 0, sizeof( c->id ) );
+		memcpy( c->name, capsule_data_array[i].name, sizeof( capsule_data_array[i].name ) );
+		memcpy( c->id, capsule_data_array[i].id, sizeof( capsule_data_array[i].id ) );
 			
-			c->aesKey = keyDefault;
-			c->aesKeyLength = sizeof( keyDefault );
+		c->aesKey = keyDefault;
+		c->aesKeyLength = sizeof( keyDefault );
     		c->iv = ivDefault;
     		c->ivLength = sizeof( ivDefault );
             
-			return true;
+		return true;
         }
     }
     
@@ -81,7 +81,28 @@ void concatenateFiles( char* datafile, char* policyfile, char* kvfile, char* ptx
 	kvstore		= fopen( kvfile, "rb" );
 
 	plaintext	= fopen( ptx, "wb" );
+
+    if( data == NULL ) {
+        fprintf( stderr, "concatenateFiles(): unable to open %s\n", 
+				datafile );
+        return;
+    }
     
+    if( policy == NULL ) {
+        fprintf( stderr, "concatenateFiles(): unable to open %s\n", 
+				policyfile );
+        return;
+    }
+    if( kvstore == NULL ) {
+        fprintf( stderr, "concatenateFiles(): unable to open %s\n", 
+				kvfile );
+        return;
+    }
+    if( plaintext == NULL ) {
+        fprintf( stderr, "concatenateFiles(): unable to open %s\n", 
+				ptx );
+        return;
+    }
 	// write delimiter -> plaintext file
     // fprintf( plaintext, DELIMITER );
 
@@ -98,7 +119,7 @@ void concatenateFiles( char* datafile, char* policyfile, char* kvfile, char* ptx
     long kvLength = ftell( kvstore ) + 1;
     rewind( kvstore );
     char* kvString = (char*) malloc( kvLength * sizeof(char) );
-	memset( kvString, 0, kvLength * sizeof( char ) );
+    memset( kvString, 0, kvLength * sizeof( char ) );
 
     int     i = 0;
     while( ( ch = fgetc( kvstore ) ) != EOF ) {
@@ -115,7 +136,7 @@ void concatenateFiles( char* datafile, char* policyfile, char* kvfile, char* ptx
 
     // write log -> plaintext file
     time_t  clk = time(NULL);
-	char*	timestamp = strtok( ctime( &clk ), "\n" );
+    char*	timestamp = strtok( ctime( &clk ), "\n" );
     fprintf( plaintext, "%s - CREATED [ %s ]", timestamp,  kvString );
 
     // write delimiter -> plaintext file
@@ -297,13 +318,16 @@ void encodeToCapsule( char* capsuleName, char* path, char* opath ) {
 		return;
 	}	
 
+	//printf("\tConcatenating files...\n");
 	// Concatenate input files into plaintext
 	concatenateFiles( dataFullPath, policyFullPath, kvstoreFullPath, 
 					oFullPathPlainText );
 
+	//printf("\tWriting header...\n");
 	// Write header	
 	writeHeader( &e, oFullPathPlainText, oFullPathCapsule );	
 
+	//printf("\tEncrypting capsule...\n");
 	// Plaintext->Cipher text and write out to oFullPathCapsule
 	encryptFile( &e, oFullPathPlainText, oFullPathCapsule );
 }

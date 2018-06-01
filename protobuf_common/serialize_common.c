@@ -14,7 +14,7 @@
 #include "capsule_structures.h"
 #include "capsule_helper.h"
 #else
-#include <aes_keys.h>
+#include <capsuleKeys.h>
 #include <capsule_util.h>
 #include <server_op.h>
 #endif

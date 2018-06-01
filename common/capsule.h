@@ -10,8 +10,7 @@
 #define HASH_LEN    32              // Used in all hashing functions
 // common end
 
-// remove
-#define BLOCK_LEN   1024            // Legacy from block/chunk sizes
+#define BLOCK_LEN 1024
 
 // Replaced by policy start
 #define BUFFER_SIZE 1024            // Used here
@@ -23,7 +22,7 @@
 #define MAX_NUM_KEYS    10          // Maximum number of keys in the capsule key value store
 // replaced by policy end
 
-// TODO: add to common
+// TODO: add to common DONE
 #define SHARED_MEM_SIZE BUFFER_SIZE*10 // Used in tests - 10 KB buffer size
 
 // common start
@@ -32,7 +31,7 @@
 #define TRUSTEDCAP "TRUSTEDCAP"
 // common end
 
-// TODO: add to common
+// TODO: add to common DONE
 #define CHECK_SUCCESS(res, ...) if( (res) != TEE_SUCCESS ) { \
                                     MSG( __VA_ARGS__ );      \
                                     return res;              \
@@ -43,14 +42,7 @@
                                     goto go;                  \
                                  }
 
-// Remove
-typedef enum {
-    START,
-    CUR,
-    END
-} FILE_POS; 
-
-// TODO: add to common
+// TODO: add to common DONE
 struct kv_pair {
     uint32_t key_len;
     uint32_t val_len;
@@ -89,7 +81,7 @@ typedef enum {
 } SERVER_OP;
 // Replaced by server end
 
-// TODO: add to common
+// TODO: add to common DONE
 // InvokeCommand Operation IDs
 enum command {
     CAPSULE_REGISTER_AES_KEY,
@@ -107,7 +99,7 @@ enum command {
     CAPSULE_RECV_PAYLOAD,
 };
 
-// TODO: add to common
+// TODO: add to common DONE
 typedef enum {
     POLICY,
     KV_STRING,
@@ -116,7 +108,7 @@ typedef enum {
     DATA_SHADOW,
 } BUF_TYPE;
 
-// TODO: add to benchmark
+// TODO: add to benchmark DONE
 struct benchmarking_ta {
     unsigned long long  encryption;
     unsigned long long  hashing;
@@ -124,16 +116,5 @@ struct benchmarking_ta {
     unsigned long long  rpc_calls;
     unsigned long long  policy_eval;
 };
-
-// remove
-struct benchmarking_supp {
-    unsigned int        action;
-    unsigned long long  network;
-};
-struct supp_buf {
-    long mytype;
-    struct benchmarking_supp info;
-};
-// end remove
 
 #endif /* CAPSULE_H */

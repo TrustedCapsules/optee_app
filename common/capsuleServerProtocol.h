@@ -9,7 +9,7 @@ typedef enum {
 	SET_STATE,
 	POLICY_UPDATE,
 	LOG_ENTRY,
-} SERVER_OP;
+} SERVER_REQ;
 
 typedef enum {
 	SUCCESS = 0,

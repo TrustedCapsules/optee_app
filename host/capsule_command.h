@@ -65,7 +65,7 @@ TEEC_Result capsule_close_connection( TEEC_Session *sess, int fd );
 
 
 TEEC_Result capsule_send( TEEC_Session *sess, TEEC_SharedMemory *in, 
-                          char* buf, uint32_t blen, SERVER_OP s_op, int rv,
+                          char* buf, uint32_t blen, SERVER_REQ s_op, int rv,
                           int fd, int* nw );
 TEEC_Result capsule_recv_header( TEEC_Session *sess, TEEC_SharedMemory *out, 
                                  char* hash, uint32_t hlen, int* recv_plen,

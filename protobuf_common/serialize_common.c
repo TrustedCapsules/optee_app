@@ -20,7 +20,7 @@
 #endif
 
 
-int serialize_hdr( uint32_t cap_id, SERVER_OP op_code, 
+int serialize_hdr( uint32_t cap_id, SERVER_REQ op_code, 
 			    void* payload, size_t payload_len, int rv,
 				int tz_id, uint8_t* msg_buf, size_t msg_len ) {
 

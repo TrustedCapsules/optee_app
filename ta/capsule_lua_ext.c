@@ -6,7 +6,7 @@
 #include <tee_internal_api_extensions.h>
 #include <amessage.pb-c.h>
 #include <serialize_common.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 #include <lua.h>
 #include <luaconf.h>
 #include <lauxlib.h>

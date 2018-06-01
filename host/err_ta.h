@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <tee_client_api.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 
 #define PRINT_INFO(...) printf( __VA_ARGS__ )
 #define PRINT_LOOP( it, start, end, buf ) 			  \

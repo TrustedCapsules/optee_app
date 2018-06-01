@@ -4,7 +4,7 @@
 #include <inttypes.h>
 #include <time.h>
 #include <math.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>

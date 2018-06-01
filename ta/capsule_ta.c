@@ -5,7 +5,7 @@
 #include <tee_internal_api_extensions.h>
 #include <tee_api.h>
 #include <string.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 #include <amessage.pb-c.h>
 #include <lua.h>
 #include "capsule_structures.h"

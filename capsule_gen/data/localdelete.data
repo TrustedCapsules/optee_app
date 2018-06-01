@@ -1,2 +1,0 @@
-this test performs local delete for tests. On open/read/write this results in file being 
-automatically deleted.

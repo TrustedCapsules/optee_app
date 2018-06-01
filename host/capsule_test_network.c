@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 #include <aes_keys.h>
 #include <time.h>
 #include <stdlib.h>

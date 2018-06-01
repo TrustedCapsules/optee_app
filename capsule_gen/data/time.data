@@ -1,2 +1,0 @@
-this checks the time before allowing a file to be opened, in this policy, we check that a certain
-date has passed. 

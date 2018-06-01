@@ -2,7 +2,7 @@
 #include <tee_api_defines.h>
 #include <tee_internal_api_extensions.h>
 #include <string.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 #include <amessage.pb-c.h>
 #include <serialize_common.h>
 #include <lua.h>

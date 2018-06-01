@@ -5,7 +5,7 @@
 #include <tee_internal_api.h>
 #include <tee_internal_api_extensions.h>
 #include <tee_api_defines.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 #endif
 #include "ltrusted_app.h"
 #include "luaconf.h"

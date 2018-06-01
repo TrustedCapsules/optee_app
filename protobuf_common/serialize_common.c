@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 
 #include "amessage.pb-c.h"
 #include "serialize_common.h"

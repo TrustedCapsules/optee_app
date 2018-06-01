@@ -2,7 +2,7 @@
 #include <tee_api_defines.h>
 #include <tee_internal_api_extensions.h>
 #include <string.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>

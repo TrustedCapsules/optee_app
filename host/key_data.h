@@ -17,7 +17,7 @@
 
 #include <tee_client_api.h>
 #include <tee_api_types.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 #include <util.h>
 
 struct tee_attr_packed {

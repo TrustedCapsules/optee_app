@@ -1,1 +1,0 @@
-the data will have its policy changed on open and on subsequent read, the policy would be already updated so it won't change. 

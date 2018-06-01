@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 #include <aes_keys.h>
 #include <time.h>
 #include <stdlib.h>

@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <inttypes.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 #include <aes_keys.h>
 #include "err_ta.h"
 #include "key_data.h"

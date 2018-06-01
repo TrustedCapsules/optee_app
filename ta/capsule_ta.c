@@ -6,6 +6,7 @@
 #include <tee_api.h>
 #include <string.h>
 #include <capsuleCommon.h>
+#include <capsuleBenchmark.h>
 #include <amessage.pb-c.h>
 #include <lua.h>
 #include "capsule_structures.h"

@@ -1,6 +1,8 @@
 #ifndef CAPSULE_OP_H
 #define CAPSULE_OP_H
 
+#include <capsulePolicy.h>
+
 /*
  * For testing, registers the capsule keys
  */

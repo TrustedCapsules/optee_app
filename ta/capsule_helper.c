@@ -232,7 +232,7 @@ TEE_Result hash_block( unsigned char* ptx, size_t plen,
 
     cnt_a = read_cntpct();
 
-    if( hlen != HASH_LEN ) {
+    if( hlen != HASHLEN ) {
         return TEE_ERROR_NOT_SUPPORTED;
     }
 

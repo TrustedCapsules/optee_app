@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <capsuleCommon.h>
+#include <capsulePolicy.h>
 #include <amessage.pb-c.h>
 #include <serialize_common.h>
 #include <lua.h>
@@ -146,12 +147,12 @@ unsigned char* do_close( TEE_Result policy_res, size_t *cap_to_write_len,
                     encrypt_len,        // length of concatenated and encrypted buffers
                     kv_len = 0,         // length of kv string
                     header_len,         // size of header
-                    hlen = HASH_LEN;    // length of hash (should be 32)
+                    hlen = HASHLEN;    // length of hash (should be 32)
 
     int             last = 0,           // current append spot in concat data
                     init_ctr = 0;       // initial counter for hash
 
-    unsigned char   hash[HASH_LEN];     // new hash for encrypted data
+    unsigned char   hash[HASHLEN];     // new hash for encrypted data
 
     if (policy_res != TEE_SUCCESS) {
         // If the policy did not pass, use data buffer
@@ -523,7 +524,7 @@ TEE_Result do_recv_payload( int fd, void* hash, int hlen,
     int           nr = len;
     int           read = 0;
     size_t        plen = len;
-    unsigned char hash_p[HASH_LEN];
+    unsigned char hash_p[HASHLEN];
 
     do {
         res = do_recv_connection( fd, ( (char*) buf ) + read, &nr );
@@ -538,7 +539,7 @@ TEE_Result do_recv_payload( int fd, void* hash, int hlen,
     res = hash_block( buf, read, hash_p, hlen, true, hash_op );
     CHECK_SUCCESS( res, "hash_block() error" );
 
-    if( !compare_hashes( hash, hash_p, HASH_LEN ) ) {
+    if( !compare_hashes( hash, hash_p, HASHLEN ) ) {
         res = TEE_ERROR_COMMUNICATION;
         CHECK_SUCCESS( res, "compare_hashes() header hash does not"
                             " match the hash of the payload" );

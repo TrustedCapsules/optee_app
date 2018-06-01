@@ -1,9 +1,9 @@
 #ifndef CAPSULE_TA_H
 #define CAPSULE_TA_H
 
-#define POLICY_FUNC      "policy"
+#include <capsuleBenchmark.h>
+
 #define TZ_CRED          "cred"
-#define POLICY_MAX_SIZE  2048
 
 #define ASSERT_PARAM_TYPE( pt ) \
 			do {                \

@@ -11,12 +11,17 @@
 #define DELIMITER_SIZE  6
 #define HASHLEN         32
 #define SHARED_MEM_SIZE 1024*10         // Used in tests
+#define HEADER_SIZE 128 // Backward compatability with send functions
+#define MAX_NUM_KEYS 10 // Maximum number of keys in capsule KV store
+
+#define STATE_SIZE 128 // For backward compatability with tests should be unnecessary when they are rewritten
 
 // From capsule_gen/src/capsule_util.h
-typedef enum {
+/*typedef enum {
 	false,
 	true,
 } bool;
+*/
 
 // Used all over the place, but mostly in testing?
 #define CHECK_SUCCESS(res, ...) if( (res) != TEE_SUCCESS ) { \
@@ -62,11 +67,11 @@ typedef enum {
     DATA_SHADOW,
 } BUF_TYPE;
 
-typedef struct trustedCap {
+typedef struct TrustedCap {
 	char            pad[11];        // bytes 0-11
 	unsigned int    capsize;        // bytes 12-15
 	unsigned char   aes_id[4];      // bytes 16-19
 	unsigned char   hash[HASHLEN];  // bytes 20-52
-} trustedCap;
+} TrustedCap;
 
 #endif

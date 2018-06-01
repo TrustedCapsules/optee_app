@@ -7,6 +7,7 @@
 #include <amessage.pb-c.h>
 #include <serialize_common.h>
 #include <capsuleCommon.h>
+#include <capsuleServerProtocol.h>
 #include <lua.h>
 #include <luaconf.h>
 #include <lauxlib.h>
@@ -41,10 +42,10 @@ static void delete_file(void) {
 	 * 4) TEE_Panic out of the trusted capsule session
 	 */
 	int    fd;
-	size_t file_length, nw, curr_length = 0;
-	char   zero_block[BLOCK_LEN];
-    uint32_t offset = 0;
-    TEE_Result res;
+	size_t file_length, nw = 0;
+	char* zero_block;
+	uint32_t offset = 0;
+	TEE_Result res;
 
 
 	TEE_CloseAndDeletePersistentObject( stateFile );
@@ -57,13 +58,11 @@ static void delete_file(void) {
     // TODO: add error checks
 	res = TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_END, &file_length );
 
-	memset( zero_block, 0, BLOCK_LEN );
-	while( curr_length < file_length ) {
-		res = TEE_SimpleWrite( fd, zero_block, BLOCK_LEN, &nw, offset );
-        offset += nw;
-		curr_length += nw;
-	}	
+	zero_block = malloc(file_length*sizeof(char));
+	memset( zero_block, 0, file_length );
+	res = TEE_SimpleWrite( fd, zero_block, file_length, &nw, offset );
 
+	free(zero_block);
 	TEE_SimpleClose( fd );
 	TEE_SimpleUnlink( capsule_name );
 
@@ -137,7 +136,7 @@ static int luaE_getserverstate( lua_State *L ) {
 	/* Send the key */
 	TEE_GenerateRandom( &rv, sizeof(int) );
 	len = (int) strlen( key );
-	res = do_send( fd, (void*) key, &len, REQ_STATE, rv );
+	res = do_send( fd, (void*) key, &len, GET_STATE, rv );
 	if( res != TEE_SUCCESS ) {
 		do_close_connection( fd );
 		luaL_error( L, "Do_send() error" );
@@ -157,6 +156,7 @@ static int luaE_getserverstate( lua_State *L ) {
 						rv, msg->rvalue );
 	}
 
+/* TODO: rewrite
 	if( msg->op_code != RESP_STATE && msg->op_code != RESP_DELETE ) {
 		do_close_connection( fd );
 		free_hdr( msg );
@@ -176,7 +176,7 @@ static int luaE_getserverstate( lua_State *L ) {
 		luaL_error( L, "Payload length %d is longer than max size %d", 
 						msg->payload_len, STATE_SIZE );
 	}
-
+*/
 
 	if( msg->payload_len > 0 ) {
 		res = do_recv_payload( fd, msg->hash.data, msg->hash.len,
@@ -198,94 +198,12 @@ static int luaE_getserverstate( lua_State *L ) {
 	return 1;
 }
 
-static int luaE_reportlocid( lua_State *L ) {
-	TEE_Result 	  res;
-	TEE_GPS       gps;
-	TEE_Time 	  t;
-	int           fd, rv, ts_port, len;
-	char          ts_ip[IPV4_SIZE] = { 0 };
-	unsigned int  val[7];
-	unsigned int  op = luaL_checkinteger( L, -1 );
-	AMessage     *msg;
-
-	/* Uses the network functions to report the
-	 * GPS location and ID of the person accessing
-	 * the trusted capsule:
-	 * 		send -> LOCATION (128B) ID (128B)
-	 * 		recv <- ACK or SPECIAL string for DEL file
-	 */
-		
-	/* Get the server ip:port from policy */
-	res = lua_get_server_ip_port( L, ts_ip, &ts_port ); 
-	if( res != TEE_SUCCESS ) luaL_error( L, "Lua_get_server_ip_port error" );
-
-	// MSG( "IP: %s, PORT: %d", ts_ip, ts_port );
-
-	/* Open connection to server */
-	res = do_open_connection( ts_ip, ts_port, &fd );
-	if( res != TEE_SUCCESS ) luaL_error( L, "Do_open_connection error" );
-
-	/* Send the key */
-	TEE_GenerateRandom( &rv, sizeof(int) );
-	TEE_GetGPS( &gps );
-	TEE_GetREETime( &t );
-	val[0] = gps.longitude;
-	val[1] = gps.latitude;
-	val[2] = curr_cred;
-	val[3] = t.seconds;
-	val[4] = op;
-	val[5] = curr_len;
-	// val[6] = getdataoffset(); 
-	len = sizeof(val);
-
-	res = do_send( fd, (void*) val, &len, REQ_SEND_INFO, rv );
-	if( res != TEE_SUCCESS ) {
-		do_close_connection( fd );
-		luaL_error( L, "Do_send() error" );
-	}
-
-	// MSG( "Waiting for response..." );
-
-	/* Recv the val */
-	res = do_recv_header( fd, &msg );
-	if( res != TEE_SUCCESS ) {
-		do_close_connection( fd );
-		luaL_error( L, "Do_recv_header() error" );
-	}
-	
-	if( msg->rvalue != rv ) {
-		do_close_connection( fd );
-		free_hdr( msg );
-		luaL_error( L, "Magic value %d does not match from header (%d)",
-						rv, msg->rvalue );
-	}
-
-	if( msg->op_code != RESP_SEND_ACK && msg->op_code != RESP_DELETE ) {
-		do_close_connection( fd );
-		free_hdr( msg );
-		luaL_error( L, "Msg->op_code %d invalid (not RESP_SEND_ACK or RESP_DELETE)",
-				 		msg->op_code );
-	}
-
-	if( msg->op_code == RESP_DELETE ) {
-		do_close_connection( fd );
-		free_hdr( msg );
-		delete_file();
-		/* Will not return */
-	}
-
-	do_close_connection( fd );
-	free_hdr( msg );
-
-	return 0;
-}
-
 static int luaE_checkpolicychange( lua_State *L ) {
 	TEE_Result 	  res;
 	int           fd, rv, ts_port, len;
 	char          ts_ip[IPV4_SIZE] = { 0 };
 	unsigned int  version = luaL_checkinteger( L, -1 );
-	unsigned char policy[POLICY_SIZE];
+	unsigned char policy[POLICY_MAX_SIZE];
 	AMessage     *msg;
 	bool          policy_change = false;
     
@@ -314,7 +232,7 @@ static int luaE_checkpolicychange( lua_State *L ) {
 	/* Send the policy change request */
 	TEE_GenerateRandom( &rv, sizeof(int) );
 	len = sizeof( version );
-	res = do_send( fd, (void*) &version, &len, REQ_POLICY_CHANGE, rv );
+	res = do_send( fd, (void*) &version, &len, POLICY_UPDATE, rv );
 	if( res != TEE_SUCCESS ) {
 		do_close_connection( fd );
 		luaL_error( L, "Do_send() error" );
@@ -333,7 +251,7 @@ static int luaE_checkpolicychange( lua_State *L ) {
 		luaL_error( L, "Magic value %d does not match from header (%d)",
 						rv, msg->rvalue );
 	}
-
+/*
 	if( msg->op_code != RESP_POLICY_CHANGE && msg->op_code != RESP_DELETE ) {
 		do_close_connection( fd );
 		free_hdr( msg );
@@ -346,12 +264,12 @@ static int luaE_checkpolicychange( lua_State *L ) {
 		free_hdr( msg );
 		delete_file();
 	}
-
-	if( msg->payload_len > POLICY_SIZE ) {
+*/
+	if( msg->payload_len > POLICY_MAX_SIZE ) {
 		do_close_connection( fd );
 		free_hdr( msg );
 		luaL_error( L, "Payload length %d is longer than max size %d", 
-						msg->payload_len, POLICY_SIZE );
+						msg->payload_len, POLICY_MAX_SIZE );
 	}
 	/* Grab the new policy */
 	if( msg->payload_len > 0 ) {
@@ -470,7 +388,6 @@ static const luaL_Reg ext_funcs[] = {
 	
 	/* POLICY - server */
 	{ "getserverstate", luaE_getserverstate },
-	{ "reportlocid", luaE_reportlocid },
 	{ "checkpolicychange", luaE_checkpolicychange },
 
 	/* ACTIONS - allow/deny are available through true/false */

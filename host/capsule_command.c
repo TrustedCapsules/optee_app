@@ -2,6 +2,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <capsuleCommon.h>
+#include <capsuleServerProtocol.h>
 #include <syslog.h>
 #include "err_ta.h"
 #include "key_data.h"
@@ -23,7 +24,7 @@ TEEC_Result freeSharedMem( TEEC_SharedMemory* mem ) {
  * for encrypt and decrypt operation.
  */
 
-TEEC_Result register_aes_key( TEEC_Session *sess, unsigned char *id,
+TEEC_Result register_aes_key( TEEC_Session *sess, unsigned const char *id,
                               unsigned char *key, size_t keylen, 
                               unsigned char *iv, size_t ivlen, 
                               TEEC_SharedMemory *in ) {

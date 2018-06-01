@@ -3,6 +3,7 @@
 #include <tee_internal_api_extensions.h>
 #include <string.h>
 #include <capsuleCommon.h>
+#include <capsuleBenchmark.h>
 #include <amessage.pb-c.h>
 #include <serialize_common.h>
 #include <lua.h>

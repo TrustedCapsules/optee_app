@@ -1,6 +1,8 @@
 #ifndef CAPSULE_COMMAND_H
 #define CAPSULE_COMMAND_H
 
+#include <capsuleServerProtocol.h>
+
 /* Allocate shared memory with TrustZone */
 TEEC_Result allocateSharedMem( TEEC_Context *ctx, 
                                TEEC_SharedMemory *mem );
@@ -18,7 +20,7 @@ TEEC_Result closeSession( TEEC_Session *sess );
 TEEC_Result finalizeContext( TEEC_Context *ctx );
 
 /* AES Key Operation */
-TEEC_Result register_aes_key( TEEC_Session *sess, unsigned char* id,
+TEEC_Result register_aes_key( TEEC_Session *sess, unsigned const char* id,
                               unsigned char* key, size_t keylen,
                               unsigned char* iv, size_t ivlen, 
                               TEEC_SharedMemory *in );

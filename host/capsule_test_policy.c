@@ -5,7 +5,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <capsuleCommon.h>
-#include <aes_keys.h>
+#include <capsuleKeys.h>
 #include "err_ta.h"
 #include "key_data.h"
 #include "capsule_command.h"

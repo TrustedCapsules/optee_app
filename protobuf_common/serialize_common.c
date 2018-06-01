@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <capsuleCommon.h>
-
+#include <capsuleServerProtocol.h>
 #include "amessage.pb-c.h"
 #include "serialize_common.h"
 
@@ -25,19 +25,19 @@ int serialize_hdr( uint32_t cap_id, SERVER_OP op_code,
 				int tz_id, uint8_t* msg_buf, size_t msg_len ) {
 
 	AMessage 		msg = AMESSAGE__INIT;
-	unsigned char   hash[HASH_LEN];
+	unsigned char   hash[HASHLEN];
 	uint32_t        msg_size;
 
 	if( payload_len <= 0 ) {
-		memset( hash, 0, HASH_LEN );
+		memset( hash, 0, HASHLEN );
 	} else {
-		hash_data( payload, payload_len, hash, HASH_LEN ); 
+		hash_data( payload, payload_len, hash, HASHLEN ); 
 	}
 
 	msg.capsule_id = cap_id;
 	msg.op_code = op_code;  
 	msg.hash.data = hash;
-	msg.hash.len = HASH_LEN;
+	msg.hash.len = HASHLEN;
 	msg.payload_len = payload_len; 
 	msg.rvalue = rv;
 	msg.tz_id = tz_id;

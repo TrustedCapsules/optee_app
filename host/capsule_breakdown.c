@@ -10,7 +10,7 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <capsuleCommon.h>
-#include <aes_keys.h>
+#include <capsuleKeys.h>
 #include <time.h>
 #include <stdlib.h>
 #include "err_ta.h"

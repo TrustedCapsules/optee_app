@@ -130,20 +130,20 @@ void registerStates( capsuleEntry *e, char* buf, size_t len ) {
 void registerCapsules(void){
 	capsules = newCapsuleTable( 10 );
 	
-	int numCapsules = sizeof( manifest ) / sizeof( capsuleManifestEntry );
+	int numCapsules = sizeof( capsule_data_array ) / sizeof( capsule_data );
 	for( int i = 0; i < numCapsules; i++ ) {
-		uint32_t id = littleEndianToUint( manifest[i].id );
-		capsuleEntry* ce = newCapsuleEntry( id, manifest[i].name, 
-											sizeof( manifest[i].name ) );
+		uint32_t id = littleEndianToUint( capsule_data_array[i].id );
+		capsuleEntry* ce = newCapsuleEntry( id, capsule_data_array[i].name, 
+											sizeof( capsule_data_array[i].name ) );
 		capsuleInsert( capsules, ce );
 		
 		printf( "Capsule %s (0x%x): version %u \n", 
-				manifest[i].name, id, ce->policyVersion ); 
+				capsule_data_array[i].name, id, ce->policyVersion ); 
 
 		char stateFile[255] = {0};
 		char states[1024] = {0};
 		memcpy( stateFile, "../server_capsules/", 19 );
-		strcat( stateFile, manifest[i].name );
+		strcat( stateFile, capsule_data_array[i].name );
 		strcat( stateFile, ".state" );	
 		size_t len = open_file( stateFile, states, sizeof(states ) );
 		if( len > 0 ) 

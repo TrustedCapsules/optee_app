@@ -1,6 +1,6 @@
 SERVER = capsule_server
 LIBS = -ltomcrypt -ltfm -lpthread 
-COMMON = ../../commonref
+COMMON = ../../common
 
 CC = gcc
 CFLAGS = -Wall -DTFM_DESC -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable \

@@ -17,7 +17,8 @@
 #define STATE_SIZE 128 // For backward compatability with tests should be unnecessary when they are rewritten
 
 // From capsule_gen/src/capsule_util.h
-/*typedef enum {
+/*
+typedef enum {
 	false,
 	true,
 } bool;

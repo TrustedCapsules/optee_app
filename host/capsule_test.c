@@ -1044,7 +1044,7 @@ TEEC_Result test_02() {
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
         CHECK_RESULT( res, "test_%02d: capsule_set_state() key %s -> val %s"
                            " for %s failed", test_num, key, val_random, 
-                           capsule_data_array[i].str );
+                           capsule_data_array[i].name );
 
         // reset the cred state to the right value
         memset( val, 0, sizeof(val) );
@@ -1056,7 +1056,7 @@ TEEC_Result test_02() {
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
         CHECK_RESULT( res, "test_%02d: capsule_set_state() key %s -> val %s"
                            " for %s failed", test_num, key, val, 
-                           capsule_data_array[i].str );
+                           capsule_data_array[i].name );
         
         // setting another random state to see if we can add multiple
         // states 
@@ -1065,14 +1065,14 @@ TEEC_Result test_02() {
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
         CHECK_RESULT( res, "test_%02d: capsule_set_state() key %s -> val %s"
                            " for %s failed", test_num, key_random, val_random, 
-                           capsule_data_array[i].str );
+                           capsule_data_array[i].name );
 
         // get the two states to see if they are correct 
         res = capsule_get_state( &sess, &in_mem, &out_mem, key, STATE_SIZE, 
                                  val_get, STATE_SIZE, 
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
         CHECK_RESULT( res, "test_%02d: capsule_get_state() key %s failed for %s",
-                           test_num, key, capsule_data_array[i].str );
+                           test_num, key, capsule_data_array[i].name );
 
         if( strcmp( val, val_get) != 0 ) {
             CHECK_RESULT( TEEC_ERROR_CORRUPT_OBJECT, 
@@ -1084,7 +1084,7 @@ TEEC_Result test_02() {
                                  STATE_SIZE, val_get, STATE_SIZE, 
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
         CHECK_RESULT( res, "test_%02d: capsule_get_state() key %s failed for %s",
-                           test_num, key_random, capsule_data_array[i].str );
+                           test_num, key_random, capsule_data_array[i].name );
 
         if( strcmp( val_random, val_get) != 0 ) {
             CHECK_RESULT( TEEC_ERROR_CORRUPT_OBJECT, 
@@ -1200,11 +1200,11 @@ TEEC_Result register_keys() {
     for( i = 0; i < sizeof( capsule_data_array ) /
                     sizeof( struct capsule_data ); i++ ) {
         res = register_aes_key( &sess, capsule_data_array[i].id,
-                                key_std, sizeof(key_std),
-                                iv_std, sizeof(iv_std), 
+                                keyDefault, sizeof(keyDefault),
+                                ivDefault, sizeof(ivDefault), 
                                 &in_mem );
         CHECK_RESULT( res, "register_keys: register_aes_key() %s failed",
-                           capsule_data_array[i].str );
+                           capsule_data_array[i].name );
     }
 
     res = closeSession( &sess );

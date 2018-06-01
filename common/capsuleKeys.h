@@ -1,15 +1,15 @@
 #ifndef CAPSULE_KEYS_H
 #define CAPSULE_KEYS_H
 
-static unsigned char key_std[] = { 0x00, 0x01, 0x02, 0x03, 
+static unsigned char keyDefault[] = { 0x00, 0x01, 0x02, 0x03, 
                                    0x04, 0x05, 0x06, 0x07, 
                                    0x08, 0x09, 0x0A, 0x0B, 
                                    0x0C, 0x0D, 0x0E, 0x0F };
 
-static unsigned char iv_std[16] = { 0x00 };
+static unsigned char ivDefault[16] = { 0x00 };
 
 typedef struct capsule_data {
-	const char           str[45];
+	const char           name[45];
 	unsigned const char  id[4];
 	unsigned char        cred[10];
 } capsule_data;

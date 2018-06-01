@@ -2,7 +2,7 @@ TARGET = cgen
 LIBS = -ltomcrypt -ltfm 
 CC = gcc
 
-COMMON = ../../../commonref
+COMMON = ../../../common
 
 CFLAGS = -Wall -DTFM_DESC -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable \
 		-I$(COMMON)

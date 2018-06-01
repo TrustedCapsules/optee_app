@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #include <tomcrypt.h>
 
@@ -24,15 +26,15 @@ void aesDecrypt( const unsigned char *ctx, unsigned char *ptx, size_t len,
 
 bool getCapsuleKeys( char* capsuleName, capsuleEntry* c ) {
 
-	size_t numCapsules = sizeof( manifest ) / sizeof( capsuleManifestEntry );
+	size_t numCapsules = sizeof( capsule_data_array ) / sizeof( capsule_data );
 
     for( int i = 0; i < numCapsules; i++ ) {
-        if( strcmp( capsuleName, manifest[i].name ) == 0 ) {
+        if( strcmp( capsuleName, capsule_data_array[i].name ) == 0 ) {
 			// For now, we use the same key:iv pair for all capsules. 
     		memset( c->name, 0, sizeof( c->name ) );
 			memset( c->id, 0, sizeof( c->id ) );
-			memcpy( c->name, manifest[i].name, sizeof( manifest[i].name ) );
-			memcpy( c->id, manifest[i].id, sizeof( manifest[i].id ) );
+			memcpy( c->name, capsule_data_array[i].name, sizeof( capsule_data_array[i].name ) );
+			memcpy( c->id, capsule_data_array[i].id, sizeof( capsule_data_array[i].id ) );
 			
 			c->aesKey = keyDefault;
 			c->aesKeyLength = sizeof( keyDefault );
@@ -186,7 +188,7 @@ void encryptFile( capsuleEntry* e, char* ptxFile, char* ctxFile ) {
 }
 
 // fillHeader constructs and encrypts trusted capsule header 
-bool fillHeader( trustedCap* header, size_t fsize, capsuleEntry *e, 
+bool fillHeader( TrustedCap* header, size_t fsize, capsuleEntry *e, 
                  unsigned char* hash, size_t hashLen ) {
 
     if( hashLen != HASHLEN ) {
@@ -194,7 +196,7 @@ bool fillHeader( trustedCap* header, size_t fsize, capsuleEntry *e,
     	return false;
 	}
 
-    memset( header, 0, sizeof( trustedCap ) );
+    memset( header, 0, sizeof( TrustedCap ) );
     
     strcpy( header->pad, TRUSTEDCAP );
 	aesEncrypt( e->id, header->aes_id, sizeof( header->aes_id ), e );
@@ -241,13 +243,13 @@ void writeHeader( capsuleEntry *e, const char *plaintext, const char *capsule ) 
 	hashData( buffer, ptxLength, hash, sizeof( hash ) );
 
     // Write header -> capsule
-    trustedCap 		header;
+    TrustedCap 		header;
     fillHeader( &header, ptxLength, e, hash, sizeof(hash) );
     
 	fseek( out, 0, SEEK_SET );
-	if( fullWrite( &header, sizeof( trustedCap ), 1, out ) != sizeof( trustedCap ) ) {
+	if( fullWrite( &header, sizeof( TrustedCap ), 1, out ) != sizeof( TrustedCap ) ) {
 		fprintf( stderr, "writeHeader(): fullWrite did not write %zu B\n", 
-				 sizeof( trustedCap ) );
+				 sizeof( TrustedCap ) );
 	}
     
 	free( buffer );
@@ -307,7 +309,7 @@ void encodeToCapsule( char* capsuleName, char* path, char* opath ) {
 }
 
 // printHeader prints the trusted capsule header
-void printHeader( trustedCap* header, capsuleEntry* e ) {
+void printHeader( TrustedCap* header, capsuleEntry* e ) {
 
     unsigned char id[4];
 	aesDecrypt( header->aes_id, id, sizeof( id ), e );
@@ -328,8 +330,8 @@ void printHeader( trustedCap* header, capsuleEntry* e ) {
 }
 
 // stripHeader gets the header of a capsule, printing if allowed
-void stripHeader( FILE* fp, trustedCap *header, capsuleEntry *e, bool print ) {
-    size_t n = fullRead( header, sizeof(char), sizeof( trustedCap ), fp );
+void stripHeader( FILE* fp, TrustedCap *header, capsuleEntry *e, bool print ) {
+    size_t n = fullRead( header, sizeof(char), sizeof( TrustedCap ), fp );
 	if( print ) {
     	printHeader( header, e );
 	}
@@ -455,7 +457,7 @@ void decodeFromCapsule( char *capsuleName, char* path, SECTION s ) {
         return;
     }
     
-    trustedCap header;
+    TrustedCap header;
     stripHeader( fp, &header, &e, s == HEADER_SECTION || s == ALL_SECTION );
 	
 	unsigned char* buffer = (unsigned char*) malloc( header.capsize * sizeof( char ) );

@@ -40,12 +40,12 @@ int connectToServer( char* ipAddr, uint16_t port ) {
 // initCapsuleEntries register only the first capsule in manifest
 void initCapsuleEntries() {
 	capsuleEntry* e = (capsuleEntry*) malloc( sizeof(capsuleEntry) );
-	memcpy( e->name, manifest[0].name, sizeof(manifest[0].name) );
+	memcpy( e->name, capsule_data_array[0].name, sizeof(capsule_data_array[0].name) );
 	e->key = keyDefault;
 	e->keyLen = sizeof(keyDefault);
 	e->iv = ivDefault;
 	e->ivLen = sizeof(ivDefault);
-	e->capsuleID = littleEndianToUint( manifest[0].id );
+	e->capsuleID = littleEndianToUint( capsule_data_array[0].id );
 	e->policyVersion = 0;
 	e->stateMap = NULL;
 	e->next = NULL;	

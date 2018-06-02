@@ -327,12 +327,24 @@ RESULT TEE_updatePolicy( lua_State *L ) {
 //	If offset is past the end of the file, 0 is returned. 
 //  If an error occurs, -1 is returned. 
 int TEE_readCapsuleData( char** buf, size_t len, size_t offset, CAPSULE w ) {
-	//-------FILL-IN HERE-----------
+	// TODO: Double check these mallocs work. Could seg fault. Also, the memory should get freed somewhere???
 	switch( w ) {
 	case NEW:
-		return (*dummy_readCapsuleData_fn)( buf, len, offset );
+		if (offset + len > cap_head.data_shadow_buf_len) {
+			return 0;
+		}
+		// Allocate space
+		*buf = TEE_Malloc(len, 0);
+		TEE_MemMove(buf, cap_head.data_shadow_buf + offset, len);
+		return len;
 	case ORIGINAL:
-		return (*dummy_readCapsuleData_fn)( buf, len, offset );
+		if (offset + len > cap_head.data_buf_len) {
+			return 0;
+		}
+		// Allocate space
+		*buf = TEE_Malloc(len, 0);
+		TEE_MemMove(buf, cap_head.data_buf + offset, len);
+		return len;
 	default: 
 		break;
 	}

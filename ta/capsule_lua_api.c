@@ -164,8 +164,47 @@ RESULT TEE_deleteCapsule(void) {
 	// Suggested design: see delete_file(). Previously remote server can call delete
 	// file, however, that can be subsumed by a update to policy that calls 
 	// deleteCapsule(). 
-	(*dummy_deleteCapsule_fn)();
+	
+	/* The solution below is inelegant, but it gets the
+	 * job done, even against TOCTTOU attacks.
+	 * 
+	 * 1) Delete the statefile for this capsule
+	 * 2) Zero the entire capsule form header down
+	 * 3) Call unlink on the file
+	 * 4) TEE_Panic out of the trusted capsule session
+	 */
+
+	int fd;
+	size_t file_length, nw = 0;
+	char* zero_block;
+	uint32_t offset = 0;
+	TEE_Result res;
+
+	TEE_CloseAndDeletePersistentObject( stateFile);
+	res = TEE_SimpleOpen( capsule_name, &fd );
+	if ( fd < 0 || res != TEE_SUCCESS ) {
+		// File does not exist
+		goto delete_file_exit;
+	}
+
+	// TODO: error checks and do we store file length anywhere?
+	//       avoiding an lseek would be nice
+	res = TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_END, &file_length );
+
+	// This might need to be TEE_Malloc
+	zero_block = malloc( file_length*sizeof( char ) );
+	memset( zero_block, 0, file_length );
+	res = TEE_SimpleWrite( fd, zero_block, file_length, &nw, offset);
+
+	free( zero_block );
+	TEE_SimpleClose( fd );
+	TEE_SimpleUnlink( capsule_name );
 	//------------------------------
+
+delete_file_exit:
+	// MSG( "Deleting file %s...", capsule_name );
+	// TODO: why is the TEE_Panic necessary?
+	TEE_Panic(0);
 	return NIL;
 }
 

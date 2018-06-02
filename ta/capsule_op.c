@@ -10,6 +10,7 @@
 #include <lua.h>
 #include "capsule_structures.h"
 #include "capsule_helper.h"
+#include "lua_helpers.h"
 #include "capsule_op.h"
 #include "capsule_ta.h"
 

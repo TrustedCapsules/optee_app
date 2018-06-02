@@ -13,18 +13,6 @@ struct attr_packed {
 unsigned long long read_cntpct(void);
 
 /*
- * Lua operations
- */
-int getfield( lua_State *L, int key, int tindex ); 
-// TEE_Result lua_read_redact( lua_State *L, int state_tgid, int state_fd,
-//                          unsigned char *bp, uint32_t len );
-// TEE_Result lua_get_replacement_char( lua_State *L, char* replace );
-TEE_Result lua_get_server_ip_port( lua_State *L, char* ts, int* port );
-TEE_Result lua_load_policy( lua_State *L, const char* buf );
-void lua_start_context( lua_State **L );
-void lua_close_context( lua_State **L );
-
-/*
  * Process a block of data (encrypt/decrypt)
  */
 TEE_Result process_aes_block( unsigned char* ctx, size_t clen,

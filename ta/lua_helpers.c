@@ -6,10 +6,15 @@
 #include <lualib.h>
 #include <lauxlib.h>
 
+#include <tee_internal_api.h>
+#include <tee_internal_api_extensions.h>
+#include <tee_api_types.h>
+
 #include <capsuleCommon.h>
 #include <capsulePolicy.h>
 
-#include "fakeoptee.h"
+#include "lua_helpers.h"
+#include "capsule_lua_api.h"
 
 void lua_start_context( lua_State **L ) {
 	*L = luaL_newstate();
@@ -21,11 +26,14 @@ void lua_close_context( lua_State **L ) {
 	*L = NULL;	
 }
 
-void lua_load_policy( lua_State *L, const char* policy ) {
+TEE_Result lua_load_policy( lua_State *L, const char* policy ) {
 	int ret = luaL_loadstring( L, policy ) || lua_pcall( L, 0, 0, 0 );
 	if( ret != LUA_OK ) {
 		printf( "Cannot load lua policy, got error %d\n", ret );
+		return TEE_ERROR_POLICY_FAILED;
 	}
+
+	return TEE_SUCCESS;
 }
 
 void lua_load_enumerations( lua_State *L ) {
@@ -91,7 +99,8 @@ int lua_run_policy( lua_State *L, SYSCALL_OP op ) {
 		if( lua_isstring( L, -1 ) ) {
 			const char* errString = lua_tostring( L, -1 );
 			//printf( " %s", errString );
-			if( strstr( errString, POLICY_UPDATED_ERROR_MSG ) != NULL ) {
+			// TODO: Changed strstr to strcmp
+			if( strcmp( errString, POLICY_UPDATED_ERROR_MSG ) == 0 ) {
 				ret = UPDATED;
 			}
 			lua_pop( L, 1 );
@@ -128,7 +137,7 @@ RESULT lua_get_policy_result( lua_State *L ) {
 }
 
 bool lua_get_log( lua_State *L, SYSCALL_OP op ) {
-	lua_getglobal( L, op == OPEN ? POLICY_LOG_OPEN : POLICY_LOG_CLOSE );
+	lua_getglobal( L, op == OPEN_OP ? POLICY_LOG_OPEN : POLICY_LOG_CLOSE );
 	if( !lua_isboolean( L, -1 ) ) {
 		return false;
 	}

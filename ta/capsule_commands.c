@@ -11,6 +11,7 @@
 #include "capsule_structures.h"
 #include "capsule_commands.h"
 #include "capsule_helper.h"
+#include "lua_helpers.h"
 #include "capsule_op.h"
 #include "capsule_lua_ext.h"
 #include "capsule_ta.h"
@@ -225,7 +226,7 @@ TEE_Result capsule_open( uint32_t param_type,
         lua_start_context( &Lstate );
         res = do_load_policy();
         CHECK_GOTO( res, capsule_open_exit, "Do_load_policy() Error" );
-        res = add_lua_ext( Lstate );
+        res = lua_add_ext( Lstate );
         CHECK_GOTO( res, capsule_open_exit, "Add_lua_ext() Error" );
     }
 

@@ -12,6 +12,9 @@
 #include "lauxlib.h"
 #include "math_private.h"
 
+// TODO: implement strstr and atoi here
+
+
 char* strchr( const char* str, int character ) {
 	while( *str && *str != character )
 		str++;

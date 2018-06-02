@@ -16,6 +16,6 @@ RESULT 		TEE_redact( const size_t start, const size_t end,
 				  	    const char* replaceStr, size_t len );
 RESULT 		TEE_updatePolicy( lua_State *L );
 int 		TEE_readCapsuleData( char** buf, size_t len, size_t offset, CAPSULE c );
-SYSCALL_OP 	TEE_get_op();
+SYSCALL_OP 	TEE_get_op( void );
 
 #endif

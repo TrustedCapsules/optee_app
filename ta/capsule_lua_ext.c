@@ -110,7 +110,7 @@ static int luaE_redact( lua_State *L ) {
 	// from Lua as it exists there only as a local state.
 	SYSCALL_OP op = TEE_get_op();
 	//-------------------------------------
-	if( op != OPEN ) {
+	if( op != OPEN_OP ) {
 		lua_pushinteger( L, POLICY_ERROR_REDACT_FAILURE );
 		return 1;
 	}
@@ -129,7 +129,7 @@ static int luaE_readNewCapsuleData( lua_State *L ) {
 	// from Lua as it exists there only as a local state.
 	SYSCALL_OP op = TEE_get_op();
 	//-------------------------------------
-	if( op != CLOSE ) {
+	if( op != CLOSE_OP ) {
 		lua_pushlstring( L, NULL, 0 );
 		lua_pushinteger( L, -1 );
 		return 2;
@@ -155,7 +155,7 @@ static int luaE_newCapsuleLength( lua_State *L ) {
 	// from Lua as it exists there only as a local state.
 	SYSCALL_OP op = TEE_get_op();
 	//-------------------------------------
-	if( op != CLOSE ) {
+	if( op != CLOSE_OP ) {
 		lua_pushinteger( L, -1 );
 		return 1;
 	}
@@ -204,11 +204,11 @@ static const luaL_Reg ext_funcs[] = {
 	{ NULL, NULL }
 };
 
-void lua_add_ext( lua_State *L ) {
+TEE_Result lua_add_ext( lua_State *L ) {
 	const luaL_Reg *lib;
 	for( lib = ext_funcs; lib->func; lib++ ) {
 		lua_pushcfunction( L, lib->func );
 		lua_setglobal( L, lib->name );
 	}
-	return;
+	return TEE_SUCCESS;
 }

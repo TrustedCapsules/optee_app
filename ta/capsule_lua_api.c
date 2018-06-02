@@ -4,29 +4,33 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
+#include <tee_internal_api.h>
+#include <tee_api_defines.h>
+#include <tee_internal_api_extensions.h>
+
 #include <capsulePolicy.h>
+#include <capsuleCommon.h>
 
 #include "capsule_ta.h"
 #include "capsule_lua_api.h"
+#include "capsule_structures.h"
 
 // TEE_getLocation queries the device location from 
 //		WHERE_REMOTE_SERVER - remote server 
 //		WHERE_LOCAL_DEVICE - local device
 // If an error occurs, ERROR_LOC_NOT_AVAIL is returned
 RESULT TEE_getLocation( int* longitude, int* latitude, const WHERE w ) {
+	TEE_GPS gps;
 	switch( w ) {
 	case WHERE_REMOTE_SERVER:
 		// ---------FILL-IN HERE----------
-		return (*dummy_location_fn)( longitude, latitude );
+		return NIL;
 		// --------------------------
 	case WHERE_LOCAL_DEVICE:
-		// ---------FILL-IN HERE----------
-		TEE_GPS gps;
 		TEE_GetGPS( &gps ); // Should probably modify for error code
 		*longitude = gps.longitude;
 		*latitude = gps.latitude;
 		return NIL;
-		// --------------------------
 	default:
 		return ERROR_LOC_NOT_AVAIL;
 	}
@@ -38,18 +42,16 @@ RESULT TEE_getLocation( int* longitude, int* latitude, const WHERE w ) {
 //		WHERE_LOCAL_DEVICE - local device
 // If an error occurs, ERROR_TIME_NOT_AVAIL is returned
 RESULT TEE_getTime( uint32_t* ts, const WHERE w ) {
+	TEE_Time t;
 	switch( w ) {
 	case WHERE_REMOTE_SERVER:
 		// ---------FILL-IN HERE----------
-		return (*dummy_time_fn)( ts );
+		return NIL;
 		// --------------------------
 	case WHERE_LOCAL_DEVICE:
-		// ---------FILL-IN HERE----------
-		TEE_Time t;
 		TEE_GetREETime( &t ); // again error code
 		*ts = t.seconds;
 		return NIL;
-		// --------------------------
 	default:
 		return ERROR_TIME_NOT_AVAIL;
 	}
@@ -69,6 +71,11 @@ RESULT TEE_getTime( uint32_t* ts, const WHERE w ) {
 // 		ERROR_SERVER_BROKEN_PIPE 	- cannot contact server
 RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueLen, 
 					 const WHERE w ) {
+	UNUSED( key );
+	UNUSED( keyLen );
+	UNUSED( value );
+	UNUSED( valueLen );
+
 	switch( w ) {
 	case WHERE_SECURE_STORAGE:
 		// ---------FILL-IN HERE----------
@@ -88,7 +95,7 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 		// file is named by the encrypted capsule-id.
 		// 
 		// Implementer can decide whether to cache on the secure world side. 
-		return (*dummy_getState_fn)( key, keyLen, value, valueLen );
+		return NIL;
 		// --------------------------
 	case WHERE_REMOTE_SERVER:
 		// ---------FILL-IN HERE----------
@@ -97,13 +104,13 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 		// communication is protected by the same key used to encrypt the trusted 
 		// capsule and is also protected by a random nonce, to match requests with 
 		// replies and to protect against replay attacks.  
-		return (*dummy_getState_fn)( key, keyLen, value, valueLen );
+		return NIL; 
 		// --------------------------
 	case WHERE_CAPSULE_META:
 		// ---------FILL-IN HERE----------
 		// Suggested design: for semantic simplicity, read to metadata can be done 
 		// purely on the trusted world side. 
-		return (*dummy_getState_fn)( key, keyLen, value, valueLen );
+		return NIL;
 		// --------------------------
 	default:
 		return ERROR_ACCESS_DENIED;
@@ -122,6 +129,10 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 // 		ERROR_SERVER_BROKEN_PIPE 	- cannot contact server
 RESULT TEE_setState( const char* key, size_t keyLen, const char* value, size_t valueLen, 
 					 const WHERE w ) {
+	UNUSED( key );
+	UNUSED( keyLen );
+	UNUSED( value );
+	UNUSED( valueLen );
 	switch( w ) {
 	case WHERE_SECURE_STORAGE:
 		// ---------FILL-IN HERE----------
@@ -142,7 +153,7 @@ RESULT TEE_setState( const char* key, size_t keyLen, const char* value, size_t v
 		//
 		// For simplicity, writes are written-back synchronously/durably to the 
 		// trusted capsule secure storage without buffering. 
-		return (*dummy_setState_fn)( key, keyLen, value, valueLen );
+		return NIL;
 		// --------------------------
 	case WHERE_REMOTE_SERVER:
 		// ---------FILL-IN HERE----------
@@ -151,13 +162,13 @@ RESULT TEE_setState( const char* key, size_t keyLen, const char* value, size_t v
 		// communication is protected by the same key used to encrypt the trusted 
 		// capsule and is also protected by a random nonce, to match requests with 
 		// replies and to protect against replay attacks.  
-		return (*dummy_setState_fn)( key, keyLen, value, valueLen );
+		return NIL;
 		// --------------------------
 	case WHERE_CAPSULE_META:
 		// ---------FILL-IN HERE----------
 		// Suggested design: for simplicity, writes are written back durably to the 
 		// trusted capsule with the origin trusted capsule data.
-		return (*dummy_setState_fn)( key, keyLen, value, valueLen );
+		return NIL;
 		// --------------------------
 	default:
 		return ERROR_ACCESS_DENIED;
@@ -195,11 +206,10 @@ RESULT TEE_deleteCapsule(void) {
 	res = TEE_SimpleLseek( fd, 0, TEE_DATA_SEEK_END, &file_length );
 
 	// This might need to be TEE_Malloc
-	zero_block = malloc( file_length*sizeof( char ) );
-	memset( zero_block, 0, file_length );
+	zero_block = TEE_Malloc( file_length*sizeof( char ), 0 );
 	res = TEE_SimpleWrite( fd, zero_block, file_length, &nw, offset);
 
-	free( zero_block );
+	TEE_Free( zero_block );
 	TEE_SimpleClose( fd );
 	TEE_SimpleUnlink( capsule_name );
 	//------------------------------
@@ -216,11 +226,11 @@ int TEE_capsuleLength( CAPSULE w ) {
 	switch( w ) {
 		case ORIGINAL: 
 			//---------FILL-IN HERE----------
-			return cap_head.data_buf_len;
+			return cap_head.data_len;
 			//------------------------------
 		case NEW: 
 			//---------FILL-IN HERE----------
-			return cap_head.data_shadow_buf_len;
+			return cap_head.data_shadow_len;
 			//------------------------------
 		default: 
 			break;
@@ -237,13 +247,15 @@ RESULT TEE_appendToBlacklist( const char* str, size_t strLen, const WHERE w ) {
 	//---------FILL-IN HERE---------
 	// Suggested design: a global buffer for storing each blacklist which is then
 	// used during logging to record only states that are not in the blacklist.
+	UNUSED( str );
+	UNUSED( strLen );
 	switch( w ) {
 	case BL_TRUSTED_APP: 
-		return (*dummy_appendBlacklist_fn)( str, strLen );
+		return NIL;
 	case BL_SECURE_STORAGE:
-		return (*dummy_appendBlacklist_fn)( str, strLen );
+		return NIL;
 	case BL_CAPSULE_META:
-		return (*dummy_appendBlacklist_fn)( str, strLen );
+		return NIL;
 	default:
 		return ERROR_APPEND_BLACKLIST;
 	}
@@ -260,13 +272,15 @@ RESULT TEE_removeFromBlacklist( const char* str, size_t strLen, const WHERE w ) 
 	//---------FILL-IN HERE---------
 	// Suggested design: a global buffer for storing each blacklist which is then
 	// used during logging to record only states that are not in the blacklist.
+	UNUSED( str );
+	UNUSED( strLen );
 	switch( w ) {
 	case BL_TRUSTED_APP: 
-		return (*dummy_removeBlacklist_fn)( str, strLen );
+		return NIL;
 	case BL_SECURE_STORAGE:
-		return (*dummy_removeBlacklist_fn)( str, strLen );
+		return NIL;
 	case BL_CAPSULE_META:
-		return (*dummy_removeBlacklist_fn)( str, strLen );
+		return NIL;
 	default:
 		return ERROR_APPEND_BLACKLIST;
 	}
@@ -294,7 +308,11 @@ RESULT TEE_redact( const size_t start, const size_t end,
 	//  4) For memory management simplicity, a max length for the replacement string
 	//	   length and a max number of redaction records in the global buffer can be 
 	//	   set.
-	return (*dummy_redact_fn)( start, end, replaceStr, len );
+	UNUSED( start );
+	UNUSED( end );
+	UNUSED( replaceStr );
+	UNUSED( len );
+	return NIL;
 	//-----------------------------
 }
 
@@ -324,7 +342,8 @@ RESULT TEE_updatePolicy( lua_State *L ) {
 	//		trusted capsule metadata. Since writes to local secure storage are best
 	//		effort (Normal World may pretend the write happened), it provides 
 	//		attackers with a mechanism to evade policy updates.
-	return (*dummy_update_fn)( L );
+	UNUSED( L );
+	return NIL;
 	//----------------------------
 }
 
@@ -338,7 +357,7 @@ int TEE_readCapsuleData( char** buf, size_t len, size_t offset, CAPSULE w ) {
 	// TODO: Double check these mallocs work. Could seg fault. Also, the memory should get freed somewhere???
 	switch( w ) {
 	case NEW:
-		if (offset + len > cap_head.data_shadow_buf_len) {
+		if (offset + len > cap_head.data_shadow_len) {
 			return 0;
 		}
 		// Allocate space
@@ -346,7 +365,7 @@ int TEE_readCapsuleData( char** buf, size_t len, size_t offset, CAPSULE w ) {
 		TEE_MemMove(buf, cap_head.data_shadow_buf + offset, len);
 		return len;
 	case ORIGINAL:
-		if (offset + len > cap_head.data_buf_len) {
+		if (offset + len > cap_head.data_len) {
 			return 0;
 		}
 		// Allocate space
@@ -363,6 +382,6 @@ int TEE_readCapsuleData( char** buf, size_t len, size_t offset, CAPSULE w ) {
 // TEE_get_op returns the current operation being evaluated. We cannot fetch this
 // from Lua s it exists there only as a local var, therefore we must fetch this from
 // optee app.
-SYSCALL_OP TEE_get_op() {
+SYSCALL_OP TEE_get_op(void) {
 	return fuse_op;
 }

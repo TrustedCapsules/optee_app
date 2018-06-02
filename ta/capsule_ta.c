@@ -14,6 +14,7 @@
 #include "capsule_ta.h"
 #include "capsule_commands.h"
 #include "capsule_helper.h"
+#include "lua_helpers.h"
 #include "capsule_op.h"
 
 /* AES key parameters */

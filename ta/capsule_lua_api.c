@@ -45,7 +45,10 @@ RESULT TEE_getTime( uint32_t* ts, const WHERE w ) {
 		// --------------------------
 	case WHERE_LOCAL_DEVICE:
 		// ---------FILL-IN HERE----------
-		return (*dummy_time_fn)( ts );
+		TEE_Time t;
+		TEE_GetREETime( &t ); // again error code
+		*ts = t.seconds;
+		return NIL;
 		// --------------------------
 	default:
 		return ERROR_TIME_NOT_AVAIL;

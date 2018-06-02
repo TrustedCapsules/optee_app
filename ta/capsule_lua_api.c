@@ -6,6 +6,7 @@
 
 #include <capsulePolicy.h>
 
+#include "capsule_ta.h"
 #include "capsule_lua_api.h"
 
 // TEE_getLocation queries the device location from 
@@ -356,5 +357,5 @@ int TEE_readCapsuleData( char** buf, size_t len, size_t offset, CAPSULE w ) {
 // from Lua s it exists there only as a local var, therefore we must fetch this from
 // optee app.
 SYSCALL_OP TEE_get_op() {
-	return op;
+	return fuse_op;
 }

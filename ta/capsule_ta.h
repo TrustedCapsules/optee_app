@@ -1,7 +1,9 @@
 #ifndef CAPSULE_TA_H
 #define CAPSULE_TA_H
 
+// Not sure why these includes are required to compile while the others aren't
 #include <capsuleBenchmark.h>
+#include <capsulePolicy.h>
 
 #define TZ_CRED          "cred"
 
@@ -24,6 +26,7 @@ extern bool                 aes_key_setup;
 
 /* Trusted Capsule file information */
 extern struct capsule_text  cap_head;
+extern SYSCALL_OP fuse_op; // open or close?
 
 /* Secure storage objects */
 extern TEE_ObjectHandle keyFile;                                   

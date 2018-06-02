@@ -6,6 +6,7 @@
 #include <tee_api.h>
 #include <string.h>
 #include <capsuleCommon.h>
+#include <capsulePolicy.h> // for SYSCALL_OP
 #include <capsuleBenchmark.h>
 #include <amessage.pb-c.h>
 #include <lua.h>
@@ -28,6 +29,7 @@ bool                    aes_key_setup = false;
 
 /* Trusted Capsule file information */
 struct capsule_text     cap_head;
+SYSCALL_OP		fuse_op;
 
 /* Secure Storage Objects -> keys */
 TEE_ObjectHandle keyFile = TEE_HANDLE_NULL;
@@ -205,9 +207,11 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx,
         return get_buffer(param_type, params);
     // Actual capsule operations
     case CAPSULE_OPEN:
+	fuse_op = OPEN_OP;
         curr_ts = 0;
         return capsule_open(param_type, params);
     case CAPSULE_CLOSE:
+	fuse_op = CLOSE_OP;
         curr_ts = 1;
         return capsule_close(param_type, params);
     // Necessary for network tests

@@ -160,11 +160,6 @@ RESULT TEE_setState( const char* key, size_t keyLen, const char* value, size_t v
 // TEE_deleteCapsule deletes the trusted capsule, capsule-specific storage file and 
 // kills the trusted capsule session.
 RESULT TEE_deleteCapsule(void) {
-	//---------FILL-IN HERE----------
-	// Suggested design: see delete_file(). Previously remote server can call delete
-	// file, however, that can be subsumed by a update to policy that calls 
-	// deleteCapsule(). 
-	
 	/* The solution below is inelegant, but it gets the
 	 * job done, even against TOCTTOU attacks.
 	 * 
@@ -213,11 +208,11 @@ int TEE_capsuleLength( CAPSULE w ) {
 	switch( w ) {
 		case ORIGINAL: 
 			//---------FILL-IN HERE----------
-			return (*dummy_capsuleLength_fn)();
+			return cap_head.data_buf_len;
 			//------------------------------
 		case NEW: 
 			//---------FILL-IN HERE----------
-			return (*dummy_capsuleLength_fn)();
+			return cap_head.data_shadow_buf_len;
 			//------------------------------
 		default: 
 			break;

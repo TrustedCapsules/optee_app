@@ -21,7 +21,11 @@ RESULT TEE_getLocation( int* longitude, int* latitude, const WHERE w ) {
 		// --------------------------
 	case WHERE_LOCAL_DEVICE:
 		// ---------FILL-IN HERE----------
-		return (*dummy_location_fn)( longitude, latitude );
+		TEE_GPS gps;
+		TEE_GetGPS( &gps ); // Should probably modify for error code
+		*longitude = gps.longitude;
+		*latitude = gps.latitude;
+		return NIL;
 		// --------------------------
 	default:
 		return ERROR_LOC_NOT_AVAIL;

@@ -41,7 +41,7 @@ TEE_Result do_send_connection( int fd, void* buf, int* len );
 TEE_Result do_send( int fd, void *buf, int *len, int op_code, int rv );
 TEE_Result do_recv_payload( int fd, void* hash, int hlen,
 			   				void* buf, int len );
-TEE_Result do_recv_header(int fd, AMessage **msg );
+//TEE_Result do_recv_header(int fd, AMessage **msg );
 
 /*
  * Secure storage state operations

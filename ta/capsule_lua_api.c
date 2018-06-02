@@ -14,6 +14,7 @@
 #include "capsule_ta.h"
 #include "capsule_lua_api.h"
 #include "capsule_structures.h"
+#include "capsule_op.h"
 
 // TEE_getLocation queries the device location from 
 //		WHERE_REMOTE_SERVER - remote server 
@@ -71,10 +72,8 @@ RESULT TEE_getTime( uint32_t* ts, const WHERE w ) {
 // 		ERROR_SERVER_BROKEN_PIPE 	- cannot contact server
 RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueLen, 
 					 const WHERE w ) {
-	UNUSED( key );
+	TEE_Result res;
 	UNUSED( keyLen );
-	UNUSED( value );
-	UNUSED( valueLen );
 
 	switch( w ) {
 	case WHERE_SECURE_STORAGE:
@@ -94,9 +93,17 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 		// before at state is written to secure storage, 4) the capsule-specific 
 		// file is named by the encrypted capsule-id.
 		// 
-		// Implementer can decide whether to cache on the secure world side. 
-		return NIL;
+		// Implementer can decide whether to cache on the secure world side.
 		// --------------------------
+
+		// Get state from capsule state file
+		res = do_get_state( (unsigned char*) key, (unsigned char*) value, (uint32_t) valueLen);
+		// TODO: check res to set error code 
+
+		// TODO: get state from device file
+
+		// TODO: return one of the values (which should be default)?
+		return NIL;
 	case WHERE_REMOTE_SERVER:
 		// ---------FILL-IN HERE----------
 		// Suggested design: An RPC request is sent to the remote server. The server
@@ -129,32 +136,15 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 // 		ERROR_SERVER_BROKEN_PIPE 	- cannot contact server
 RESULT TEE_setState( const char* key, size_t keyLen, const char* value, size_t valueLen, 
 					 const WHERE w ) {
-	UNUSED( key );
-	UNUSED( keyLen );
-	UNUSED( value );
-	UNUSED( valueLen );
+	TEE_Result res;
+
 	switch( w ) {
 	case WHERE_SECURE_STORAGE:
-		// ---------FILL-IN HERE----------
-		// Suggested design: each trusted capsule can access two files - a common 
-		// device specific file (read-only) and a capsule-specific file
-		// (read/write). Both files are searched to find the given 'key'. The
-		// capsule-specific file is created if no such file exists. 
-		//
-		// We enforce that a capsule that has been opened cannot be opened again
-		// until the previous open has been closed. We can use the capsule-specific
-		// file to achieve this by 1) ensuring only one OPTEE session can open the
-		// capsule specific file at a time, 2) open creates an OPTEE session and 
-		// close ends the OPTEE session - open calls are implied by session 
-		// creation, 3) once a capsule specific file has been created, a record of 
-		// such an event is written synchronously into the trusted capsule metadata
-		// before at state is written to secure storage, 4) the capsule-specific 
-		// file is named by the encrypted capsule-id.
-		//
-		// For simplicity, writes are written-back synchronously/durably to the 
-		// trusted capsule secure storage without buffering. 
+		res = do_set_state( (unsigned char*) key, (uint32_t) keyLen, (unsigned char*) value, (uint32_t) valueLen);
+
+		// TODO: check error codes 
+
 		return NIL;
-		// --------------------------
 	case WHERE_REMOTE_SERVER:
 		// ---------FILL-IN HERE----------
 		// Suggested design: An RPC request is sent to the remote server. The server

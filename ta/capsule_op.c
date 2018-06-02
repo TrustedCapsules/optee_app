@@ -548,7 +548,7 @@ TEE_Result do_recv_payload( int fd, void* hash, int hlen,
 
     return res;
 }
-
+/*
 TEE_Result do_recv_header( int fd, AMessage **msg ) {
     
     TEE_Result  res = TEE_SUCCESS;
@@ -584,7 +584,7 @@ TEE_Result do_recv_header( int fd, AMessage **msg ) {
 
     return res;     
 }
-
+*/
 /* Format: KEY size -> 128 B 
  *         VALUE size -> 128 B
  *      KEY1 VALUE1 VALID/INVALID

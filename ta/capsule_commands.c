@@ -447,7 +447,7 @@ TEE_Result capsule_recv_header( uint32_t param_type, TEE_Param params[4] ) {
                                         TEE_PARAM_TYPE_VALUE_OUTPUT,
                                         TEE_PARAM_TYPE_VALUE_OUTPUT ) );    
         
-    res = do_recv_header( params[0].value.a, &msg );
+    //res = do_recv_header( params[0].value.a, &msg );
     CHECK_SUCCESS( res, "Do_recv_header() Error" );
 
     memcpy( params[1].memref.buffer, msg->hash.data, msg->hash.len );

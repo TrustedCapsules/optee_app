@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [[ $# -eq 0 ]] ; then
+    echo 'Usage: pass path to the capsule folder'
+    exit 0;
+fi
+
+for capsule in `ls $1`; do
+    name=$(basename "$capsule")
+    echo "Registering $name"
+    echo "cmd/cprov/cprov -n $name -p $(pwd)/$1/$name"
+done  

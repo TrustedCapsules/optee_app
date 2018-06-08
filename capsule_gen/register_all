@@ -8,5 +8,5 @@ fi
 for capsule in `ls $1`; do
     name=$(basename "$capsule")
     echo "Registering $name"
-    echo "cmd/cprov/cprov -n $name -p $(pwd)/$1/$name"
+    cmd/cprov/cprov -n $name -p $1/$name
 done  

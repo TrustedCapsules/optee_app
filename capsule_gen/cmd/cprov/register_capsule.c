@@ -52,7 +52,9 @@ TEEC_Result registerCapsule (char *name , char *path) {
     int combined_len = strlen(name) + strlen(path)+1;
     char *abs_path = (char*)malloc(combined_len);
     abs_path = NULL;
-    sprintf(abs_path, "%s/%s",path,name);
+    if(path[strlen(path)-1] == '/') //Remove trailing backslash
+        path[strlen(path)-1] = '\0';
+    sprintf(abs_path, "%s/%s.capsule",path,name);
     if( access( abs_path, F_OK ) == -1 ){
         printf( "The file %s does not exist\n", abs_path );
         res = TEEC_ERROR_ITEM_NOT_FOUND;

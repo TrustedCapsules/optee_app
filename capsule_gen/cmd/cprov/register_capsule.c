@@ -3,71 +3,15 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-
-#include <capsuleCommon.h>
+#include <unistd.h>
+#include "err_ta.h"
+#include "key_data.h"
+#include <capsule_command.h>
 #include <capsuleKeys.h>
+#include <tee_api_types.h>
+#include <tee_client_api.h>
 
-TEEC_Result register_keys(char *name , char *path) {
-    TEEC_Result     res = TEEC_SUCCESS;
-    TEEC_Context    ctx;
-    TEEC_Session    sess;
-    TEEC_UUID       uuid = CAPSULE_UUID;
-    int             i;
-    int             found = -1;
-
-    //check if the capsule name exists in pwd. 
-
-    TEEC_SharedMemory in_mem = { .size = SHARED_MEM_SIZE,
-                                 .flags = TEEC_MEM_INPUT, };
-    
-    res = initializeContext( &ctx ) ;
-    CHECK_RESULT( res, "register_keys: initializeContext() failed");
-
-    res = allocateSharedMem( &ctx, &in_mem );
-    CHECK_RESULT( res, "register_keys: allocateSharedMem() failed");
-
-    res = openSession( &ctx, &sess, &uuid );
-    CHECK_RESULT( res, "register_keys: openSession() failed");
-
-    /* Test key registration */
-    PRINT_INFO("register_keys: registering...\n");
-    for( i = 0; i < sizeof( capsule_data_array ) /
-                    sizeof( struct capsule_data ); i++ ) {
-        if( strcmp( capsule_data_array[i].name,name) == 0 ) {
-            found = i;
-            break;
-        }
-    }
-    
-    if( found < 0 ){
-        res = TEEC_ERROR_ITEM_NOT_FOUND;
-        return res;
-    }
-
-    res = register_aes_key( &sess, capsule_data_array[found].id,
-                            key_std, sizeof(key_std),
-                            iv_std, sizeof(iv_std), 
-                            &in_mem );
-    CHECK_RESULT( res, "register_keys: register_aes_key() %s failed",
-                        capsule_data_array[found].name );
-    
-    res = closeSession( &sess );
-    CHECK_RESULT( res, "register_keys: closeSession()");
-
-    res = freeSharedMem( &in_mem );
-    CHECK_RESULT( res, "register_keys: freeSharedMem()");
-    
-    res = finalizeContext( &ctx );
-    CHECK_RESULT( res, "register_keys: finalizeContext()");
-
-    return res;
-}
-
-/* Registers an (AES-key pair, keyword) with the Trusted World
- * for encrypt and decrypt operation.
- */
-
-TEEC_Result register_aes_key( TEEC_Session *sess, unsigned char *id,
+TEEC_Result register_aes_key( TEEC_Session *sess, unsigned const char *id,
                               unsigned char *key, size_t keylen, 
                               unsigned char *iv, size_t ivlen, 
                               TEEC_SharedMemory *in ) {
@@ -93,4 +37,68 @@ TEEC_Result register_aes_key( TEEC_Session *sess, unsigned char *id,
     return check_result( res, 
                 "TEEC_InvokeCommand->CAPSULE_REGISTER_AES_KEY", 
                  ret_orig );
+}
+
+TEEC_Result registerCapsule (char *name , char *path) {
+    TEEC_Result     res = TEEC_SUCCESS;
+    TEEC_Context    ctx;
+    TEEC_Session    sess;
+    TEEC_UUID       uuid = CAPSULE_UUID;
+    uint32_t        err_origin;
+    int             i;
+    int             found = -1;
+
+    //check if the capsule name exists at the path
+    int combined_len = strlen(name) + strlen(path)+1;
+    char *abs_path = (char*)malloc(combined_len);
+    abs_path = NULL;
+    sprintf(abs_path, "%s/%s",path,name);
+    if( access( abs_path, F_OK ) == -1 ){
+        printf( "The file %s does not exist\n", abs_path );
+        res = TEEC_ERROR_ITEM_NOT_FOUND;
+        return res;
+    }
+
+    TEEC_SharedMemory in_mem = { .size = SHARED_MEM_SIZE,
+                                 .flags = TEEC_MEM_INPUT, };
+    
+    res = TEEC_InitializeContext( NULL, &ctx );
+    CHECK_RESULT( res, "registerCapsule: TEEC_InitializeContext() failed");
+
+    res = TEEC_AllocateSharedMemory( &ctx, &in_mem );
+    CHECK_RESULT ( res, "registerCapsule: TEEC_AllocateSharedMemory() failed" );
+    
+    
+    res = TEEC_OpenSession( &ctx, &sess, &uuid, TEEC_LOGIN_PUBLIC, 
+                            NULL, NULL, &err_origin );
+    CHECK_RESULT( res, "registerCapsule: TEEC_OpenSession() failed");
+
+    /* Test key registration */
+    PRINT_INFO("registerCapsule: registering...\n");
+    for( i = 0; i < sizeof( capsule_data_array ) /
+                    sizeof( struct capsule_data ); i++ ) {
+        if( strcmp( capsule_data_array[i].name,name) == 0 ) {
+            found = i;
+            break;
+        }
+    }
+    
+    if( found < 0 ){
+        res = TEEC_ERROR_ITEM_NOT_FOUND;
+        CHECK_RESULT(res, "The key was not found in capsuleKeys.h" );
+    }
+
+    res = register_aes_key( &sess, capsule_data_array[found].id,
+                            keyDefault, sizeof(keyDefault),
+                            ivDefault, sizeof(ivDefault), 
+                            &in_mem );
+    CHECK_RESULT( res, "registerCapsule: register_aes_key() %s failed",
+                        capsule_data_array[found].name );
+    
+    TEEC_CloseSession( &sess );
+    TEEC_ReleaseSharedMemory( &in_mem );
+    TEEC_FinalizeContext( &ctx );
+    res = TEEC_SUCCESS;
+    PRINT_INFO(" finished the registration ");
+    return res;
 }

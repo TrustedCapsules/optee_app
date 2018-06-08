@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
-
+#include <tee_client_api.h>
 #include "register_capsule.h"
 
 static void usage() {
@@ -17,6 +17,7 @@ int main( int argc, char *argv[] ) {
     int     opt, optid = 1;
     char    message[80] = "";
     char   *optparse;
+    TEEC_Result res = TEEC_SUCCESS;
 
 	if( argc < 2 ) {
 		usage();
@@ -55,7 +56,7 @@ int main( int argc, char *argv[] ) {
     }
 
     
-    registerCapsule( capsuleName, path);
+    res = registerCapsule( capsuleName, path);
     return 0;
 }
 

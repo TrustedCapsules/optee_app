@@ -49,9 +49,9 @@ TEEC_Result registerCapsule (char *name , char *path) {
     int             found = -1;
 
     //check if the capsule name exists at the path
-    int combined_len = strlen(name) + strlen(path)+1;
+    int combined_len = strlen(name) + strlen(path)+10;
     char *abs_path = (char*)malloc(combined_len);
-    abs_path = NULL;
+    abs_path[0]="\0";
     if(path[strlen(path)-1] == '/') //Remove trailing backslash
         path[strlen(path)-1] = '\0';
     sprintf(abs_path, "%s/%s.capsule",path,name);
@@ -79,6 +79,7 @@ TEEC_Result registerCapsule (char *name , char *path) {
     PRINT_INFO("registerCapsule: registering...\n");
     for( i = 0; i < sizeof( capsule_data_array ) /
                     sizeof( struct capsule_data ); i++ ) {
+        printf("capsule_data entry %s",capsule_data_array[i].name);
         if( strcmp( capsule_data_array[i].name,name) == 0 ) {
             found = i;
             break;

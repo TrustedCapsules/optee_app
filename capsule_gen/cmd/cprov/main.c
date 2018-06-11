@@ -15,24 +15,14 @@ static void usage() {
 
 int main( int argc, char *argv[] ) {
     int     opt, optid = 1;
-    char    message[80] = "";
-    char   *optparse;
+    char   *optparse = "n:p:";
     TEEC_Result res = TEEC_SUCCESS;
 
 	if( argc < 2 ) {
 		usage();
 		return 0;
 	} 
-
-	if(argc == 2){
-		optparse = "n:";
-	} else if (argc == 3) {
-        optparse = "n:p:";
-    } else {
-		usage();
-    	return 0;
-	}
-           
+      
 	char *capsuleName = NULL;
 	char *path = "./"; 
 		

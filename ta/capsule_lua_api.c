@@ -25,6 +25,11 @@ RESULT TEE_getLocation( int* longitude, int* latitude, const WHERE w ) {
 	switch( w ) {
 	case WHERE_REMOTE_SERVER:
 		// ---------FILL-IN HERE----------
+		// 1. Send request to remote server for location
+		// 2. Wait for response
+		// TODO: is this even necessary as an option? Yes the remote server
+		// is trusted, but wouldn't it just respond with the remote server
+		// location? How can it get a trusted location of the device?
 		return NIL;
 		// --------------------------
 	case WHERE_LOCAL_DEVICE:
@@ -42,11 +47,15 @@ RESULT TEE_getLocation( int* longitude, int* latitude, const WHERE w ) {
 //		WHERE_REMOTE_SERVER - remote server 
 //		WHERE_LOCAL_DEVICE - local device
 // If an error occurs, ERROR_TIME_NOT_AVAIL is returned
+// If no error occurs, NIL is returned
 RESULT TEE_getTime( uint32_t* ts, const WHERE w ) {
 	TEE_Time t;
 	switch( w ) {
 	case WHERE_REMOTE_SERVER:
 		// ---------FILL-IN HERE----------
+		// 1. Send message to remote server to get it's time
+		// 2. Wait for response
+		// 3. Return time.
 		return NIL;
 		// --------------------------
 	case WHERE_LOCAL_DEVICE:
@@ -140,6 +149,7 @@ RESULT TEE_setState( const char* key, size_t keyLen, const char* value, size_t v
 
 	switch( w ) {
 	case WHERE_SECURE_STORAGE:
+		// Since only the capsule specific secure storage file is the only modifiable state file, we don't need to check for the device file key, unless we want to claim those as special?
 		res = do_set_state( (unsigned char*) key, (uint32_t) keyLen, (unsigned char*) value, (uint32_t) valueLen);
 
 		// TODO: check error codes 

@@ -440,23 +440,22 @@ TEE_Result capsule_recv_payload( uint32_t param_type, TEE_Param params[4] ) {
 TEE_Result capsule_recv_header( uint32_t param_type, TEE_Param params[4] ) {    
     
     TEE_Result  res = TEE_SUCCESS;
-    AMessage   *msg;
+    msgReplyHeader   *msg;
 
     ASSERT_PARAM_TYPE( TEE_PARAM_TYPES( TEE_PARAM_TYPE_VALUE_INPUT,
                                         TEE_PARAM_TYPE_MEMREF_OUTPUT,
                                         TEE_PARAM_TYPE_VALUE_OUTPUT,
                                         TEE_PARAM_TYPE_VALUE_OUTPUT ) );    
         
-    //res = do_recv_header( params[0].value.a, &msg );
+    res = do_recv_header( params[0].value.a, &msg );
     CHECK_SUCCESS( res, "Do_recv_header() Error" );
 
-    memcpy( params[1].memref.buffer, msg->hash.data, msg->hash.len );
-    params[1].memref.size = msg->hash.len;
-    params[2].value.a = msg->capsule_id;
-    params[2].value.b = msg->op_code;
+    memcpy( params[1].memref.buffer, msg->hash, HASHLEN );
+    params[1].memref.size = HASHLEN;
+    params[2].value.a = msg->capsuleID;
+    params[2].value.b = msg->response;
     params[3].value.a = msg->payload_len;
     params[3].value.b = msg->rvalue;
 
-    free_hdr( msg );    
     return res;     
 }   

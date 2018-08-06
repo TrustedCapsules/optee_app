@@ -548,6 +548,9 @@ TEE_Result do_recv_payload( int fd, void* hash, int hlen,
 
     return res;
 }
+
+// TODO: Peter changed the way we send and receive messages with the server
+// You need to change these to match the ones he wrote for capsule_server.c
 /*
 TEE_Result do_recv_header( int fd, AMessage **msg ) {
     
@@ -585,6 +588,23 @@ TEE_Result do_recv_header( int fd, AMessage **msg ) {
     return res;     
 }
 */
+
+// TODO: implement
+/* Search the KV store and write a value to a key. If it doesn't
+ * exist, add it.
+ */
+TEE_Result do_set_capsule_state( unsigned char* key, uint32_t klen, 
+                                 unsigned char* val, uint32_t vlen ) {
+
+	// Search the KV store for the key
+
+	// Found the key, set the value
+
+	// Didn't find key, create a new one and insert it.
+
+	return TEE_SUCCESS;
+}
+
 /* Format: KEY size -> 128 B 
  *         VALUE size -> 128 B
  *      KEY1 VALUE1 VALID/INVALID

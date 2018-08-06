@@ -1,0 +1,26 @@
+# What I was working on
+
+When I became too busy to continue working on this, I was at the point of trying to get communication with the server working. Peter had changed how the capsule_server.c sent and received messages (iirc), which meant that the capsule code needed to change to match his changes. I realized this when I started trying to implement the easier API calls for the remote server. I also remember he changed a bunch of the header file names and reorganized them. To merge in his code for the lua stuff, I had to also manually merge all of the header files and fix the code which builds capsules. This slowed me down quite a bit, which meant I couldn't get to the API as fast as I wanted to. I think I got the majority of the merge, I'm almost certain I got it to build before I moved on to the API work. 
+
+Something I think should be pondered before you dive into this mess: How much of the flexibility of the new API is absolutely necessary? After attempting ot implement this, I found that a lot of the expressibility we developed requires careful thought into the data structures used for a lot of the state information. I'm leaning towards a simple solution first rather than a complicated expressive one.
+
+# Things left to do
+1. Fix the capsule communication code. Peter wrote a capsule_client (client_helper.c and main.c in capsule_server/client) which should have good enough examples on how to construct and receive messages from the server. I had started some of those changes (capsule_recv_header), but did not get far due to time constraints.
+2. Implement REMOTE_SERVER API commands for getTime and getLocation in capsule_lua_api.c. These should be relatively easy.
+3. Implement the REMOTE_SERVER API commands for get and set state in capsule_lua_api.c. These should be sending and receiving messages from the server, so not too hard.
+4. Peter wrote some notes on what changes to make for the updatePolicy API call. I haven't looked too closely at them, but since the majority of the code already exists, it shouldn't be too hard to do.
+5. Figure out how to implement the state file for the device. Will it have a specific name (hard-coded) and be created upon start-up? Will the device file or the capsule file be considered default if they both have the requested key? Will we allow the capsule state file to contain the same key as the device one? etc.
+6. Write Lua API get state which searches the device state file for the key as well.
+7. Decide on how to store the capsule meta data efficiently. I started with a list of KV structs, a KV struct holds the key value pair and their length. This is not efficently when it comes to searching and adding/deleting. Since the Lua API requires the ability to search for something, some thought must go into how to create an efficient data structure for that. I was thinking a linked list or a hash-map of sorts. 
+8. Write the Lua API for getting and setting CAPSULE_META state file. This will just be modifying the KV struct.
+9. Implement the Lua API for blacklisting keys. We also need an efficient way for storing blacklisted keys and would need to change the code which reads and writes the log portion of a capsule. 
+10. Implement the Lua API for redact. 
+
+# My thoughts
+Considering the longish list of things left to do, I'm thinking that sacrificing some expressibility in the API. I'm not sure how best to do this, but one immediate thought is to get rid of some of the state files. Right now we have capsule state files, device state files, capsule specific device state files, and remote server state files. I think we could probably do with just capsule state files, read-only device state file, and remote server state files. We would be able to write the same policies and would be able to avoid going to secure storage for a lot of the state information. Also, not having a capsule-specific device state file means we avoid needing to search for the state file, assuming the device specific state file path is hard-coded. 
+
+Another simplification would be not implementing the blacklisting of keys. I'm not sure what blacklisting keys really gets us besides being a nicety. 
+
+Right now, I'd estimate 1-2 days of time for #1-3. #4 might take a day or two, I haven't really looked into what changes Peter wanted us to make. #5-6 will take a couple days as well, unless we simplify the state files, if we simplify the state files, it will take less than a day (just change the code to grab from device specific file). #7-9 will take two or three days to implement and maybe longer depending how much time is spent designing and implementing the data structure. #10 is an unknown, it might be trivial or it could be horribly complicated. 
+
+In reality, these estimates are kinda useless because they don't really account for things going wrong or debugging time. It's really just to give you an estimate of how long I think it would take me to write the feature, but not necessarily how long it would take me to test and debug it. 

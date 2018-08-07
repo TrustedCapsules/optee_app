@@ -20,3 +20,5 @@ main
 *.swp
 *.capsule
 *.plaintext
+cprov
+cgen

@@ -15,7 +15,7 @@
 #define MAX_NUM_KEYS 10 // Maximum number of keys in capsule KV store
 
 #define STATE_SIZE 128 // For backward compatability with tests should be unnecessary when they are rewritten
-
+#include "uthash.h"
 // From capsule_gen/src/capsule_util.h
 /*
 typedef enum {
@@ -40,6 +40,7 @@ typedef struct kv_pair {
     uint32_t val_len;
     char* key;
     char* value;
+    UT_hash_handle hh;
 } kv_pair;
 
 // Used by InvokeCommand

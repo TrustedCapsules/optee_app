@@ -108,6 +108,7 @@ static int luaE_redact( lua_State *L ) {
 	//-----------Fill-in here--------------
 	// Suggested design: op should be a state in optee app. We cannot fetch this
 	// from Lua as it exists there only as a local state.
+	//TODO: FIX THIS.
 	SYSCALL_OP op = TEE_get_op();
 	//-------------------------------------
 	if( op != OPEN_OP ) {

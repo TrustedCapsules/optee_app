@@ -32,6 +32,10 @@ extern SYSCALL_OP fuse_op; // open or close?
 extern TEE_ObjectHandle keyFile;                                   
 extern char             keyID[];
 extern TEE_ObjectHandle stateFile;
+extern TEE_ObjectHandle deviceFile;
+
+/* Capsule object metadata hashtable */
+extern kv_pair cap_metadata;
 
 /* Lua interpreter */
 extern lua_State *Lstate;

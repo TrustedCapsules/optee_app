@@ -551,9 +551,10 @@ TEE_Result do_recv_payload( int fd, void* hash, int hlen,
 
 // TODO: Peter changed the way we send and receive messages with the server
 // You need to change these to match the ones he wrote for capsule_server.c
-/*
-TEE_Result do_recv_header( int fd, AMessage **msg ) {
-    
+
+TEE_Result do_recv_header(int fd, msgReplyHeader **msg)
+{
+
     TEE_Result  res = TEE_SUCCESS;
     uint8_t     header[HEADER_SIZE];
     int         nr = HEADER_SIZE;
@@ -587,7 +588,7 @@ TEE_Result do_recv_header( int fd, AMessage **msg ) {
 
     return res;     
 }
-*/
+
 
 // TODO: implement
 /* Search the KV store and write a value to a key. If it doesn't
@@ -735,7 +736,62 @@ TEE_Result do_get_state( unsigned char* key, unsigned char* val,
     return res; 
 }
 
-char* do_get_buffer( BUF_TYPE t, size_t *len, TEE_Result *res ) {
+TEE_Result go_get_device_state(unsigned char *key, unsigned char *val,
+                               uint32_t vlen) 
+{
+    TEE_Result res = TEE_SUCCESS;
+    uint32_t count;
+    bool found = false;
+    uint8_t state[2 * STATE_SIZE + 1];
+    uint8_t *key_state = &state[0];
+    uint8_t *val_state = &state[STATE_SIZE];
+    uint8_t *valid = &state[2 * STATE_SIZE];
+    uint64_t cnt_a, cnt_b;
+
+    DMSG("Looking for key: %s in device file", key);
+
+    if (vlen < STATE_SIZE)
+    {
+        res = TEE_ERROR_NOT_SUPPORTED;
+        CHECK_SUCCESS(res, "val buffer %u B too small"
+                           "(need to be larger than %u B",
+                      vlen, STATE_SIZE);
+    }
+
+    cnt_a = read_cntpct();
+    res = TEE_SeekObjectData(deviceFile, 0, TEE_DATA_SEEK_SET);
+    cnt_b = read_cntpct();
+    timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
+    CHECK_SUCCESS(res, "TEE_SeekObjectData() Error");
+
+    while (1)
+    {
+        cnt_a = read_cntpct();
+        res = TEE_ReadObjectData(deviceFile, state, 2 * STATE_SIZE + 1, &count);
+        cnt_b = read_cntpct();
+        timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
+        CHECK_SUCCESS(res, "TEE_ReadObjectData Error");
+
+        if (count == 0)
+            break;
+        if (strcmp((const char *)key, (const char *)key_state) == 0 && *valid != 0)
+        {
+            found = true;
+            memcpy(val, val_state, STATE_SIZE);
+            break;
+        }
+    }
+
+    if (found == false)
+    {
+        res = TEE_ERROR_ITEM_NOT_FOUND;
+        CHECK_SUCCESS(res, "key %s not found", key);
+    }
+    return res;
+}
+
+char *do_get_buffer(BUF_TYPE t, size_t *len, TEE_Result *res)
+{
     char* buffer;
 
     *res = TEE_SUCCESS;

@@ -8,6 +8,8 @@
 #include <serialize_common.h>
 #include <lua.h>
 #include <lauxlib.h>
+#include "stdlib.h"
+#include "capsuleServerProtocol.h"
 #include "capsule_structures.h"
 #include "capsule_commands.h"
 #include "capsule_helper.h"
@@ -15,6 +17,8 @@
 #include "capsule_op.h"
 #include "capsule_lua_ext.h"
 #include "capsule_ta.h"
+
+
 
 /* Register an AES key to to Trusted Application. At same time
  * the key is added to persistent storage. 
@@ -99,7 +103,7 @@ TEE_Result get_state( uint32_t param_type,
                          TEE_PARAM_TYPE_VALUE_INPUT,
                          TEE_PARAM_TYPE_NONE ) );
 
-    /* Open the state file for this trusted capsule */
+    /* Open the state file for this trusted capsule. Read-Write access */
     if( stateFile == TEE_HANDLE_NULL ) {
         close_after = true;
         res = TEE_OpenPersistentObject( TEE_STORAGE_PRIVATE,
@@ -120,6 +124,31 @@ TEE_Result get_state( uint32_t param_type,
             DMSG( "State file...%x created", params[2].value.a );
         } else {
             CHECK_GOTO( res, get_state_exit, "TEE_OpenPersistentObject() Error" );
+        }
+    }
+    /* Open the device file. Read only */
+    if (deviceFile == TEE_HANDLE_NULL)
+    {
+        
+        TEE_Result res = TEE_OpenPersistentObject(TEE_STORAGE_PRIVATE,
+                                                  &params[2].value.a, sizeof(uint32_t),
+                                                  TEE_DATA_FLAG_ACCESS_READ |
+                                                      TEE_DATA_FLAG_ACCESS_WRITE_META,
+                                                  &deviceFile);
+        if (res == TEE_ERROR_ITEM_NOT_FOUND)
+        {
+            DMSG("First activation...creating device file...%x", params[2].value.a);
+            res = TEE_CreatePersistentObject(TEE_STORAGE_PRIVATE,
+                                             &params[2].value.a, sizeof(uint32_t),
+                                             TEE_DATA_FLAG_ACCESS_READ |
+                                                 TEE_DATA_FLAG_ACCESS_WRITE_META,
+                                             0, NULL, 0, &deviceFile);
+            CHECK_GOTO(res, get_state_exit, "TEE_CreatePersistentObject() Error");
+            DMSG("Device file...%x created", params[2].value.a);
+        }
+        else
+        {
+            CHECK_GOTO(res, get_state_exit, "TEE_OpenPersistentObject() Error");
         }
     }
     res = do_get_state( params[0].memref.buffer, params[1].memref.buffer,
@@ -441,6 +470,7 @@ TEE_Result capsule_recv_header( uint32_t param_type, TEE_Param params[4] ) {
     
     TEE_Result  res = TEE_SUCCESS;
     msgReplyHeader   *msg;
+    AMessage abc;
 
     ASSERT_PARAM_TYPE( TEE_PARAM_TYPES( TEE_PARAM_TYPE_VALUE_INPUT,
                                         TEE_PARAM_TYPE_MEMREF_OUTPUT,
@@ -454,7 +484,7 @@ TEE_Result capsule_recv_header( uint32_t param_type, TEE_Param params[4] ) {
     params[1].memref.size = HASHLEN;
     params[2].value.a = msg->capsuleID;
     params[2].value.b = msg->response;
-    params[3].value.a = msg->payload_len;
+    params[3].value.a = msg->payloadLen;
     params[3].value.b = msg->rvalue;
 
     return res;     

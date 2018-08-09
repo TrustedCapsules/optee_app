@@ -16,6 +16,7 @@
 #include "capsule_helper.h"
 #include "lua_helpers.h"
 #include "capsule_op.h"
+#include "uthash.h"
 
 /* AES key parameters */
 TEE_OperationHandle     decrypt_op;
@@ -38,6 +39,10 @@ char             keyID[] = "aes_key_file";
 
 /* Secure Storage Objects -> credentials, persistent state */
 TEE_ObjectHandle stateFile = TEE_HANDLE_NULL;
+TEE_ObjectHandle deviceFile = TEE_HANDLE_NULL;
+
+/* Capsule metadata hash table */
+kv_pair cap_metadata;
 
 /* Interpreter State - this is messy, and will only work if policy
  *                     evaluation is synchronous. */
@@ -61,8 +66,7 @@ TEE_Result TA_CreateEntryPoint(void) {
 
     if( keyFile != TEE_HANDLE_NULL ) {
         TEE_Panic( 0 );
-    }   
-    
+    }  
     /* This is a hack to get the keys into the TEE. We run
      * capsule_test from host/ which will register the keys 
      * into the TEE's secure storage and run a bunch of 
@@ -168,6 +172,7 @@ void TA_CloseSessionEntryPoint(void *sess_ctx) {
 
     TEE_CloseObject( keyFile );
     TEE_CloseObject( stateFile );
+    TEE_CloseObject( deviceFile );
 
     if( capsule_name != NULL ) {
         TEE_Free( capsule_name );

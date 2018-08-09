@@ -15,6 +15,7 @@
 #include "capsule_lua_api.h"
 #include "capsule_structures.h"
 #include "capsule_op.h"
+#include "lua_helpers.h"
 
 // TEE_getLocation queries the device location from 
 //		WHERE_REMOTE_SERVER - remote server 
@@ -30,6 +31,7 @@ RESULT TEE_getLocation( int* longitude, int* latitude, const WHERE w ) {
 		// TODO: is this even necessary as an option? Yes the remote server
 		// is trusted, but wouldn't it just respond with the remote server
 		// location? How can it get a trusted location of the device?
+
 		return NIL;
 		// --------------------------
 	case WHERE_LOCAL_DEVICE:
@@ -81,7 +83,8 @@ RESULT TEE_getTime( uint32_t* ts, const WHERE w ) {
 // 		ERROR_SERVER_BROKEN_PIPE 	- cannot contact server
 RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueLen, 
 					 const WHERE w ) {
-	TEE_Result res;
+	TEE_Result resStateFile;
+	TEE_Result resDeviceFile;
 	UNUSED( keyLen );
 
 	switch( w ) {
@@ -106,11 +109,11 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 		// --------------------------
 
 		// Get state from capsule state file
-		res = do_get_state( (unsigned char*) key, (unsigned char*) value, (uint32_t) valueLen);
-		// TODO: check res to set error code 
+		resStateFile = do_get_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
+		if(resStateFile != TEE_SUCCESS)
 
 		// TODO: get state from device file
-
+		resDeviceFile = go_get_device_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
 		// TODO: return one of the values (which should be default)?
 		return NIL;
 	case WHERE_REMOTE_SERVER:
@@ -126,6 +129,7 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 		// ---------FILL-IN HERE----------
 		// Suggested design: for semantic simplicity, read to metadata can be done 
 		// purely on the trusted world side. 
+		//TODO: this is a read to the capsule metadata hashtable
 		return NIL;
 		// --------------------------
 	default:

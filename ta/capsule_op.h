@@ -2,6 +2,7 @@
 #define CAPSULE_OP_H
 
 #include <capsulePolicy.h>
+#include <capsuleServerProtocol.h>
 
 /*
  * For testing, registers the capsule keys
@@ -38,14 +39,16 @@ TEE_Result do_open_connection( char* ip_addr, int port, int* fd );
 TEE_Result do_close_connection( int fd );
 TEE_Result do_recv_connection( int fd, void* buf, int* len );
 TEE_Result do_send_connection( int fd, void* buf, int* len );
-TEE_Result do_send( int fd, void *buf, int *len, int op_code, int rv );
+TEE_Result do_send( int fd, void *buf, size_t len, int op_code, int rv );
 TEE_Result do_recv_payload( int fd, void* hash, int hlen,
 			   				void* buf, int len );
-//TEE_Result do_recv_header(int fd, AMessage **msg );
+TEE_Result do_recv_header(int fd, msgReplyHeader *msg );
 
 /*
  * Secure storage state operations
  */
+// TODO: probably get rid of this.
+TEE_Result do_set_capsule_state( unsigned char* key, uint32_t klen, unsigned char* val, uint32_t vlen );
 TEE_Result do_set_state( unsigned char* key, uint32_t klen,
 						 unsigned char* val, uint32_t vlen );
 TEE_Result do_get_state( unsigned char* key, unsigned char* val, 

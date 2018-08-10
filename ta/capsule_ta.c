@@ -8,7 +8,6 @@
 #include <capsuleCommon.h>
 #include <capsulePolicy.h> // for SYSCALL_OP
 #include <capsuleBenchmark.h>
-#include <amessage.pb-c.h>
 #include <lua.h>
 #include "capsule_structures.h"
 #include "capsule_ta.h"

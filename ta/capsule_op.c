@@ -479,13 +479,12 @@ TEE_Result do_send_connection( int fd, void *buf, int *len ) {
 }
 
 
-// TODO: there is no reason for len to be a pointer. Change to a size_t 
-TEE_Result do_send( int fd, void *buf, int *len, int op_code, int rv ){
+TEE_Result do_send( int fd, void *buf, size_t len, int op_code, int rv ){
     
     TEE_Result res = TEE_SUCCESS;
     uint8_t    header[HEADER_SIZE];
     size_t     hlen = HEADER_SIZE;
-    size_t     plen = *len;
+    size_t     plen = len;
     char* device_id = "";
     msgReqHeader msg = {0};
 
@@ -495,7 +494,8 @@ TEE_Result do_send( int fd, void *buf, int *len, int op_code, int rv ){
     CHECK_SUCCESS( res, "serialize_hdr() failed" );
 
     if ( sizeof(msgReqHeader) >= hlen ) {
-        // return error.
+        res = TEE_ERROR_SHORT_BUFFER;
+        CHECK_SUCCESS( res, "msgReqHeader is larger than HEADER_SIZE" );
     }
 
     TEE_MemMove( header, &msg, sizeof( msgReqHeader ) );
@@ -516,23 +516,22 @@ TEE_Result do_send( int fd, void *buf, int *len, int op_code, int rv ){
     CHECK_SUCCESS( res, "do_send_connection() header failed" ); 
 
     //MSG( "payload: %s len %d", (char*) buf, *len );
-    if( *len > 0 ) {
+    if( plen > 0 ) {
 	size_t payload_msg_size = sizeof(msgPayload) + plen;
 	unsigned char* payload_msg = TEE_Malloc(payload_msg_size, 0);
-	res = serialize_payload(msg.nonce, buf, plen, payload_msg, payload_msg_size);
+	res = serialize_payload(msg.nonce, buf, plen, payload_msg, &payload_msg_size);
 	CHECK_SUCCESS( res, "serialize_payload() failed" );
 
 	res = process_aes_block( payload_msg, payload_msg_size, payload_msg, &payload_msg_size, ivDefault, sizeof(ivDefault), 0, true, true, encrypt_op);
 	CHECK_SUCCESS( res, "process_aes_block() of serialized payload failed." );
 
-        res = do_send_connection( fd, payload_msg_size, payload_msg_size );
+        res = do_send_connection( fd, payload_msg, &payload_msg_size );
         CHECK_SUCCESS( res, "do_send_connection() payload failed" );    
     }
 
     return res;
 }
 
-/*
 TEE_Result do_recv_payload( int fd, void* hash, int hlen, 
                             void* buf, int len ) {
     
@@ -563,12 +562,8 @@ TEE_Result do_recv_payload( int fd, void* hash, int hlen,
 
     return res;
 }
-*/
 
-// TODO: Peter changed the way we send and receive messages with the server
-// You need to change these to match the ones he wrote for capsule_server.c
-/*
-TEE_Result do_recv_header( int fd, msgReplyHeader **msg ) {
+TEE_Result do_recv_header( int fd, msgReplyHeader *msg ) {
     
     TEE_Result  res = TEE_SUCCESS;
     uint8_t     header[HEADER_SIZE];
@@ -588,24 +583,30 @@ TEE_Result do_recv_header( int fd, msgReplyHeader **msg ) {
     process_aes_block( header, hlen, header, &hlen, symm_iv, 
                        symm_iv_len, 0, true, true, decrypt_op );
 
-    deserialize_hdr( msg, header, HEADER_SIZE );
-    if( *msg == NULL ) {
-        res = TEE_ERROR_NOT_SUPPORTED;
-        CHECK_SUCCESS( res, "deserialize() failed" );
+    if ( hlen > sizeof( msgReplyHeader ) ) {
+        res = TEE_ERROR_SHORT_BUFFER;
+        CHECK_SUCCESS( res, "HEADER_SIZE is greater than msgReplayHeader" );
     }
 
-    if( (*msg)->tz_id != curr_cred || (*msg)->capsule_id != (int) symm_id ) {
+    // Should just be able to shove the bytes into the struct and everything *should* line up....
+    TEE_MemMove( msg, header, hlen );
+    // deserialize_hdr( msg, header, HEADER_SIZE );
+    // if( msg == NULL ) {
+    //    res = TEE_ERROR_NOT_SUPPORTED;
+    //    CHECK_SUCCESS( res, "deserialize() failed" );
+    //}
+
+    if( msg->capsuleID != (int) symm_id ) {
         res = TEE_ERROR_CORRUPT_OBJECT;
-        CHECK_SUCCESS( res, "received message for TZ id 0x%08x capsule id 0x%08x"
-                            " (this TZ id is 0x%08x capsule id 0x%08x)", 
-                            (*msg)->tz_id, curr_cred, (*msg)->capsule_id, symm_id );
+        CHECK_SUCCESS( res, "received message for capsule id 0x%08x"
+                            " (this capsule id 0x%08x)", 
+                            msg->capsuleID, symm_id );
     }
 
     return res;     
 }
-*/
 
-// TODO: implement
+// TODO: implement - maybe not
 /* Search the KV store and write a value to a key. If it doesn't
  * exist, add it.
  */

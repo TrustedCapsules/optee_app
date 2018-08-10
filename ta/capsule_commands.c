@@ -5,8 +5,6 @@
 #include <capsuleCommon.h>
 #include <capsuleBenchmark.h>
 #include <capsuleServerProtocol.h>
-#include <amessage.pb-c.h>
-#include <serialize_common.h>
 #include <lua.h>
 #include <lauxlib.h>
 #include "capsule_structures.h"
@@ -415,7 +413,7 @@ TEE_Result capsule_send( uint32_t param_type, TEE_Param params[4] ) {
                                         TEE_PARAM_TYPE_NONE ) );    
         
     res = do_send( params[0].value.a, params[1].memref.buffer, 
-                   (int*) &params[1].memref.size, params[2].value.a,
+                   (size_t) params[1].memref.size, params[2].value.a,
                    params[2].value.b );
     CHECK_SUCCESS( res, "Do_send() Error" );
     
@@ -431,9 +429,9 @@ TEE_Result capsule_recv_payload( uint32_t param_type, TEE_Param params[4] ) {
                                         TEE_PARAM_TYPE_MEMREF_OUTPUT,
                                         TEE_PARAM_TYPE_NONE ) );    
         
-    //res = do_recv_payload( params[0].value.a, params[1].memref.buffer,
-    //                       params[1].memref.size, params[2].memref.buffer,
-    //                       params[2].memref.size );
+    res = do_recv_payload( params[0].value.a, params[1].memref.buffer,
+                           params[1].memref.size, params[2].memref.buffer,
+                           params[2].memref.size );
     CHECK_SUCCESS( res, "Do_recv_payload() Error" );
     return res;     
 }
@@ -441,22 +439,22 @@ TEE_Result capsule_recv_payload( uint32_t param_type, TEE_Param params[4] ) {
 TEE_Result capsule_recv_header( uint32_t param_type, TEE_Param params[4] ) {    
     
     TEE_Result  res = TEE_SUCCESS;
-    msgReplyHeader   *msg;
+    msgReplyHeader   msg = {0};
 
     ASSERT_PARAM_TYPE( TEE_PARAM_TYPES( TEE_PARAM_TYPE_VALUE_INPUT,
                                         TEE_PARAM_TYPE_MEMREF_OUTPUT,
                                         TEE_PARAM_TYPE_VALUE_OUTPUT,
                                         TEE_PARAM_TYPE_VALUE_OUTPUT ) );    
         
-    //res = do_recv_header( params[0].value.a, &msg );
+    res = do_recv_header( params[0].value.a, &msg );
     CHECK_SUCCESS( res, "Do_recv_header() Error" );
 
-    memcpy( params[1].memref.buffer, msg->hash, HASHLEN );
+    memcpy( params[1].memref.buffer, msg.hash, HASHLEN );
     params[1].memref.size = HASHLEN;
-    params[2].value.a = msg->capsuleID;
-    params[2].value.b = msg->response;
-    params[3].value.a = msg->payloadLen;
-    //params[3].value.b = msg->rvalue;
+    params[2].value.a = msg.capsuleID;
+    params[2].value.b = msg.response;
+    params[3].value.a = msg.nonce;
+    params[3].value.b = msg.payloadLen;
 
     return res;     
 }   

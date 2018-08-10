@@ -5,11 +5,12 @@
 #include <string.h>
 #include <capsuleCommon.h>
 #include <capsulePolicy.h>
-#include <amessage.pb-c.h>
-#include <serialize_common.h>
+#include <capsuleServerProtocol.h>
+#include <capsuleKeys.h>
 #include <lua.h>
 #include "capsule_structures.h"
 #include "capsule_helper.h"
+#include "network_helper.h"
 #include "lua_helpers.h"
 #include "capsule_op.h"
 #include "capsule_ta.h"
@@ -477,47 +478,61 @@ TEE_Result do_send_connection( int fd, void *buf, int *len ) {
     return res;
 }
 
-    
+
+// TODO: there is no reason for len to be a pointer. Change to a size_t 
 TEE_Result do_send( int fd, void *buf, int *len, int op_code, int rv ){
     
     TEE_Result res = TEE_SUCCESS;
     uint8_t    header[HEADER_SIZE];
-    int        hdr_len = HEADER_SIZE;
     size_t     hlen = HEADER_SIZE;
     size_t     plen = *len;
+    char* device_id = "";
+    msgReqHeader msg = {0};
 
     //MSG( "hdr_len %d B", hdr_len );
 
-    serialize_hdr( symm_id, op_code, buf, *len, rv, curr_cred,
-                   header, hdr_len );   
-    
+    res = serialize_hdr( symm_id, op_code, plen, device_id, 0, &msg );
+    CHECK_SUCCESS( res, "serialize_hdr() failed" );
+
+    if ( sizeof(msgReqHeader) >= hlen ) {
+        // return error.
+    }
+
+    TEE_MemMove( header, &msg, sizeof( msgReqHeader ) );
+
     //MSG( "header decrypted: %02x%02x%02x%02x %02x%02x%02x%02x", 
     //    header[0], header[1], header[2], header[3],
     //        header[48], header[49], header[50], header[51] );
     
-    process_aes_block( header, hlen, header, &hlen, symm_iv, 
-                       symm_iv_len, 0, true, true, encrypt_op );
+    res = process_aes_block( header, hlen, header, &hlen, ivDefault, sizeof(ivDefault), 0, true, true, encrypt_op );
+
+    CHECK_SUCCESS( res, "process_aes_block() of serialized header failed." );
 
     //MSG( "header encrypted: %02x%02x%02x%02x %02x%02x%02x%02x", 
     //    header[0], header[1], header[2], header[3],
     //    header[48], header[49], header[50], header[51] );
 
-
-    res = do_send_connection( fd, header, &hdr_len );
+    res = do_send_connection( fd, header, &hlen );
     CHECK_SUCCESS( res, "do_send_connection() header failed" ); 
 
     //MSG( "payload: %s len %d", (char*) buf, *len );
     if( *len > 0 ) {
-        process_aes_block( buf, plen, buf, &plen, symm_iv, symm_iv_len,
-                           0, true, true, encrypt_op );
+	size_t payload_msg_size = sizeof(msgPayload) + plen;
+	unsigned char* payload_msg = TEE_Malloc(payload_msg_size, 0);
+	res = serialize_payload(msg.nonce, buf, plen, payload_msg, payload_msg_size);
+	CHECK_SUCCESS( res, "serialize_payload() failed" );
 
-        res = do_send_connection( fd, buf, len );
+	res = process_aes_block( payload_msg, payload_msg_size, payload_msg, &payload_msg_size, ivDefault, sizeof(ivDefault), 0, true, true, encrypt_op);
+	CHECK_SUCCESS( res, "process_aes_block() of serialized payload failed." );
+
+        res = do_send_connection( fd, payload_msg_size, payload_msg_size );
         CHECK_SUCCESS( res, "do_send_connection() payload failed" );    
     }
 
-    return res;     
+    return res;
 }
 
+/*
 TEE_Result do_recv_payload( int fd, void* hash, int hlen, 
                             void* buf, int len ) {
     
@@ -548,11 +563,12 @@ TEE_Result do_recv_payload( int fd, void* hash, int hlen,
 
     return res;
 }
+*/
 
 // TODO: Peter changed the way we send and receive messages with the server
 // You need to change these to match the ones he wrote for capsule_server.c
 /*
-TEE_Result do_recv_header( int fd, AMessage **msg ) {
+TEE_Result do_recv_header( int fd, msgReplyHeader **msg ) {
     
     TEE_Result  res = TEE_SUCCESS;
     uint8_t     header[HEADER_SIZE];
@@ -560,7 +576,7 @@ TEE_Result do_recv_header( int fd, AMessage **msg ) {
     size_t      hlen = HEADER_SIZE;
     int         read = 0;
 
-    //MSG( "Getting the response header..." );
+    MSG( "Getting the response header..." );
 
     do {
         res = do_recv_connection( fd, header + read, &nr );

@@ -6,5 +6,5 @@ srcs-y += capsule_helper.c
 srcs-y += capsule_lua_ext.c
 srcs-y += capsule_lua_api.c
 srcs-y += lua_helpers.c
+srcs-y += network_helper.c
 srcs-y += $(wildcard ../lua/*.c)
-srcs-y += $(wildcard $(PWD)/protobuf_common/*.c)

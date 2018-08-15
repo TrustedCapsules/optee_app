@@ -14,7 +14,7 @@
 #define POLICY_STATE_SIZE        		128
 #define POLICY_IP_SIZE            		16
 
-#define POLICY_FUNC   			"evaluate_policy"
+#define POLICY_FUNC   			"policy"
 #define POLICY_RESULT 			"policy_result"
 #define POLICY_LOG_OPEN 		"log_open"
 #define POLICY_LOG_CLOSE 		"log_close"

@@ -1,7 +1,7 @@
 #include <tee_internal_api.h>
 #include <tee_api_defines.h>
 #include <tee_internal_api_extensions.h>
-//#include <string.h>
+#include <string.h>
 #include <capsuleCommon.h>
 #include <capsuleBenchmark.h>
 #include <capsuleServerProtocol.h>

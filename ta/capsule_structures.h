@@ -12,7 +12,7 @@ struct capsule_text {
     unsigned char*      log_buf;            // Contains the log (fixed maximum size)
     size_t              log_len;            // Actual length of log_buf
 
-    struct kv_pair*     kv_store_buf;       // Contains the capsule specific key-value store
+    struct kv_pair*     kv_store;       // Contains the capsule specific key-value store
                                             //  (variable maximum size)
     size_t              kv_store_len;       // Actual length of kv_store_buf
     

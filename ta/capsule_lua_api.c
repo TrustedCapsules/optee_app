@@ -84,7 +84,7 @@ RESULT TEE_getTime( uint32_t* ts, const WHERE w ) {
 RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueLen, 
 					 const WHERE w ) {
 	TEE_Result resStateFile;
-	TEE_Result resDeviceFile;
+	//TEE_Result resDeviceFile;
 	UNUSED( keyLen );
 
 	switch( w ) {
@@ -110,10 +110,20 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 
 		// Get state from capsule state file
 		resStateFile = do_get_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
-		if(resStateFile != TEE_SUCCESS)
+		if(resStateFile != TEE_SUCCESS){
+			if (resStateFile == TEE_ERROR_NOT_SUPPORTED){
+				return ERROR_KEY_BAD_SIZE;
+			}
+			else if (resStateFile == TEE_ERROR_ITEM_NOT_FOUND){
+				return ERROR_KEY_NOT_FOUND;
+			}else{
+				return ERROR_ACCESS_DENIED; // Secure storage object not found or bad reads
+			}
+		}
 
-		// TODO: get state from device file
-		resDeviceFile = go_get_device_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
+		//FIXME: get state from device file. <--DONE, but not needed. 
+		//resDeviceFile = go_get_device_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
+		DMSG("here in capsule_lua_api 0x%08x\n\n", resStateFile);
 		// TODO: return one of the values (which should be default)?
 		return NIL;
 	case WHERE_REMOTE_SERVER:

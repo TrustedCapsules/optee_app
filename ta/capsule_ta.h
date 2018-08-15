@@ -6,15 +6,15 @@
 #include <capsulePolicy.h>
 
 #define TZ_CRED          "cred"
-
+#define TC_FILE_PARTS	 4
 #define ASSERT_PARAM_TYPE( pt ) \
 			do {                \
 				if ( (pt) != param_type ) \
 					return TEE_ERROR_BAD_PARAMETERS;  \
-			} while( 0 )	
+			} while( 0 )
 
 /* AES key parameters */
-extern TEE_OperationHandle  decrypt_op;
+	extern TEE_OperationHandle decrypt_op;
 extern TEE_OperationHandle  encrypt_op;
 extern TEE_OperationHandle  hash_op;
 extern char                *capsule_name;
@@ -32,10 +32,7 @@ extern SYSCALL_OP fuse_op; // open or close?
 extern TEE_ObjectHandle keyFile;                                   
 extern char             keyID[];
 extern TEE_ObjectHandle stateFile;
-extern TEE_ObjectHandle deviceFile;
-
-/* Capsule object metadata hashtable */
-extern kv_pair cap_metadata;
+//extern TEE_ObjectHandle deviceFile;
 
 /* Lua interpreter */
 extern lua_State *Lstate;

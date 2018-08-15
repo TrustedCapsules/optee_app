@@ -27,6 +27,7 @@ void lua_close_context( lua_State **L ) {
 }
 
 TEE_Result lua_load_policy( lua_State *L, const char* policy ) {
+	DMSG("\n%s\n",policy);
 	int ret = luaL_loadstring( L, policy ) || lua_pcall( L, 0, 0, 0 );
 	if( ret != LUA_OK ) {
 		printf( "Cannot load lua policy, got error %d\n", ret );
@@ -95,10 +96,11 @@ int lua_run_policy( lua_State *L, SYSCALL_OP op ) {
 	lua_pushinteger( L, op );
 	int ret = lua_pcall( L, 1, 0, 0 );
 	if( ret != LUA_OK ) {
-		//printf( "Cannot run lua evaluate_policy func, got error %d -", ret );
+		DMSG("Cannot run lua evaluate_policy func, got error %d -", ret);
+		printf( "Cannot run lua evaluate_policy func, got error %d -", ret );
 		if( lua_isstring( L, -1 ) ) {
 			const char* errString = lua_tostring( L, -1 );
-			//printf( " %s", errString );
+			printf( " %s", errString );
 			// TODO: Changed strstr to strcmp
 			if( strcmp( errString, POLICY_UPDATED_ERROR_MSG ) == 0 ) {
 				ret = UPDATED;

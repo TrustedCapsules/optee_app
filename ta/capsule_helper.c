@@ -11,7 +11,6 @@
 #include "capsule_structures.h"
 #include "capsule_helper.h"
 
-
 unsigned long long read_cntpct(void) {
     unsigned long long ts;
 //#ifdef HIKEY
@@ -106,7 +105,7 @@ void initialize_capsule_text( struct capsule_text* p ) {
     memset(&(p->header), 0, sizeof(struct TrustedCap));
     p->policy_len = 0;
     p->log_len = 0;
-    p->kv_store_len = 0;
+    p->kv_store = NULL;
     p->data_len = 0;
     p->ref_count = 0;
 }
@@ -116,13 +115,14 @@ void finalize_capsule_text( struct capsule_text* p ) {
     memset(&(p->header), 0, sizeof(struct TrustedCap));
     p->policy_len = 0;
     p->log_len = 0;
-    p->kv_store_len = 0;
+    p->kv_store = NULL;
     p->data_len = 0;
     p->data_shadow_len = 0;
 
     TEE_Free(p->policy_buf);
     TEE_Free(p->log_buf);
-    TEE_Free(p->kv_store_buf);
+    //TEE_Free(p->kv_store);
+    //TODO: check if the kv_store hashmap can be deallocated with TEE_Malloc
     TEE_Free(p->data_buf);
     TEE_Free(p->data_shadow_buf);
 }
@@ -347,7 +347,7 @@ void read_header( unsigned char* file_contents, struct TrustedCap* cap ) {
 void parse_kv_store( unsigned char* input, size_t inlen, 
                      struct capsule_text* cap ) {
     unsigned char*  pairs[MAX_NUM_KEYS]; // Make array of maximum key, value pairs
-    struct kv_pair  kv_store[MAX_NUM_KEYS];
+    //struct kv_pair  kv_store[MAX_NUM_KEYS];
     int             last = 0,
                     start = 0,
                     end = 0,
@@ -357,7 +357,7 @@ void parse_kv_store( unsigned char* input, size_t inlen,
     bool            matched = false;
     unsigned char*  delim = (unsigned char*) ";";
     int             delim_len = strlen((char*) delim);
-
+    DMSG("\n\n");
     // First pass to parse into key value pairs
     do {
         // Must set matched to false or find_delimiter will just return 0
@@ -427,65 +427,78 @@ void parse_kv_store( unsigned char* input, size_t inlen,
                        &matched, delim, delim_len);
 
         // Create memory for the key (size start)
-        kv_store[i].key = TEE_Malloc(start * sizeof(unsigned char), 0);
-
+        struct kv_pair *kv_datum = TEE_Malloc(sizeof(struct kv_pair),0);
+        DMSG("\n\n");
+        kv_datum->key = TEE_Malloc(start * sizeof(unsigned char), 0);
+        DMSG("\n src=%s, len=%d \n",pairs[i],start);
         // Copy the key (starting at pairs[i] with size start)
-        TEE_MemMove(kv_store[i].key, pairs[i], start);
-
+        TEE_MemMove(kv_datum->key, pairs[i], start);
+        //strncpy(kv_datum->key,pairs[i],start);
+        DMSG("\n\n");
         // Null terminate the key (removing the delimiter)
-        kv_store[i].key[start - 1] = '\0';
-
+        kv_datum->key[start - 1] = '\0';
+        int key_len = strlen(kv_datum->key);
+        DMSG("key is %s of length %d\n\n", kv_datum->key, key_len);
         // Update the key length
-        kv_store[i].key_len = strlen((char*) kv_store[i].key);
-
         // Advance the offset and clear the matched variable
         last += end;
         matched = false;
-
+        DMSG("\n\n");
         find_delimiter( pairs[i]+last, pair_len - last, &start, &end, &match_state, 
                        &matched, delim, delim_len);
-
+        DMSG("\n\n");
         // Create memory for the value, since it doesn't have a delimiter,
         // increase the size by one (for the null terminator)
-        kv_store[i].value = TEE_Malloc((pair_len - last + 1) * sizeof(unsigned char), 0);
-
+        kv_datum->value = TEE_Malloc((pair_len - last + 1) * sizeof(unsigned char), 0);
+        DMSG("\n\n");
         // Copy the value over (starting at pairs[i] + last with size pair_len -
         // last)
-        TEE_MemMove(kv_store[i].value, pairs[i] + last, (pair_len - last));
-        
+        TEE_MemMove(kv_datum->value, pairs[i] + last, (pair_len - last));
+        DMSG("\n\n");
         // Null terminate the string
-        kv_store[i].value[(pair_len - last)] = '\0';
-
+        kv_datum->value[(pair_len - last)] = '\0';
+        DMSG("\n\n");
         // Update the length for value
-        kv_store[i].val_len = strlen((char*) kv_store[i].value);
+        kv_datum->val_len = strlen(kv_datum->value);
+        DMSG("\n\n");
+        kv_pair *temp = NULL;
+        DMSG("\n\n");
+        HASH_FIND_STR(cap->kv_store, kv_datum->key, temp);
+        DMSG("\n\n");
+        if (temp == NULL)
+        {
+            HASH_ADD_KEYPTR(hh, cap->kv_store, kv_datum->key, kv_datum->key_len,kv_datum );
+        }
     }
 
     // Malloc the space for the array of KV pairs
-    cap->kv_store_buf = TEE_Malloc(sizeof(struct kv_pair) * total_num, 0); // Allocate memory
+    //cap->kv_store_buf = TEE_Malloc(sizeof(struct kv_pair) * total_num, 0); // Allocate memory
     
     // Copy the temp array into the global one
-    TEE_MemMove(cap->kv_store_buf, kv_store, sizeof(struct kv_pair) * total_num);
+    //TEE_MemMove(cap->kv_store_buf, kv_store, sizeof(struct kv_pair) * total_num);
     
     // Update the number of items
+    DMSG("\ntotal_num = %d \n", total_num);
     cap->kv_store_len = total_num;
 }
 
-void serialize_kv_store( unsigned char* kv_string, size_t total_len ) {
+void serialize_kv_store( unsigned char* kv_string, int total_len) {
     int last = 0;
-
+    DMSG("\n%s,%d\n", kv_string, total_len);
     // Iterate through the list of key value pairs to create a string
-    for (unsigned int i = 0; i < cap_head.kv_store_len; i++) {
+    kv_pair *temp;
+    for (temp = cap_head.kv_store; temp != NULL; temp = temp->hh.next) {
         // Size the kv pair string (key_len, val_len, 1 for ':', 1 for ';', and
         // one for \0)
-        int str_len = cap_head.kv_store_buf[i].key_len + 1 + 
-                      cap_head.kv_store_buf[i].val_len + 1 + 1;
+        int str_len = temp->key_len + 1 + 
+                      temp->val_len + 1 + 1;
 
         // Temp string
-        char temp[str_len];
+        char tempStr[str_len];
 
         // Format the values into our temp string
-        snprintf( temp, str_len, "%s:%s;", 
-                 cap_head.kv_store_buf[i].key, cap_head.kv_store_buf[i].value);
+        snprintf( tempStr, str_len, "%s:%s;", 
+                temp->key, temp->value);
         
         // Copy the temp string into our final string
         TEE_MemMove(kv_string + last, temp, str_len);
@@ -500,10 +513,14 @@ void serialize_kv_store( unsigned char* kv_string, size_t total_len ) {
 
 int get_kv_string_len( void ) {
     int kv_len = 0;
+    DMSG("\n\n");
     // Figure out how large to make the key-value store buffer
-    for (unsigned int i = 0; i < cap_head.kv_store_len; i++) {
-        kv_len += cap_head.kv_store_buf[i].key_len + 1; // Key + :
-        kv_len += cap_head.kv_store_buf[i].val_len + 1; // Val + ;
+    kv_pair *temp;
+    for (temp = cap_head.kv_store; temp != NULL; temp = temp->hh.next) {
+        kv_len += temp->key_len + 1; // Key + :
+        DMSG("Key found, length = %d",temp->key_len);
+        kv_len += temp->val_len + 1; // Val + ;
+        DMSG("Key found, length = %d", temp->key_len);
     }
     return kv_len;
 }
@@ -563,29 +580,29 @@ void sep_parts( unsigned char* input, size_t inlen,
     unsigned int    match_state = 0;
     bool            matched;
     unsigned char   delimiter[DELIMITER_SIZE] = DELIMITER;
-
     // Loop to parse the parts
     do {
         matched = false;
         find_delimiter(input+last, inlen - last, &start, &end, &match_state, 
                        &matched, delimiter, DELIMITER_SIZE);
-
         // We have a fixed number of capsule parts. 
-        // TODO: make 4 a global variable
-        if (index < 4) {
+        // DONE make 4 a global variable
+        if (index < TC_FILE_PARTS)
+        {
             if (matched == true) {
                 // Create space for this part
+                DMSG("\n\n");
                 parts[index] = TEE_Malloc(start * sizeof(unsigned char)+1, 0);
-
+                DMSG("\n\n");
                 // Copy the data over
                 TEE_MemMove(parts[index], input + last, start);
-
+                DMSG("\n\n");
                 // Null terminate it
                 parts[index][start] = '\0';
-
+                DMSG("\n\n");
                 // Move offset pointer forward
                 last += end;
-
+                DMSG("caphelper.c:609");
                 // Increase the part array index
                 index++;
             } else {
@@ -609,6 +626,8 @@ void sep_parts( unsigned char* input, size_t inlen,
     TEE_MemMove(cap->policy_buf, parts[0], cap->policy_len);
 
     // Pass the kv part to the parser
+    DMSG("\n\n before parse kvs\n\n");
+    DMSG("about to parse kv store %s",parts[1]);
     parse_kv_store(parts[1], strlen((char *) parts[1]), cap);
 
     cap->log_len = strlen((char *) parts[2]);

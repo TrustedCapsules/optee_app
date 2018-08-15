@@ -19,9 +19,9 @@ static int luaE_getState( lua_State *L ) {
 	
 	char 		value[ POLICY_STATE_MAX_VALUE_SIZE ] = {0};
 	size_t 		len = 0;
-	
+	DMSG("\n\nhere\n\n");
 	RESULT res = TEE_getState( key, strlen(key), value, &len, where );
-	
+	DMSG("\n\nhere here\n\n");
 	lua_pushlstring( L, (const char*) value, len ); 
 	lua_pushinteger( L, res );
 	return 2;

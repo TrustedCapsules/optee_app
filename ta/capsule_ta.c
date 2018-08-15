@@ -38,10 +38,7 @@ char             keyID[] = "aes_key_file";
 
 /* Secure Storage Objects -> credentials, persistent state */
 TEE_ObjectHandle stateFile = TEE_HANDLE_NULL;
-TEE_ObjectHandle deviceFile = TEE_HANDLE_NULL;
-
-/* Capsule metadata hash table */
-kv_pair cap_metadata;
+//TEE_ObjectHandle deviceFile = TEE_HANDLE_NULL;
 
 /* Interpreter State - this is messy, and will only work if policy
  *                     evaluation is synchronous. */
@@ -171,7 +168,7 @@ void TA_CloseSessionEntryPoint(void *sess_ctx) {
 
     TEE_CloseObject( keyFile );
     TEE_CloseObject( stateFile );
-    TEE_CloseObject( deviceFile );
+    //TEE_CloseObject( deviceFile );
 
     if( capsule_name != NULL ) {
         TEE_Free( capsule_name );

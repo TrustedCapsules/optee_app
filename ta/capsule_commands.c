@@ -1,7 +1,7 @@
 #include <tee_internal_api.h>
 #include <tee_api_defines.h>
 #include <tee_internal_api_extensions.h>
-#include <string.h>
+//#include <string.h>
 #include <capsuleCommon.h>
 #include <capsuleBenchmark.h>
 #include <capsuleServerProtocol.h>
@@ -125,8 +125,9 @@ TEE_Result get_state( uint32_t param_type,
             CHECK_GOTO( res, get_state_exit, "TEE_OpenPersistentObject() Error" );
         }
     }
-    /* Open the device file. Read only */
-    if (deviceFile == TEE_HANDLE_NULL)
+    
+    //Open the device file. Read only 
+   /* if (deviceFile == TEE_HANDLE_NULL)
     {
         
         TEE_Result res = TEE_OpenPersistentObject(TEE_STORAGE_PRIVATE,
@@ -149,7 +150,7 @@ TEE_Result get_state( uint32_t param_type,
         {
             CHECK_GOTO(res, get_state_exit, "TEE_OpenPersistentObject() Error");
         }
-    }
+    }*/
     res = do_get_state( params[0].memref.buffer, params[1].memref.buffer,
                         params[1].memref.size );
     CHECK_GOTO( res, get_state_exit, "Do_get_state() Error" );
@@ -210,7 +211,7 @@ TEE_Result capsule_open( uint32_t param_type,
     unsigned char   credential[STATE_SIZE];
     unsigned char  *file_contents;
     size_t          file_len;
-
+    unsigned char  *kvs;
     ASSERT_PARAM_TYPE( 
            TEE_PARAM_TYPES( TEE_PARAM_TYPE_MEMREF_INPUT,    // File name
                             TEE_PARAM_TYPE_MEMREF_INOUT,    // File contents
@@ -218,8 +219,10 @@ TEE_Result capsule_open( uint32_t param_type,
                             TEE_PARAM_TYPE_NONE
                           ) );
 
-    // Check to see if this is the correct session for this capsule 
-    if( capsule_name == NULL ) {
+    // Check to see if this is the correct session for this capsule
+    DMSG("1");
+    if (capsule_name == NULL)
+    {
         capsule_name = TEE_Malloc( params[0].memref.size + 1, 0 );
         TEE_MemMove( capsule_name, params[0].memref.buffer, 
                 params[0].memref.size );
@@ -228,6 +231,7 @@ TEE_Result capsule_open( uint32_t param_type,
         DMSG( "Created new capsule session %s (%d B)", 
              capsule_name, params[0].memref.size );
     } else {
+        DMSG("2\n");
         if( strncmp( capsule_name, 
                      params[0].memref.buffer, 
                      strlen( capsule_name ) ) != 0 ) {
@@ -279,6 +283,11 @@ TEE_Result capsule_open( uint32_t param_type,
 
     curr_len = 0;
 
+    struct kv_pair *temp;
+    for(temp = (&cap_head)->kv_store; temp!=NULL; temp = temp->hh.next){
+        DMSG("\nkey is %s, value is %s\n", temp->key, temp->value);
+    }
+    
     // Run the policy
     res = do_run_policy( Lstate, POLICY_FUNC, OPEN_OP );
     // Clear the return buffer
@@ -303,6 +312,9 @@ TEE_Result capsule_open( uint32_t param_type,
 
     // Increment reference counter for debugging
     cap_head.ref_count++;
+    kvs = TEE_Malloc(get_kv_string_len(), 0);
+    serialize_kv_store(kvs,get_kv_string_len());
+    DMSG("\n the kv store is : %s \n", kvs);
 
 capsule_open_exit:
     // Clean up malloc'd memory. File contents should have been copied
@@ -350,6 +362,7 @@ TEE_Result capsule_close(uint32_t param_type, TEE_Param params[4]) {
     cap_head.data_shadow_len = params[1].memref.size;
 
     // Run the policy
+    DMSG("\n\n\nHERE IN CLOSE\n\n\n");
     res = do_run_policy( Lstate, POLICY_FUNC, CLOSE_OP );
 
     // Construct the encrypted file and clear all buffers

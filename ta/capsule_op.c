@@ -2,7 +2,7 @@
 #include <tee_api_defines.h>
 #include <tee_internal_api_extensions.h>
 #include <stdlib.h>
-#include <string.h>
+//#include <string.h>
 #include <capsuleCommon.h>
 #include <capsulePolicy.h>
 #include <capsuleServerProtocol.h>
@@ -126,6 +126,7 @@ TEE_Result do_open( unsigned char* file_contents, int file_size ) {
         ptx[ptxlen] = '\0';
 
         // Parse out the file into specific buffers. 
+        DMSG("\n\nsepparts\n\n");
         sep_parts(ptx, ptxlen, &cap_head);
     }
 
@@ -271,12 +272,16 @@ TEE_Result do_run_policy( lua_State *L, const char* policy, SYSCALL_OP n ) {
     int  cur_stack = lua_gettop(L);
     bool eval, pol_changed;
     uint64_t cnt_a, cnt_b;
+    DMSG("\npolicy string is %s",policy);
 
     cnt_a = read_cntpct();
     do {
         /* Call lua policy function */
+        DMSG("\n\n");
         lua_getglobal( L, policy );
+        DMSG("\n\n");
         lua_pushnumber( L, n ); /* policy takes a number argument */
+        DMSG("\n\n");
         ret = lua_pcall( L, 1, 2, 0 );
         if( ret != LUA_OK ) {
             res = TEE_ERROR_NOT_SUPPORTED;
@@ -330,6 +335,7 @@ TEE_Result do_load_policy(void) {
     cnt_a = read_cntpct();
 
     /* Load the policy into Lua */
+    DMSG("\npolicy text is %s\n\n\n",cap_head.policy_buf);
     res = lua_load_policy( Lstate, (const char*) cap_head.policy_buf );
     CHECK_SUCCESS( res, "load_policy() Error" );
 
@@ -752,6 +758,7 @@ TEE_Result do_get_state( unsigned char* key, unsigned char* val,
     return res; 
 }
 
+/*
 TEE_Result go_get_device_state(unsigned char *key, unsigned char *val,
                                uint32_t vlen) 
 {
@@ -805,7 +812,7 @@ TEE_Result go_get_device_state(unsigned char *key, unsigned char *val,
     }
     return res;
 }
-
+*/
 char *do_get_buffer(BUF_TYPE t, size_t *len, TEE_Result *res)
 {
     char* buffer;

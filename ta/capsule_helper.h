@@ -57,7 +57,7 @@ void read_header( unsigned char* file_contents, struct TrustedCap* cap );
 /*
  * Parsing operations
  */
-void serialize_kv_store( unsigned char* kv_string, size_t length );
+void serialize_kv_store( unsigned char* kv_string, int len);
 void parse_kv_store( unsigned char* input, size_t length, 
                      struct capsule_text* cap );
 int get_kv_string_len( void );

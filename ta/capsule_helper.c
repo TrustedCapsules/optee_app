@@ -121,7 +121,7 @@ void finalize_capsule_text( struct capsule_text* p ) {
 
     TEE_Free(p->policy_buf);
     TEE_Free(p->log_buf);
-    //TEE_Free(p->kv_store);
+    TEE_Free(p->kv_store);
     //TODO: check if the kv_store hashmap can be deallocated with TEE_Malloc
     TEE_Free(p->data_buf);
     TEE_Free(p->data_shadow_buf);

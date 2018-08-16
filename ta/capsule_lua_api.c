@@ -58,6 +58,7 @@ RESULT TEE_getTime( uint32_t* ts, const WHERE w ) {
 		// 1. Send message to remote server to get it's time
 		// 2. Wait for response
 		// 3. Return time.
+		//TODO: implement this.
 		return NIL;
 		// --------------------------
 	case WHERE_LOCAL_DEVICE:
@@ -83,7 +84,7 @@ RESULT TEE_getTime( uint32_t* ts, const WHERE w ) {
 // 		ERROR_SERVER_BROKEN_PIPE 	- cannot contact server
 RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueLen, 
 					 const WHERE w ) {
-	TEE_Result resStateFile;
+	TEE_Result getStateResult ;
 	//TEE_Result resDeviceFile;
 	UNUSED( keyLen );
 
@@ -109,23 +110,22 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 		// --------------------------
 
 		// Get state from capsule state file
-		resStateFile = do_get_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
-		if(resStateFile != TEE_SUCCESS){
-			if (resStateFile == TEE_ERROR_NOT_SUPPORTED){
+		getStateResult  = do_get_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
+		if(getStateResult  != TEE_SUCCESS){
+			if (getStateResult  == TEE_ERROR_NOT_SUPPORTED){
 				return ERROR_KEY_BAD_SIZE;
 			}
-			else if (resStateFile == TEE_ERROR_ITEM_NOT_FOUND){
+			else if (getStateResult  == TEE_ERROR_ITEM_NOT_FOUND){
 				return ERROR_KEY_NOT_FOUND;
 			}else{
 				return ERROR_ACCESS_DENIED; // Secure storage object not found or bad reads
 			}
 		}
 
-		//FIXME: get state from device file. <--DONE, but not needed. 
+		//FIXME: 	get state from device file. <--DONE, but not needed.
+		//			return one of the values(which should be default) ?
 		//resDeviceFile = go_get_device_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
-		DMSG("here in capsule_lua_api 0x%08x\n\n", resStateFile);
-		// TODO: return one of the values (which should be default)?
-		return NIL;
+			return NIL;
 	case WHERE_REMOTE_SERVER:
 		// ---------FILL-IN HERE----------
 		// Suggested design: An RPC request is sent to the remote server. The server
@@ -136,10 +136,9 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 		return NIL; 
 		// --------------------------
 	case WHERE_CAPSULE_META:
-		// ---------FILL-IN HERE----------
-		// Suggested design: for semantic simplicity, read to metadata can be done 
-		// purely on the trusted world side. 
-		//TODO: this is a read to the capsule metadata hashtable
+		//DONE this is a read to the capsule metadata hashtable
+		getStateResult = do_get_metadata((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
+		//TODO:Error handling
 		return NIL;
 		// --------------------------
 	default:
@@ -175,15 +174,13 @@ RESULT TEE_setState( const char* key, size_t keyLen, const char* value, size_t v
 		// replies with the success or error code. Connection is closed. The 
 		// communication is protected by the same key used to encrypt the trusted 
 		// capsule and is also protected by a random nonce, to match requests with 
-		// replies and to protect against replay attacks.  
+		// replies and to protect against replay attacks.
+		//TODO: Implement this. 
 		return NIL;
-		// --------------------------
+		
 	case WHERE_CAPSULE_META:
-		// ---------FILL-IN HERE----------
-		// Suggested design: for simplicity, writes are written back durably to the 
-		// trusted capsule with the origin trusted capsule data.
+		res = do_set_metadata ( (unsigned char*)key, (uint32_t)keyLen, (unsigned char *)value, (uint32_t) valueLen); 
 		return NIL;
-		// --------------------------
 	default:
 		return ERROR_ACCESS_DENIED;
 	}
@@ -239,13 +236,9 @@ delete_file_exit:
 int TEE_capsuleLength( CAPSULE w ) {
 	switch( w ) {
 		case ORIGINAL: 
-			//---------FILL-IN HERE----------
 			return cap_head.data_len;
-			//------------------------------
 		case NEW: 
-			//---------FILL-IN HERE----------
 			return cap_head.data_shadow_len;
-			//------------------------------
 		default: 
 			break;
 	}

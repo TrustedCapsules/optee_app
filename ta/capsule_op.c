@@ -758,6 +758,50 @@ TEE_Result do_get_state( unsigned char* key, unsigned char* val,
     return res; 
 }
 
+TEE_Result do_get_metadata(unsigned char *key, unsigned char *val,
+                           uint32_t vlen)
+{
+    TEE_Result res = TEE_SUCCESS;
+    kv_pair *lookup_result = NULL;
+
+    HASH_FIND_PTR(cap_head.kv_store, key, lookup_result);
+    
+    if (lookup_result == NULL)
+    {
+        res = TEE_ERROR_ITEM_NOT_FOUND;
+        CHECK_SUCCESS(res, "key %s not found", key);
+    }
+    strncpy(val, lookup_result->value, lookup_result->val_len);
+    return res;
+}
+
+TEE_Result do_set_metadata (unsigned char *key, uint32_t klen, 
+                            unsigned char *val, uint32_t vlen)
+{
+    TEE_Result res = TEE_SUCCESS;
+    uint32_t count;
+    kv_pair *lookup_result, *new_entry = NULL;
+
+    //Assign values to the new entry.
+    new_entry->key = key;
+    new_entry->value = val;
+    new_entry->key_len = klen;
+    new_entry->val_len = vlen;
+
+    //hashtable lookup for the key
+    HASH_FIND_PTR(cap_head.kv_store, key, lookup_result);
+    if (lookup_result == NULL)
+    {
+        HASH_ADD_KEYPTR(hh, cap_head.kv_store, new_entry->key, new_entry->key_len, new_entry);
+    }
+    else
+    {
+        HASH_REPLACE_PTR(cap_head.kv_store, key, new_entry, lookup_result); //Convenience Macro. This should work. 
+        //HASH_REPLACE(hh,cap.kv_store, new_entry->key,new_entry->key_len, new_entry, lookup_result);
+    }
+    return res;
+}
+
 /*
 TEE_Result go_get_device_state(unsigned char *key, unsigned char *val,
                                uint32_t vlen) 
@@ -813,7 +857,8 @@ TEE_Result go_get_device_state(unsigned char *key, unsigned char *val,
     return res;
 }
 */
-char *do_get_buffer(BUF_TYPE t, size_t *len, TEE_Result *res)
+char *
+do_get_buffer(BUF_TYPE t, size_t *len, TEE_Result *res)
 {
     char* buffer;
 

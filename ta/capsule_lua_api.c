@@ -28,10 +28,10 @@ RESULT TEE_getLocation( int* longitude, int* latitude, const WHERE w ) {
 		// ---------FILL-IN HERE----------
 		// 1. Send request to remote server for location
 		// 2. Wait for response
-		// TODO: is this even necessary as an option? Yes the remote server
+		// is this even necessary as an option? Yes the remote server
 		// is trusted, but wouldn't it just respond with the remote server
 		// location? How can it get a trusted location of the device?
-
+		//FIXME: NOT DOING THIS. 
 		return NIL;
 		// --------------------------
 	case WHERE_LOCAL_DEVICE:
@@ -125,7 +125,7 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 		//FIXME: 	get state from device file. <--DONE, but not needed.
 		//			return one of the values(which should be default) ?
 		//resDeviceFile = go_get_device_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
-			return NIL;
+		return getStateResult;
 	case WHERE_REMOTE_SERVER:
 		// ---------FILL-IN HERE----------
 		// Suggested design: An RPC request is sent to the remote server. The server
@@ -137,9 +137,21 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 		// --------------------------
 	case WHERE_CAPSULE_META:
 		//DONE this is a read to the capsule metadata hashtable
-		getStateResult = do_get_metadata((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
-		//TODO:Error handling
-		return NIL;
+		getStateResult = do_get_capsule_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
+		
+		if(getStateResult !=TEE_SUCCESS)
+		{
+			if (getStateResult == TEE_ERROR_ITEM_NOT_FOUND)
+			{
+				return ERROR_KEY_NOT_FOUND;
+			}
+			else if (getStateResult == TEE_ERROR_NOT_SUPPORTED)
+			{
+				return ERROR_KEY_BAD_SIZE;
+			}
+		}
+		
+		return getStateResult;
 		// --------------------------
 	default:
 		return ERROR_ACCESS_DENIED;
@@ -164,8 +176,21 @@ RESULT TEE_setState( const char* key, size_t keyLen, const char* value, size_t v
 	case WHERE_SECURE_STORAGE:
 		// Since only the capsule specific secure storage file is the only modifiable state file, we don't need to check for the device file key, unless we want to claim those as special?
 		res = do_set_state( (unsigned char*) key, (uint32_t) keyLen, (unsigned char*) value, (uint32_t) valueLen);
-
-		// TODO: check error codes 
+		if (res != TEE_SUCCESS)
+		{
+			if (res == TEE_ERROR_NOT_SUPPORTED)
+			{
+				return ERROR_KEY_BAD_SIZE;
+			}
+			else if (res == TEE_ERROR_ITEM_NOT_FOUND)
+			{
+				return ERROR_KEY_NOT_FOUND;
+			}
+			else
+			{
+				return ERROR_ACCESS_DENIED; // Secure storage object not found or bad reads
+			}
+		}
 
 		return NIL;
 	case WHERE_REMOTE_SERVER:
@@ -179,8 +204,12 @@ RESULT TEE_setState( const char* key, size_t keyLen, const char* value, size_t v
 		return NIL;
 		
 	case WHERE_CAPSULE_META:
-		res = do_set_metadata ( (unsigned char*)key, (uint32_t)keyLen, (unsigned char *)value, (uint32_t) valueLen); 
-		return NIL;
+		res = do_set_capsule_state((unsigned char *)key, (uint32_t)keyLen, (unsigned char *)value, (uint32_t)valueLen);
+		if (res == TEE_ERROR_NOT_SUPPORTED)
+		{
+			return ERROR_KEY_BAD_SIZE;
+		}
+		return res;
 	default:
 		return ERROR_ACCESS_DENIED;
 	}
@@ -250,24 +279,20 @@ int TEE_capsuleLength( CAPSULE w ) {
 //		BL_SECURE_STORAGE - secure storage states in capsule-specific file
 //		BL_CAPSULE_META - metadata states in trusted capsule
 // Returns ERROR_APPEND_BLACKLIST in case of error.
+//TODO: I am not implementing the TA blacklist. It is fairly straightforward to do, 
+//		but I don't see any state that is TA specific
 RESULT TEE_appendToBlacklist( const char* str, size_t strLen, const WHERE w ) {
 	//---------FILL-IN HERE---------
 	// Suggested design: a global buffer for storing each blacklist which is then
 	// used during logging to record only states that are not in the blacklist.
-	UNUSED( str );
-	UNUSED( strLen );
-	switch( w ) {
-	case BL_TRUSTED_APP: 
-		return NIL;
-	case BL_SECURE_STORAGE:
-		return NIL;
-	case BL_CAPSULE_META:
-		return NIL;
-	default:
+	
+	TEE_Result res = TEE_SUCCESS;
+	res = do_append_blacklist (str,strLen, w);
+	if(res != TEE_SUCCESS)
+	{
 		return ERROR_APPEND_BLACKLIST;
 	}
-	//----------------------------
-	return NIL;
+	return res;
 }
 
 // TEE_removeFromBlacklist appends key to list of states not to log for
@@ -276,23 +301,13 @@ RESULT TEE_appendToBlacklist( const char* str, size_t strLen, const WHERE w ) {
 //		BL_CAPSULE_META - metadata states in trusted capsule
 // Returns ERROR_REMOVE_BLACKLIST in case of error.
 RESULT TEE_removeFromBlacklist( const char* str, size_t strLen, const WHERE w ) {
-	//---------FILL-IN HERE---------
-	// Suggested design: a global buffer for storing each blacklist which is then
-	// used during logging to record only states that are not in the blacklist.
-	UNUSED( str );
-	UNUSED( strLen );
-	switch( w ) {
-	case BL_TRUSTED_APP: 
-		return NIL;
-	case BL_SECURE_STORAGE:
-		return NIL;
-	case BL_CAPSULE_META:
-		return NIL;
-	default:
-		return ERROR_APPEND_BLACKLIST;
+	TEE_Result res = TEE_SUCCESS;
+	res = do_append_blacklist(str, strLen, w);
+	if (res != TEE_SUCCESS)
+	{
+		return ERROR_REMOVE_BLACKLIST;
 	}
-	//----------------------------
-	return NIL;
+	return res;
 }
 
 // TEE_redact writes a redaction record into a global trusted app redaction buffer.
@@ -300,6 +315,7 @@ RESULT TEE_removeFromBlacklist( const char* str, size_t strLen, const WHERE w ) 
 // capsule and replaces it with the Lua string specified by the var replaceStr. 
 // Returns: NIL - successfully appended the redaction record
 //			ERROR_REDACT_FAILURE - could not append the redaction record
+
 RESULT TEE_redact( const size_t start, const size_t end, 
 				   const char* replaceStr, size_t len ) {
 	//-------FILL-IN HERE----------
@@ -315,12 +331,37 @@ RESULT TEE_redact( const size_t start, const size_t end,
 	//  4) For memory management simplicity, a max length for the replacement string
 	//	   length and a max number of redaction records in the global buffer can be 
 	//	   set.
-	UNUSED( start );
-	UNUSED( end );
-	UNUSED( replaceStr );
-	UNUSED( len );
-	return NIL;
-	//-----------------------------
+	SYSCALL_OP op = TEE_get_op();
+	TEE_Result res = TEE_SUCCESS;
+
+	if (op == OPEN_OP)
+	{
+		//redact the shadow buffer and copy contents to redact buffer,
+		//set the global read only flag.
+		char *newBuf;
+		DMSG("\nin TEE_redact\n");
+		res = do_redact(cap_head.data_shadow_buf, &newBuf, replaceStr, start, end, len);
+		DMSG("\n\n");
+		TEE_Realloc(cap_head.data_shadow_buf, strlen(*newBuf));
+		DMSG("\n\n");
+		TEE_MemMove(cap_head.data_shadow_buf, *newBuf, strlen(*newBuf));
+		DMSG("\n\n");
+		TEE_Free(newBuf);
+		DMSG("\n\n");
+		//Set read_only flag;
+		cap_head.is_read_only = true;
+	}
+	else if(op == CLOSE_OP)
+	{
+		//Discard the contents of the shadow buffer.
+		cap_head.data_shadow_buf = TEE_Realloc(cap_head.data_shadow_buf, cap_head.data_len);
+		TEE_MemMove(cap_head.data_shadow_buf, cap_head.data_buf, cap_head.data_len);
+	}
+	//TODO: what kind of errors can pop-up here?
+	//Check for malloc, move and realloc errors.
+
+	return res;
+	
 }
 
 // TEE_updatePolicy queries the remote server for policy updates. 

@@ -23,12 +23,13 @@ unsigned char* do_close( TEE_Result res, size_t* cap_to_write_len,
  */
 TEE_Result do_run_policy( lua_State *L, const char* policy, SYSCALL_OP n );
 TEE_Result do_load_policy(void);
+TEE_Result do_redact(char *buf, char **newBuf, char *replaceString, size_t start, size_t end, size_t len);
 
-/*
+	/*
  * Network policy functions (get new policy)
  */
-TEE_Result do_write_new_policy_network( unsigned char* policy, 
-										uint32_t len );
+	TEE_Result do_write_new_policy_network(unsigned char *policy,
+										   uint32_t len);
 TEE_Result do_change_policy_network( unsigned char* policy, 
 									 size_t newlen );
 
@@ -45,12 +46,20 @@ TEE_Result do_recv_payload( int fd, void* hash, int hlen,
 TEE_Result do_recv_header(int fd, msgReplyHeader *msg );
 
 /*
+* KV metadata operations.
+*/
+
+TEE_Result do_get_capsule_state(unsigned char *key, unsigned char *val, uint32_t vlen);
+TEE_Result do_set_capsule_state(unsigned char *key, uint32_t klen, unsigned char *val, uint32_t vlen);
+TEE_Result do_append_blacklist (const char* key, size_t size, const WHERE w);
+TEE_Result do_remove_from_blacklist(const char *str, size_t strLen, const WHERE w);
+
+/*
  * Secure storage state operations
  */
-// TODO: probably get rid of this.
-TEE_Result do_set_capsule_state( unsigned char* key, uint32_t klen, unsigned char* val, uint32_t vlen );
-TEE_Result do_set_state( unsigned char* key, uint32_t klen,
-						 unsigned char* val, uint32_t vlen );
+	TEE_Result
+	do_set_state(unsigned char *key, uint32_t klen,
+				 unsigned char *val, uint32_t vlen);
 TEE_Result do_get_state( unsigned char* key, unsigned char* val, 
 						 uint32_t vlen );
 char* do_get_buffer( BUF_TYPE t, size_t *len, TEE_Result *res );

@@ -640,6 +640,7 @@ void sep_parts( unsigned char* input, size_t inlen,
 
     // Copy data into the shadow buffer, this is used if the close policy fails
     // so the close function can just write back the same capsule
+    //TODO: intervene here for copying the redacted buffer
     cap->data_shadow_buf = TEE_Malloc(cap->data_len * sizeof(unsigned char), 0);
     TEE_MemMove(cap->data_shadow_buf, cap->data_buf, cap->data_len);
     cap->data_shadow_len = cap->data_len;

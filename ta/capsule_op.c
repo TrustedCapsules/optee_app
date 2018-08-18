@@ -612,20 +612,146 @@ TEE_Result do_recv_header( int fd, msgReplyHeader *msg ) {
     return res;     
 }
 
-// TODO: implement - maybe not
 /* Search the KV store and write a value to a key. If it doesn't
  * exist, add it.
  */
 TEE_Result do_set_capsule_state( unsigned char* key, uint32_t klen, 
                                  unsigned char* val, uint32_t vlen ) {
 
-	// Search the KV store for the key
+    TEE_Result res = TEE_SUCCESS;
+    uint32_t count;
+    kv_pair *lookup_result, *new_entry = NULL;
 
-	// Found the key, set the value
+    //Do size check for the key and value.
+    if (vlen > STATE_SIZE || klen > STATE_SIZE)
+    {
+        res = TEE_ERROR_NOT_SUPPORTED;
+        CHECK_SUCCESS(res, "val/key buffer %u/%u B too large"
+                           "(need to be less than %u B",
+                      vlen, klen, STATE_SIZE);
+    }
 
-	// Didn't find key, create a new one and insert it.
+    //Assign values to the new entry.
+    new_entry->key = key;
+    new_entry->value = val;
+    new_entry->key_len = klen;
+    new_entry->val_len = vlen;
 
-	return TEE_SUCCESS;
+    //hashtable lookup for the key
+    HASH_FIND_PTR(cap_head.kv_store, key, lookup_result);
+    if (lookup_result == NULL)
+    {
+        HASH_ADD_KEYPTR(hh, cap_head.kv_store, new_entry->key, new_entry->key_len, new_entry);
+    }
+    else
+    {
+        HASH_REPLACE_PTR(cap_head.kv_store, key, new_entry, lookup_result); //Convenience Macro. This should work.
+        //HASH_REPLACE(hh,cap.kv_store, new_entry->key,new_entry->key_len, new_entry, lookup_result);
+    }
+    return res;
+}
+
+TEE_Result do_get_capsule_state(unsigned char *key, unsigned char *val,
+                                uint32_t vlen)
+{
+    TEE_Result res = TEE_SUCCESS;
+    kv_pair *lookup_result = NULL;
+
+    if (vlen < STATE_SIZE)
+    {
+        res = TEE_ERROR_NOT_SUPPORTED;
+        CHECK_SUCCESS(res, "val buffer %u B too small"
+                           "(need to be larger than %u B",
+                      vlen, STATE_SIZE);
+    }
+    
+    HASH_FIND_PTR(cap_head.kv_store, key, lookup_result);
+
+    if (lookup_result == NULL)
+    {
+        res = TEE_ERROR_ITEM_NOT_FOUND;
+        CHECK_SUCCESS(res, "key %s not found", key);
+    }
+    strncpy(val, lookup_result->value, lookup_result->val_len);
+    return res;
+}
+
+TEE_Result do_append_blacklist(const char* key, size_t keyLen, const WHERE w)
+{
+    TEE_Result res = TEE_SUCCESS;
+    kv_pair *black_list_name, *lookup_result, *new_entry = NULL;
+    size_t *size;
+
+    switch( w ) {
+    //case BL_TRUSTED_APP:
+    //	return NIL;
+    case BL_SECURE_STORAGE:
+    	black_list_name = cap_head.secure_storage_bl;
+        size = &cap_head.secure_storage_bl_len;
+    case BL_CAPSULE_META:
+    	black_list_name = cap_head.metadata_bl;
+        size = &cap_head.metadata_bl_len;
+    default:
+    	return ERROR_APPEND_BLACKLIST;
+    }
+    //0. Prepare the new blacklist entry. 
+    new_entry -> key = key;
+    new_entry -> key_len = (uint32_t) keyLen;
+    new_entry -> value = NULL;
+    new_entry -> value = 0;
+
+    //1. Search for key and add to the respective hashtable.
+    HASH_FIND_PTR(black_list_name, key, lookup_result);
+    if (lookup_result == NULL)
+    {
+        HASH_ADD_KEYPTR(hh, black_list_name, new_entry->key, new_entry->key_len, new_entry);
+    }
+    else
+    {
+        HASH_REPLACE_PTR(black_list_name, key, new_entry, lookup_result); //Convenience Macro. This should work.
+        //HASH_REPLACE(hh,cap.kv_store, new_entry->key,new_entry->key_len, new_entry, lookup_result);
+    }
+
+    //2. Increase the hashthable entry count.
+    (*size)++;
+    return res;
+}
+
+
+TEE_Result do_remove_from_blacklist(const char *key, size_t keyLen, const WHERE w)
+{
+    TEE_Result res = TEE_SUCCESS;
+    kv_pair *black_list_name, *lookup_result, *new_entry = NULL;
+    size_t *size;
+
+    switch (w)
+    {
+    //case BL_TRUSTED_APP:
+    //	return NIL;
+    case BL_SECURE_STORAGE:
+        black_list_name = cap_head.secure_storage_bl;
+        size = &cap_head.secure_storage_bl_len;
+    case BL_CAPSULE_META:
+        black_list_name = cap_head.metadata_bl;
+        size = &cap_head.metadata_bl_len;
+    default:
+        return ERROR_REMOVE_BLACKLIST;
+    }
+    
+    //1. Search for key and add to the respective hashtable.
+    HASH_FIND_PTR(black_list_name, key, lookup_result);
+    if (lookup_result == NULL)
+    {
+        return res; // The key doesn't exist. Life's simple. 
+    }
+    else
+    {
+        HASH_DEL(black_list_name, lookup_result);
+    }
+
+    //2. Increase the hashthable entry count.
+    (*size)--;
+    return res;
 }
 
 /* Format: KEY size -> 128 B 
@@ -637,8 +763,10 @@ TEE_Result do_set_capsule_state( unsigned char* key, uint32_t klen,
 
 /* Search the stateFile and write the value to a key. If it does not exist,
  * append to the end of the state file or next available */
-TEE_Result do_set_state( unsigned char* key, uint32_t klen, 
-                         unsigned char* val, uint32_t vlen ) {
+TEE_Result
+do_set_state(unsigned char *key, uint32_t klen,
+             unsigned char *val, uint32_t vlen)
+{
 
     TEE_Result res = TEE_SUCCESS;
     uint32_t   count;
@@ -758,50 +886,6 @@ TEE_Result do_get_state( unsigned char* key, unsigned char* val,
     return res; 
 }
 
-TEE_Result do_get_metadata(unsigned char *key, unsigned char *val,
-                           uint32_t vlen)
-{
-    TEE_Result res = TEE_SUCCESS;
-    kv_pair *lookup_result = NULL;
-
-    HASH_FIND_PTR(cap_head.kv_store, key, lookup_result);
-    
-    if (lookup_result == NULL)
-    {
-        res = TEE_ERROR_ITEM_NOT_FOUND;
-        CHECK_SUCCESS(res, "key %s not found", key);
-    }
-    strncpy(val, lookup_result->value, lookup_result->val_len);
-    return res;
-}
-
-TEE_Result do_set_metadata (unsigned char *key, uint32_t klen, 
-                            unsigned char *val, uint32_t vlen)
-{
-    TEE_Result res = TEE_SUCCESS;
-    uint32_t count;
-    kv_pair *lookup_result, *new_entry = NULL;
-
-    //Assign values to the new entry.
-    new_entry->key = key;
-    new_entry->value = val;
-    new_entry->key_len = klen;
-    new_entry->val_len = vlen;
-
-    //hashtable lookup for the key
-    HASH_FIND_PTR(cap_head.kv_store, key, lookup_result);
-    if (lookup_result == NULL)
-    {
-        HASH_ADD_KEYPTR(hh, cap_head.kv_store, new_entry->key, new_entry->key_len, new_entry);
-    }
-    else
-    {
-        HASH_REPLACE_PTR(cap_head.kv_store, key, new_entry, lookup_result); //Convenience Macro. This should work. 
-        //HASH_REPLACE(hh,cap.kv_store, new_entry->key,new_entry->key_len, new_entry, lookup_result);
-    }
-    return res;
-}
-
 /*
 TEE_Result go_get_device_state(unsigned char *key, unsigned char *val,
                                uint32_t vlen) 
@@ -899,4 +983,44 @@ do_get_buffer(BUF_TYPE t, size_t *len, TEE_Result *res)
             *res = TEE_ERROR_NOT_SUPPORTED;
             return NULL;
     }
+}
+
+TEE_Result do_redact(char *buf, char **newBuf, char *replaceString, size_t start, size_t end, size_t len)
+{
+    TEE_Result res = TEE_SUCCESS;
+    int MAX_SIZE;
+    if (len <= (end - start))
+    {
+        MAX_SIZE = strlen(buf);
+    }
+    else
+    {
+        MAX_SIZE = strlen(buf) + len - end + start;
+    }
+    char *newString = TEE_Malloc(sizeof(char) * MAX_SIZE,0);
+    int i = 0;
+    while (i < start)
+    {
+        newString[i] = buf[i];
+        i++;
+    }
+    i = 0;
+    while (i < len)
+    {
+        newString[i + start] = replaceString[i];
+        i++;
+    }
+    int j = 0;
+    i--;
+    while (buf[end + j] != '\0')
+    {
+        newString[start + i] = buf[end + j];
+        i++;
+        j++;
+    }
+    
+    *newBuf = TEE_Malloc(sizeof(char) * strlen(newString),0);
+    TEE_MemMove(*newBuf, newString, strlen(newString));
+    return res;
+    //TODO: errors
 }

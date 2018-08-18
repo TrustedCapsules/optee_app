@@ -353,7 +353,7 @@ TEE_Result capsule_close(uint32_t param_type, TEE_Param params[4]) {
         TEE_Free(cap_head.data_shadow_buf);
         cap_head.data_shadow_len = 0;
     }
-
+    //TODO: this ^ might change for read-only access. put an if condition here.	
     // Setup the shadow buffer
     cap_head.data_shadow_buf = TEE_Malloc(params[1].memref.size, 0);
     TEE_MemMove(cap_head.data_shadow_buf, 

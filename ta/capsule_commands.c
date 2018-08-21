@@ -212,6 +212,7 @@ TEE_Result capsule_open( uint32_t param_type,
     unsigned char  *file_contents;
     size_t          file_len;
     unsigned char  *kvs;
+    struct kv_pair *temp;
     ASSERT_PARAM_TYPE( 
            TEE_PARAM_TYPES( TEE_PARAM_TYPE_MEMREF_INPUT,    // File name
                             TEE_PARAM_TYPE_MEMREF_INOUT,    // File contents
@@ -283,7 +284,7 @@ TEE_Result capsule_open( uint32_t param_type,
 
     curr_len = 0;
 
-    struct kv_pair *temp;
+    
     for(temp = (&cap_head)->kv_store; temp!=NULL; temp = temp->hh.next){
         DMSG("\nkey is %s, value is %s\n", temp->key, temp->value);
     }
@@ -301,6 +302,7 @@ TEE_Result capsule_open( uint32_t param_type,
         }
         goto capsule_open_exit;
     }
+    //TODO: set a read_only flag in the return params. 
 
     // Copy over shadow copy (policy can modify this buffer)
     // QUESTION: what happens if the buffer is bigger? Do we allow the policy to 
@@ -312,8 +314,18 @@ TEE_Result capsule_open( uint32_t param_type,
 
     // Increment reference counter for debugging
     cap_head.ref_count++;
-    kvs = TEE_Malloc(get_kv_string_len(), 0);
-    serialize_kv_store(kvs,get_kv_string_len());
+    int len_kvs = get_kv_string_len();
+    kvs = TEE_Malloc(len_kvs, 0);
+    serialize_kv_store(kvs, len_kvs);
+    int i = 0;
+    while (i < len_kvs)
+    {
+        if (kvs[i] == '\0')
+        {
+            DMSG("\nfound \\0 at i = %d\n", i);
+        }
+        i++;
+    }
     DMSG("\n the kv store is : %s \n", kvs);
 
 capsule_open_exit:
@@ -353,13 +365,17 @@ TEE_Result capsule_close(uint32_t param_type, TEE_Param params[4]) {
         TEE_Free(cap_head.data_shadow_buf);
         cap_head.data_shadow_len = 0;
     }
-    //TODO: this ^ might change for read-only access. put an if condition here.	
+    //TODO: this ^ might change for read-only access. put an if condition here.
     // Setup the shadow buffer
     cap_head.data_shadow_buf = TEE_Malloc(params[1].memref.size, 0);
     TEE_MemMove(cap_head.data_shadow_buf, 
                 params[1].memref.buffer, 
                 params[1].memref.size);
     cap_head.data_shadow_len = params[1].memref.size;
+    DMSG("\ncapsule data buffer is:\n%s\n", cap_head.data_buf);
+    DMSG("\ncapsule shadow buffer is:\n%s\n",cap_head.data_shadow_buf);
+    DMSG("\ncapsule policy buffer is:\n%s\n", cap_head.policy_buf);
+    DMSG("\ncapsule log buffer is:\n%s\n", cap_head.log_buf);
 
     // Run the policy
     DMSG("\n\n\nHERE IN CLOSE\n\n\n");

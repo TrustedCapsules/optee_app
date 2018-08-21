@@ -14,7 +14,7 @@ struct capsule_text {
 
     struct kv_pair*     kv_store;               // Contains the capsule specific key-value store
                                                 //  (variable maximum size)
-    size_t              kv_store_len;           // Actual length of kv_store_buf
+    size_t              kv_store_len;           // Number of KV pairs in Store.
     
     unsigned char*      data_buf;               // Contains the capsule data (entire contents)
                                                 //  (variable maximum size)

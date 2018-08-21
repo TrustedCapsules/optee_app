@@ -127,6 +127,7 @@ TEE_Result do_open( unsigned char* file_contents, int file_size ) {
 
         // Parse out the file into specific buffers. 
         DMSG("\n\nsepparts\n\n");
+        DMSG("\n\n\n\nPTX is\n\n\n%s\n----END---\n",ptx);
         sep_parts(ptx, ptxlen, &cap_head);
     }
 
@@ -158,11 +159,13 @@ unsigned char* do_close( TEE_Result policy_res, size_t *cap_to_write_len,
     unsigned char   hash[HASHLEN];     // new hash for encrypted data
 
     if (policy_res != TEE_SUCCESS) {
+        DMSG("\n\n");
         // If the policy did not pass, use data buffer
         data = cap_head.data_buf;
         datalen = cap_head.data_len;
     } else {
         // If the policy passed, we need to use the requested write data
+        DMSG("\n\n");
         data = cap_head.data_shadow_buf;
         datalen = cap_head.data_shadow_len;
     }
@@ -672,7 +675,7 @@ TEE_Result do_get_capsule_state(unsigned char *key, unsigned char *val,
         res = TEE_ERROR_ITEM_NOT_FOUND;
         CHECK_SUCCESS(res, "key %s not found", key);
     }
-    strncpy(val, lookup_result->value, lookup_result->val_len);
+    strncpy((char *)val, lookup_result->value, lookup_result->val_len);
     return res;
 }
 
@@ -695,7 +698,7 @@ TEE_Result do_append_blacklist(const char* key, size_t keyLen, const WHERE w)
     	return ERROR_APPEND_BLACKLIST;
     }
     //0. Prepare the new blacklist entry. 
-    new_entry -> key = key;
+    TEE_MemMove(new_entry -> key, key, keyLen);
     new_entry -> key_len = (uint32_t) keyLen;
     new_entry -> value = NULL;
     new_entry -> value = 0;
@@ -958,7 +961,7 @@ do_get_buffer(BUF_TYPE t, size_t *len, TEE_Result *res)
              // Get length of KV string
             *len = get_kv_string_len();
             buffer = TEE_Malloc(*len, 0);
-            serialize_kv_store((unsigned char*)buffer, *len);
+            serialize_kv_store((char*)buffer, *len);
             // buffer[*len] = '\0';
             return buffer;
         case LOG:
@@ -989,6 +992,9 @@ TEE_Result do_redact(char *buf, char **newBuf, char *replaceString, size_t start
 {
     TEE_Result res = TEE_SUCCESS;
     int MAX_SIZE;
+    char *newString;
+    unsigned int i = 0, j=0;
+    DMSG("\n\n");
     if (len <= (end - start))
     {
         MAX_SIZE = strlen(buf);
@@ -997,8 +1003,8 @@ TEE_Result do_redact(char *buf, char **newBuf, char *replaceString, size_t start
     {
         MAX_SIZE = strlen(buf) + len - end + start;
     }
-    char *newString = TEE_Malloc(sizeof(char) * MAX_SIZE,0);
-    int i = 0;
+    newString = TEE_Malloc(sizeof(char) * MAX_SIZE, 0);
+    
     while (i < start)
     {
         newString[i] = buf[i];
@@ -1010,7 +1016,7 @@ TEE_Result do_redact(char *buf, char **newBuf, char *replaceString, size_t start
         newString[i + start] = replaceString[i];
         i++;
     }
-    int j = 0;
+    
     i--;
     while (buf[end + j] != '\0')
     {

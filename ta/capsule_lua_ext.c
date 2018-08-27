@@ -20,7 +20,7 @@ static int luaE_getState( lua_State *L ) {
 	char 		value[ POLICY_STATE_MAX_VALUE_SIZE ] = {0};
 	size_t 		len = 0;
 	DMSG("\n\nhere\n\n");
-	RESULT res = TEE_getState( key, strlen(key), value, &len, where );
+	RESULT res = TEE_getState( L, key, strlen(key), value, &len, where );
 	DMSG("\n\nhere here\n\n");
 	lua_pushlstring( L, (const char*) value, len ); 
 	lua_pushinteger( L, res );
@@ -32,7 +32,7 @@ static int luaE_setState( lua_State *L ) {
 	const char* value = luaL_checkstring( L, -2 );
 	const int   where = luaL_checkinteger( L, -1 );
 
-	RESULT res = TEE_setState( key, strlen(key), value, strlen(value), where );
+	RESULT res = TEE_setState( L, key, strlen(key), value, strlen(value), where );
 
 	lua_pushinteger( L, res );
 	return 1;
@@ -55,7 +55,7 @@ static int luaE_getTime( lua_State *L ) {
 	const int where = luaL_checkinteger( L, -1 );	
 	
 	uint32_t ts;
-	RESULT res = TEE_getTime( &ts, where );
+	RESULT res = TEE_getTime( L, &ts, where );
 	
 	lua_pushinteger( L, ts );
 	lua_pushinteger( L, res );	
@@ -181,6 +181,7 @@ static int luaE_removeFromBlacklist( lua_State *L ) {
 	lua_pushinteger( L, res );
 	return 1;
 }
+
 
 static const luaL_Reg ext_funcs[] = {
 	/* policy shared */

@@ -16,6 +16,7 @@
 #include "capsule_structures.h"
 #include "capsule_op.h"
 #include "lua_helpers.h"
+#include "capsule_lua_ext.h"
 
 // TEE_getLocation queries the device location from 
 //		WHERE_REMOTE_SERVER - remote server 
@@ -25,24 +26,15 @@ RESULT TEE_getLocation( int* longitude, int* latitude, const WHERE w ) {
 	TEE_GPS gps;
 	switch( w ) {
 	case WHERE_REMOTE_SERVER:
-		// ---------FILL-IN HERE----------
-		// 1. Send request to remote server for location
-		// 2. Wait for response
-		// is this even necessary as an option? Yes the remote server
-		// is trusted, but wouldn't it just respond with the remote server
-		// location? How can it get a trusted location of the device?
-		//FIXME: NOT DOING THIS. 
 		return NIL;
-		// --------------------------
 	case WHERE_LOCAL_DEVICE:
 		TEE_GetGPS( &gps ); // Should probably modify for error code
 		*longitude = gps.longitude;
 		*latitude = gps.latitude;
 		return NIL;
 	default:
-		return ERROR_LOC_NOT_AVAIL;
+		return ERROR_UNKNOWN_WHERE;
 	}
-	return NIL;
 }
 
 // TEE_getTime queries the current time from 
@@ -50,25 +42,29 @@ RESULT TEE_getLocation( int* longitude, int* latitude, const WHERE w ) {
 //		WHERE_LOCAL_DEVICE - local device
 // If an error occurs, ERROR_TIME_NOT_AVAIL is returned
 // If no error occurs, NIL is returned
-RESULT TEE_getTime( uint32_t* ts, const WHERE w ) {
+RESULT TEE_getTime(lua_State *L, uint32_t *ts, const WHERE w)
+{
 	TEE_Time t;
+	TEE_Result res = TEE_SUCCESS;
+	char *ip;
+	uint16_t port;
+
 	switch( w ) {
 	case WHERE_REMOTE_SERVER:
-		// ---------FILL-IN HERE----------
-		// 1. Send message to remote server to get it's time
-		// 2. Wait for response
-		// 3. Return time.
-		//TODO: implement this.
+		res = lua_get_server_ip_port(L, ip, &port);
+		CHECK_SUCCESS(res, "failed to get trusted server information from policy");
+		res = get_time_from_remote(ip, port, &t);
+		if(res !=TEE_SUCCESS){
+			return ERROR_TIME_NOT_AVAIL;
+		}
 		return NIL;
-		// --------------------------
 	case WHERE_LOCAL_DEVICE:
-		TEE_GetREETime( &t ); // again error code
+		TEE_GetREETime( &t );
 		*ts = t.seconds;
 		return NIL;
 	default:
-		return ERROR_TIME_NOT_AVAIL;
+		return ERROR_UNKNOWN_WHERE;
 	}
-	return NIL;
 }
 
 // TEE_getState returns the value specified by key from 
@@ -82,81 +78,31 @@ RESULT TEE_getTime( uint32_t* ts, const WHERE w ) {
 //									  match hash
 //		ERROR_SERVER_REPLY     		- server reply an error occured
 // 		ERROR_SERVER_BROKEN_PIPE 	- cannot contact server
-RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueLen, 
-					 const WHERE w ) {
-	TEE_Result getStateResult ;
-	//TEE_Result resDeviceFile;
-	UNUSED( keyLen );
+RESULT TEE_getState(lua_State *L, const char *key, size_t keyLen, char *value, size_t *valueLen,
+					const WHERE w)
+{
+	TEE_Result res ;
+	char *ip_addr;
+	uint16_t port;
 
 	switch( w ) {
 	case WHERE_SECURE_STORAGE:
-		// ---------FILL-IN HERE----------
-		// Suggested design: each trusted capsule can access two files - a common 
-		// device specific file (read-only) and a capsule-specific file
-		// (read/write). Both files are searched to find the given 'key'. The
-		// capsule-specific file is created if no such file exists. 
-		//
-		// We enforce that a capsule that has been opened cannot be opened again
-		// until the previous open has been closed. We can use the capsule-specific
-		// file to achieve this by 1) ensuring only one OPTEE session can open the
-		// capsule specific file at a time, 2) open creates an OPTEE session and 
-		// close ends the OPTEE session - open calls are implied by session 
-		// creation, 3) once a capsule specific file has been created, a record of 
-		// such an event is written synchronously into the trusted capsule metadata
-		// before at state is written to secure storage, 4) the capsule-specific 
-		// file is named by the encrypted capsule-id.
-		// 
-		// Implementer can decide whether to cache on the secure world side.
-		// --------------------------
-
 		// Get state from capsule state file
-		getStateResult  = do_get_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
-		if(getStateResult  != TEE_SUCCESS){
-			if (getStateResult  == TEE_ERROR_NOT_SUPPORTED){
-				return ERROR_KEY_BAD_SIZE;
-			}
-			else if (getStateResult  == TEE_ERROR_ITEM_NOT_FOUND){
-				return ERROR_KEY_NOT_FOUND;
-			}else{
-				return ERROR_ACCESS_DENIED; // Secure storage object not found or bad reads
-			}
-		}
-
-		//FIXME: 	get state from device file. <--DONE, but not needed.
-		//			return one of the values(which should be default) ?
-		//resDeviceFile = go_get_device_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
-		return getStateResult;
+		return do_get_state(key, value, valueLen);
+					   
 	case WHERE_REMOTE_SERVER:
-		// ---------FILL-IN HERE----------
-		// Suggested design: An RPC request is sent to the remote server. The server
-		// replies with the value or error code. Connection is closed. The 
-		// communication is protected by the same key used to encrypt the trusted 
-		// capsule and is also protected by a random nonce, to match requests with 
-		// replies and to protect against replay attacks.  
-		return NIL; 
-		// --------------------------
+		res = lua_get_server_ip_port(L, ip_addr, &port);
+		MSG( "failed to get trusted server information from policy");
+		return do_get_remote_state((unsigned char*) key, (unsigned char*) value, 
+									(uint32_t) keyLen, (uint32_t) valueLen, ip_addr, port);
+		
 	case WHERE_CAPSULE_META:
 		//DONE this is a read to the capsule metadata hashtable
-		getStateResult = do_get_capsule_state((unsigned char *)key, (unsigned char *)value, (uint32_t)valueLen);
-		
-		if(getStateResult !=TEE_SUCCESS)
-		{
-			if (getStateResult == TEE_ERROR_ITEM_NOT_FOUND)
-			{
-				return ERROR_KEY_NOT_FOUND;
-			}
-			else if (getStateResult == TEE_ERROR_NOT_SUPPORTED)
-			{
-				return ERROR_KEY_BAD_SIZE;
-			}
-		}
-		
-		return getStateResult;
-		// --------------------------
+		return do_get_capsule_state((unsigned char*) key, (unsigned char*) value, (uint32_t) valueLen);
+	
 	default:
-		return ERROR_ACCESS_DENIED;
+		return ERROR_UNKNOWN_WHERE;
 	}
-	return NIL;
 }
 
 // TEE_setState writes the value 
@@ -168,52 +114,30 @@ RESULT TEE_getState( const char* key, size_t keyLen, char* value, size_t* valueL
 //		ERROR_ACCESS_DENIED  		- cannot access secure storage 
 //		ERROR_SERVER_REPLY     		- server reply an error occured
 // 		ERROR_SERVER_BROKEN_PIPE 	- cannot contact server
-RESULT TEE_setState( const char* key, size_t keyLen, const char* value, size_t valueLen, 
-					 const WHERE w ) {
+RESULT TEE_setState(lua_State *L, const char *key, size_t keyLen, const char *value, size_t valueLen,
+					const WHERE w)
+{
 	TEE_Result res;
+	char *ip_addr;
+	uint16_t port;
 
 	switch( w ) {
 	case WHERE_SECURE_STORAGE:
-		// Since only the capsule specific secure storage file is the only modifiable state file, we don't need to check for the device file key, unless we want to claim those as special?
-		res = do_set_state( (unsigned char*) key, (uint32_t) keyLen, (unsigned char*) value, (uint32_t) valueLen);
-		if (res != TEE_SUCCESS)
-		{
-			if (res == TEE_ERROR_NOT_SUPPORTED)
-			{
-				return ERROR_KEY_BAD_SIZE;
-			}
-			else if (res == TEE_ERROR_ITEM_NOT_FOUND)
-			{
-				return ERROR_KEY_NOT_FOUND;
-			}
-			else
-			{
-				return ERROR_ACCESS_DENIED; // Secure storage object not found or bad reads
-			}
-		}
-
-		return NIL;
-	case WHERE_REMOTE_SERVER:
-		// ---------FILL-IN HERE----------
-		// Suggested design: An RPC request is sent to the remote server. The server
-		// replies with the success or error code. Connection is closed. The 
-		// communication is protected by the same key used to encrypt the trusted 
-		// capsule and is also protected by a random nonce, to match requests with 
-		// replies and to protect against replay attacks.
-		//TODO: Implement this. 
-		return NIL;
+		// Since only the capsule specific secure storage file is the only modifiable state file, 
+		//we don't need to check for the device file key, unless we want to claim those as special?
+		return do_set_state( (unsigned char*) key, (uint32_t) keyLen,  (unsigned char*) value,  (uint32_t) valueLen);
 		
+	case WHERE_REMOTE_SERVER:
+		res = lua_get_server_ip_port(L, ip_addr, &port);
+		MSG("failed to get trusted server information from policy");
+		return do_set_remote_state( (unsigned char*) key, (unsigned char*) value, (uint32_t) keyLen, (uint32_t) valueLen, ip_addr, port);
+
 	case WHERE_CAPSULE_META:
-		res = do_set_capsule_state((unsigned char *)key, (uint32_t)keyLen, (unsigned char *)value, (uint32_t)valueLen);
-		if (res == TEE_ERROR_NOT_SUPPORTED)
-		{
-			return ERROR_KEY_BAD_SIZE;
-		}
-		return res;
+		return do_set_capsule_state((unsigned char *)key, (unsigned char *)value, (uint32_t) keyLen, (uint32_t) valueLen);
+
 	default:
-		return ERROR_ACCESS_DENIED;
+		return ERROR_UNKNOWN_WHERE;
 	}
-	return NIL;
 }
 
 // TEE_deleteCapsule deletes the trusted capsule, capsule-specific storage file and 
@@ -252,11 +176,9 @@ RESULT TEE_deleteCapsule(void) {
 	TEE_Free( zero_block );
 	TEE_SimpleClose( fd );
 	TEE_SimpleUnlink( capsule_name );
-	//------------------------------
-
+	
 delete_file_exit:
 	// MSG( "Deleting file %s...", capsule_name );
-	// TODO: why is the TEE_Panic necessary?
 	TEE_Panic(0);
 	return NIL;
 }
@@ -282,10 +204,6 @@ int TEE_capsuleLength( CAPSULE w ) {
 //TODO: I am not implementing the TA blacklist. It is fairly straightforward to do, 
 //		but I don't see any state that is TA specific
 RESULT TEE_appendToBlacklist( const char* str, size_t strLen, const WHERE w ) {
-	//---------FILL-IN HERE---------
-	// Suggested design: a global buffer for storing each blacklist which is then
-	// used during logging to record only states that are not in the blacklist.
-	
 	TEE_Result res = TEE_SUCCESS;
 	res = do_append_blacklist (str,strLen, w);
 	if(res != TEE_SUCCESS)
@@ -318,19 +236,7 @@ RESULT TEE_removeFromBlacklist( const char* str, size_t strLen, const WHERE w ) 
 
 RESULT TEE_redact( const size_t start, const size_t end, 
 				   const char* replaceStr, size_t len ) {
-	//-------FILL-IN HERE----------
-	// Suggested design: 
-	//	1) if replaceStr is "" or does not exist in Lua, default is to remove the 
-	//	   redacted section.
-	//	2) on open, the global buffer for redaction records is wiped clean before 
-	//	   policy evaluation.
-	//  3) on close, the global buffer is used to find the regions in the new 
-	//	   capsule data that were redacted. The redacted regions need to be restored with
-	//	   unredacted data from the original capsule data buffer. This needs to be done
-	//	   before close policy evaluation.
-	//  4) For memory management simplicity, a max length for the replacement string
-	//	   length and a max number of redaction records in the global buffer can be 
-	//	   set.
+	
 	SYSCALL_OP op = TEE_get_op();
 	TEE_Result res = TEE_SUCCESS;
 
@@ -339,15 +245,12 @@ RESULT TEE_redact( const size_t start, const size_t end,
 		//redact the shadow buffer and copy contents to redact buffer,
 		//set the global read only flag.
 		char *newBuf;
-		DMSG("\nin TEE_redact\n");
+		
 		res = do_redact(cap_head.data_shadow_buf, &newBuf, replaceStr, start, end, len);
-		DMSG("\n\n");
 		TEE_Realloc(cap_head.data_shadow_buf, strlen(*newBuf));
-		DMSG("\n\n");
 		TEE_MemMove(cap_head.data_shadow_buf, *newBuf, strlen(*newBuf));
-		DMSG("\n\n");
 		TEE_Free(newBuf);
-		DMSG("\n\n");
+		
 		//Set read_only flag;
 		cap_head.is_read_only = true;
 	}
@@ -390,6 +293,7 @@ RESULT TEE_updatePolicy( lua_State *L ) {
 	//		trusted capsule metadata. Since writes to local secure storage are best
 	//		effort (Normal World may pretend the write happened), it provides 
 	//		attackers with a mechanism to evade policy updates.
+	//TODO:
 	UNUSED( L );
 	return NIL;
 	//----------------------------
@@ -432,4 +336,35 @@ int TEE_readCapsuleData( char** buf, size_t len, size_t offset, CAPSULE w ) {
 // optee app.
 SYSCALL_OP TEE_get_op(void) {
 	return fuse_op;
+}
+
+TEE_Result lua_get_server_ip_port(lua_State *L, char *ts, int *port)
+{
+
+	int res = TEE_SUCCESS;
+	const char *temp;
+	size_t len;
+
+	lua_getglobal(L, SERVER_IP);
+	if (!lua_isstring(L, -1))
+	{
+		res = TEE_ERROR_NOT_SUPPORTED;
+		CHECK_SUCCESS(res, "'%s' should be a string", SERVER_IP);
+	}
+
+	temp = lua_tolstring(L, -1, &len);
+	memcpy(ts, temp, len);
+	lua_pop(L, 1);
+
+	lua_getglobal(L, SERVER_PORT);
+	if (!lua_isinteger(L, -1))
+	{
+		res = TEE_ERROR_NOT_SUPPORTED;
+		CHECK_SUCCESS(res, "'%s' should be an integer", SERVER_PORT);
+	}
+
+	*port = lua_tointeger(L, -1);
+	lua_pop(L, 1);
+
+	return TEE_SUCCESS;
 }

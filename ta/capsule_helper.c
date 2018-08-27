@@ -541,7 +541,6 @@ void serialize_kv_store( char* kv_string, int total_len) {
                 temp->key, temp->value);
         DMSG("\nconcatednated line is %s\ninserting at %d\nchar at loc %c",tempStr,last,kv_string[last]);
         // Copy the temp string into our final string
-        //snprintf(kv_string, str_len, "%s",tempStr);
         TEE_MemMove(kv_string + last, tempStr, str_len);
         DMSG("\nkv_string is: %s\n", kv_string);
         // Increase the offset, but subtract one to overwrite the null terminator

@@ -22,3 +22,4 @@ main
 *.plaintext
 cprov
 cgen
+.vscode

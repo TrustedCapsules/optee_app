@@ -5,7 +5,6 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <stdint.h>
-
 #include <tomcrypt.h>
 
 #include <capsuleCommon.h>
@@ -132,6 +131,20 @@ void handleGetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 
 	reply( fd, reqHeader, e, SUCCESS, strlen( s->value ), s->value ); 
 	free( key );
+}
+
+void handleGetTime( int fd, msgReqHeader *reqHeader, capsuleEntry *e ){
+	time_t rawtime;
+	int res = 0;
+	char *timeStr;
+
+	res = time(&rawtime);
+	if(res < 0){
+		printf("handleGetTime(): time could not be retrieved\n");
+		reply(fd, reqHeader, e, FAILURE, 0, NULL);
+	}
+	sprintf(timeStr,"%ld",rawtime);
+	reply(fd, reqHeader, e, SUCCESS, strlen(timeStr), timeStr);
 }
 
 void handleSetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
@@ -268,6 +281,10 @@ void* handleCapsule( void* ptr ) {
 		case LOG_ENTRY: 
 			printf( "handleCapsule(): handleLog\n" ); 
 			handleLog( fd, &h, e );
+			return NULL;
+		case GET_TIME:
+			printf( "handleCapsule(): handleGetTiem\n" );
+			handleGetTime( fd, &h, e );
 			return NULL;
 		default: 
 			 reply( fd, &h, e, FAILURE, 0, NULL );

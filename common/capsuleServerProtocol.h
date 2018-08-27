@@ -2,6 +2,11 @@
 #define CAPSULE_SERVER_PROTOCOL_H
 
 #define DEVICE_ID_LEN 		32
+#define SERVER_IP "trusted_server"
+#define SERVER_PORT "port"
+#define IPv4_SIZE 16
+#define REPLACE_CHAR "replace_char"
+#define REDACT_OFFSETS "redact"
 
 typedef enum {
 	ECHO = 0,
@@ -9,6 +14,7 @@ typedef enum {
 	SET_STATE,
 	POLICY_UPDATE,
 	LOG_ENTRY,
+	GET_TIME,
 } SERVER_REQ;
 
 typedef enum {

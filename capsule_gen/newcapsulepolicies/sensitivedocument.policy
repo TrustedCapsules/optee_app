@@ -1,0 +1,62 @@
+-- THIS POLICY REDACTS SENSITIVE AREAS OF A DOCUMENT
+-- IF A DOCUMENT IS OPENED OUTSIDE OF A SPECIFIC AREA.
+-- IT REDACTS ANY SECTION OF A DOCUMENT TAGGED WITH
+-- <SECRET></SECRET>. IT ALSO LOGS ACTIVITIES TO TRACK 
+-- WHEN/WHERE/WHO OPENED THE FILE.
+
+-- API keywords REPLACE WITH CORRECT VALUES
+policy_version = 0
+remote_server = "198.162.52.244:3490"
+
+-- log
+log_open = true
+log_close = true
+
+-- return keywords
+policy_result = POLICY_ALLOW
+comment = ""
+
+-- policy-specific keywords REPLACE WITH REALISTIC VALUES
+replaceVar = "REDACTEDREDACTED"
+longitude = 2130
+latitude = 22223
+range = 10
+startTag = "<secret>"
+endTag = "</secret>"
+
+function evaluate_policy( op )
+	if op == POLICY_OP_OPEN then
+	  long, lat, err = getLocation( POLICY_LOCAL_DEVICE )
+		if err ~= POLICY_NIL then
+			policy_result = err
+			return
+		end
+
+	  if long - longitude <= range and lat - latitude <= range then
+			return
+		end
+
+		len = originalCapsuleLength()
+	  data, readLen = readOriginalCapsuleData( 0, len )
+		if readLen ~= len then
+			policy_result = POLICY_NOT_ALLOW
+		  return
+		end
+
+		s = 0
+		e = 0
+		while s ~= nil and e ~= nil do
+			s = string.find(data, startTag, s)
+			if s ~= nil then
+				e = string.find(data, endTag, s+1)
+				if e ~= nil then
+					err = redact( s, e, "replaceVar" )
+					if err ~= POLICY_NIL then
+						policy_result = err
+						return
+					end
+				end
+			end
+		end
+	end
+end

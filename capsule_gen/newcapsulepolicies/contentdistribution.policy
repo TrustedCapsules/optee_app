@@ -1,0 +1,43 @@
+-- PREDISTRIBUTION OF CONTENT WITH RELEASE SET
+-- AT A SPECIFIC TIME. THE TIMER IS SECURE AS IT
+-- IS A REMOTE TIMER TRUSTED BY DATA OWNER. FURTHER,
+-- ONCE IT IS OPEN, THE CONTENT CAN BE ACCESSED 
+-- OFFLINE (NO FURTHER NEED TO VERIFY EXTERNAL TIMER)
+
+-- API keywords REPLACE WITH CORRECT VALUES
+policy_version = 0
+remote_server = "198.162.52.244:3490"
+
+-- log
+log_open = false
+log_close = false
+
+-- return keywords
+policy_result = POLICY_NOT_ALLOW
+comment = ""
+
+-- policy-specific keywords
+open_time = 1523338041
+opened = "opened"
+
+function evaluate_policy( op )
+	if op == POLICY_OP_OPEN then
+		r, err = getState( opened, POLICY_CAPSULE_META )
+		if err ~= POLICY_NIL or r ~= "true" then
+			curr_time, err = getTime( POLICY_REMOTE_SERVER )
+			if err ~= POLICY_NIL then 
+				policy_result = err
+				return
+			end
+		end
+
+		if curr_time > open_time then
+		  err = setState( opened, "true", POLICY_CAPSULE_META )
+			if err ~= POLICY_NIL then
+				policy_result = err
+				return
+			end
+			policy_result = POLICY_ALLOW
+		end
+	end
+end

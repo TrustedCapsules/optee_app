@@ -1,0 +1,27 @@
+-- SENSITIVE FILES CAN BE REMOTELY DELETED (e.g., STOLEN DEVICE).
+-- PREVIOUSLY SUCH A SERVICE CAN ONLY BE APPLIED AT WHOLE-DEVICE
+-- LEVEL. 
+
+-- API keywords REPLACE WITH CORRECT VALUES
+policy_version = 0
+remote_server = "198.162.52.244:3490"
+
+-- log
+log_open = false
+log_close = false
+
+-- return keywords
+policy_result = POLICY_ALLOW
+comment = ""
+
+-- policy-specific keywords REPLACE WITH REALISTIC VALUES
+
+function evaluate_policy( op )
+	if op == POLICY_OP_OPEN then
+		err = updatePolicy()
+		if err ~= POLICY_NIL then
+			policy_result = err
+			return
+		end	
+	end
+end

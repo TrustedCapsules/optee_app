@@ -1,0 +1,102 @@
+-- THIS POLICY PROVIDES DATA INTEGRITY AND PATIENT OWNERSHIP
+-- OF HIS ELECTRONIC HEALTH RECORD. 
+--
+-- PATIENT: LOG ACCESS, REDACT DOCUMENT WATERMARK + READONLY
+-- DOCTOR: LOG ACCESS, APPEND-ONLY, CAN SEE WATERMARK
+--
+-- DEVID MUST BE PRE-PROGRAMMED INTO SECURE STORAGE
+
+
+-- API keywords REPLACE WITH CORRECT VALUES
+policy_version = 0
+remote_server = "198.162.52.244:3490"
+
+-- log
+log_open = true
+log_close = true
+
+-- return keywords
+policy_result = POLICY_ALLOW
+comment = ""
+
+-- policy-specific keywords CREATE DATA TO MATCH
+replaceVar = ""
+startTag = "<watermark>"
+endTag = "</watermark>"
+devID = "devID"
+doctorDevID = "DOCTOR"
+patientDevID = "PATIENT"
+
+function match( devID )
+	olen = originalCapsuleLength()
+  nlen = newCapsuleLength()
+
+	odata, readLen = readOriginalCapsuleData( 0, olen )
+  if readLen ~= olen then
+		return false
+	end
+
+	ndata, readLen = readNewCapsuleData( 0, olen )
+	if readLen ~= olen then
+		return false
+	end
+
+	if devID == patientDevID then
+		if odata == ndata and olen == nlen then
+			return true
+		end
+	elif devID == doctorDevID 
+		if odata == ndata then
+			return true
+		end
+	end
+	
+	return false
+end
+
+function evaluate_policy( op )
+	if op == POLICY_OP_OPEN then
+		devID, err = getState( devID, POLICY_SECURE_STORAGE )
+		if err ~= POLICY_NIL then
+			policy_result = err
+			return
+		end
+		if devID ~= doctorDevID or devID ~= patientDevID then
+			policy_result = POLICY_NOT_ALLOW
+			return
+		end
+		if devID ~= doctorDevID then
+			len = originalCapsuleLength()
+			data, readLen = readOriginalCapsuleData( 0, len )
+			if readLen ~= len then
+				policy_result = POLICY_NOT_ALLOW
+				return
+			end
+			
+			s = 0
+			e = 0
+			while s ~= nil and e ~= nil do
+			s = string.find(data, startTag, s)
+			if s ~= nil then
+				e = string.find(data, endTag, s+1)
+				if e ~= nil then
+					err = redact( s, e, "replaceVar" )
+					if err ~= POLICY_NIL then
+						policy_result = err
+						return
+					end
+				end
+			end
+		end
+	elseif op == POLICY_OP_CLOSE then
+		devID, err = getState( devID, POLICY_SECURE_STORAGE )
+		if err ~= POLICY_NIL then
+			policy_result = err
+			return
+		end
+	  if match( devID ) == false then
+			policy_result = POLICY_NOT_ALLOW
+		  return
+		end
+	end
+end

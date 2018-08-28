@@ -1,0 +1,50 @@
+-- THIS POLICY IS FOR FILES STORED IN PUBLIC CLOUD.
+-- DEFAULT ENCRYPTION PREVENTS HACKERS FROM ACCESSING 
+-- DATA AS THEIR DEVICES DO NOT HAVE THE ENCRYPTION 
+-- KEYS/TRUSTED CAPSULE AWARE. FURTHER LOGGING PROVIDES
+-- THE DATA OWNER A VIEW OF WHO/WHEN/WHERE ARE LOOKING 
+-- AT THE DATA HE SHARED WITH THEM THROUGH THE CLOUD, 
+-- ALLOWING HIM TO UPDATE POLICY AT INTERVALS.
+
+-- API keywords REPLACE WITH CORRECT VALUES
+policy_version = 0
+remote_server = "198.162.52.244:3490"
+
+-- log
+log_open = true
+log_close = true
+
+-- return keywords
+policy_result = POLICY_ALLOW
+comment = ""
+
+-- policy-specific keywords REPLACE WITH REALISTIC VALUES
+updatePolicyInterval = 100000000
+updateTime = "updateTime"
+
+function evaluate_policy( op )
+	if op == POLICY_OP_OPEN then
+		curr_time, err = getTime( POLICY_LOCAL_DEVICE )
+		if err ~= POLICY_NIL then
+			policy_result = err
+			return
+		end
+		last_update_time, err = getState( updateTime, POLICY_CAPSULE_META )
+		if err ~= POLICY_NIL then
+			last_update_time = "0"
+		end
+		
+		if curr_time - tonumber(last_update_time) > updatePolicyInterval then
+		  err = setState( updateTime, tostring(curr_time), POLICY_CAPSULE_META )
+			if err ~= POLICY_NIL then
+				policy_result = err
+				return
+			end
+			err = updatePolicy()
+			if err ~= POLICY_NIL then
+				policy_result = err
+				return
+			end
+		end
+	end
+end

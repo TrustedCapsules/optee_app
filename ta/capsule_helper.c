@@ -11,12 +11,12 @@
 #include "capsule_structures.h"
 #include "capsule_helper.h"
 
-unsigned long long read_cntpct(void) {
-    unsigned long long ts;
+uint64_t read_cntpct(void) {
+    uint64_t ts;
 //#ifdef HIKEY
 //  asm volatile( "mrs %0, cntpct_el0" : "=r" (ts) );
 //#else
-    asm volatile( "mrrc p15, 0, %Q0, %R0, c14" : "=r" (ts) );
+    // volatile( "mrrc p15, 0, %Q0, %R0, c14" : "=r" (ts) );
 //#endif
     return ts;
 }
@@ -34,7 +34,8 @@ TEE_Result process_aes_block( unsigned char* ctx, size_t clen,
     cnt_a = read_cntpct();
     
     if( first ) {
-        TEE_CipherInit( op, iv, iv_len, ctr );
+        TEE_CipherInit( op, iv, iv_len ); 
+	//TEE_CipherInit( op, iv, iv_len, ctr );
     }
 
     if( last ) {
@@ -234,7 +235,8 @@ TEE_Result find_key( struct TrustedCap *h,
                     "TEE_SetOperationKey() Error" );
     
         cnt_a = read_cntpct();
-        TEE_CipherInit( *dec_op, iv, iv_len, 0 );
+        TEE_CipherInit( *dec_op, iv, iv_len );
+	//TEE_CipherInit( *dec_op, iv, iv_len, 0 );
 
         res = TEE_CipherDoFinal( *dec_op, (void*) h->aes_id,
                                  sizeof(uint32_t), 
@@ -317,7 +319,8 @@ TEE_Result fill_header( struct TrustedCap* cap,
     
     /* Encrypt the capsule ID */
     cnt_a = read_cntpct();
-    TEE_CipherInit( op, iv, iv_len, 0 );
+    TEE_CipherInit( op, iv, iv_len );
+    //TEE_CipherInit( op, iv, iv_len, 0 );
     res = TEE_CipherDoFinal( op, ( char*) &id, sizeof(uint32_t), 
                              cap->aes_id, &id_len );
     cnt_b = read_cntpct();
@@ -367,7 +370,7 @@ void parse_kv_store( unsigned char* input, size_t inlen,
     {
         if (input[i] == '\0')
         {
-            DMSG("\nfound \\0 at i = %d\n", i);
+            //DMSG("\nfound \\0 at i = %d\n", i);
         }
         i++;
     }
@@ -376,12 +379,12 @@ void parse_kv_store( unsigned char* input, size_t inlen,
         matched = false;
 
         // Find the range at which the delimiter exists
-        DMSG("\n\n%s,%d,%d,%d,%d,%d,%d,%s,%d\n\n", input, last, inlen, start, end, match_state, matched, delim, delim_len);
+        //DMSG("\n\n%s,%d,%d,%d,%d,%d,%d,%s,%d\n\n", input, last, inlen, start, end, match_state, matched, delim, delim_len);
 
         find_delimiter(input+last, inlen - last, &start, &end, &match_state, 
                        &matched, delim, delim_len);
         
-        DMSG("\n\n%s,%d,%d,%d,%d,%d,%d,%s,%d\n\n", input, last, inlen, start, end, match_state, matched, delim, delim_len);
+        //DMSG("\n\n%s,%d,%d,%d,%d,%d,%d,%s,%d\n\n", input, last, inlen, start, end, match_state, matched, delim, delim_len);
 
         // MAX_NUM_KEYS is a hack to avoid having to do two passes for KV pairs
         // We could do away with MAX_NUM_KEYS and do one pass finding the number
@@ -427,9 +430,9 @@ void parse_kv_store( unsigned char* input, size_t inlen,
 
                 // This removes the \n character
                 pairs[total_num][(inlen - last - 1)] = '\0';
-                DMSG("\npairs :%d, %d, %d\n", total_num, inlen, last);
-                DMSG("\nthe value currently there: %d\n", strlen(pairs[total_num]));
-                DMSG("\nthe value currently there: %s\n", pairs[total_num]);
+                // DMSG("\npairs :%d, %d, %d\n", total_num, inlen, last);
+                // DMSG("\nthe value currently there: %d\n", strlen(pairs[total_num]));
+                // DMSG("\nthe value currently there: %s\n", pairs[total_num]);
 
                 // Increment the total number of keys
                 total_num++;
@@ -467,7 +470,7 @@ void parse_kv_store( unsigned char* input, size_t inlen,
         struct kv_pair *kv_datum = TEE_Malloc(sizeof(struct kv_pair),0);
         
         kv_datum->key = TEE_Malloc(start * sizeof(unsigned char), 0);
-        DMSG("\n src=%s, len=%d \n",pairs[i],start);
+        //DMSG("\n src=%s, len=%d \n",pairs[i],start);
         // Copy the key (starting at pairs[i] with size start)
         TEE_MemMove(kv_datum->key, pairs[i], start);
         //strncpy(kv_datum->key,pairs[i],start);
@@ -475,7 +478,7 @@ void parse_kv_store( unsigned char* input, size_t inlen,
         // Null terminate the key (removing the delimiter)
         kv_datum->key[start - 1] = '\0';
         int key_len = strlen(kv_datum->key);
-        DMSG("key is %s of length %d\n\n", kv_datum->key, key_len);
+        //DMSG("key is %s of length %d\n\n", kv_datum->key, key_len);
         // Update the key length
         kv_datum->key_len = key_len;
         // Advance the offset and clear the matched variable
@@ -498,9 +501,9 @@ void parse_kv_store( unsigned char* input, size_t inlen,
         
         // Update the length for value
         kv_datum->val_len = strlen(kv_datum->value);
-        DMSG("\n\nINSERTING INTO THE KV STORE <%s,%s>, (%d,%d)\n\n",
-                    kv_datum->key, kv_datum->value,
-                    kv_datum->key_len, kv_datum->val_len);
+        //DMSG("\n\nINSERTING INTO THE KV STORE <%s,%s>, (%d,%d)\n\n",
+                    // kv_datum->key, kv_datum->value,
+                    // kv_datum->key_len, kv_datum->val_len);
         kv_pair *temp = NULL;
         
         HASH_FIND_STR(cap->kv_store, kv_datum->key, temp);
@@ -518,13 +521,13 @@ void parse_kv_store( unsigned char* input, size_t inlen,
     //TEE_MemMove(cap->kv_store_buf, kv_store, sizeof(struct kv_pair) * total_num);
     
     // Update the number of items
-    DMSG("\ntotal_num = %d \n", total_num);
+    //DMSG("\ntotal_num = %d \n", total_num);
     cap->kv_store_len = total_num;
 }
 
 void serialize_kv_store( char* kv_string, int total_len) {
     int last = 0;
-    DMSG("\n%s,%d\n", kv_string, total_len);
+    //DMSG("\n%s,%d\n", kv_string, total_len);
     // Iterate through the list of key value pairs to create a string
     kv_pair *temp;
     for (temp = (&cap_head)->kv_store; temp != NULL; temp = temp->hh.next) {
@@ -532,30 +535,30 @@ void serialize_kv_store( char* kv_string, int total_len) {
         // one for \0)
         int str_len = temp->key_len + 1 + 
                       temp->val_len + 1+1;
-        DMSG("\ncalculated str_len is %d\n", str_len);
+        //DMSG("\ncalculated str_len is %d\n", str_len);
         // Temp string
         char tempStr[str_len];
 
         // Format the values into our temp string
         snprintf( tempStr, str_len, "%s:%s;", 
                 temp->key, temp->value);
-        DMSG("\nconcatednated line is %s\ninserting at %d\nchar at loc %c",tempStr,last,kv_string[last]);
+        //DMSG("\nconcatednated line is %s\ninserting at %d\nchar at loc %c",tempStr,last,kv_string[last]);
         // Copy the temp string into our final string
         TEE_MemMove(kv_string + last, tempStr, str_len);
-        DMSG("\nkv_string is: %s\n", kv_string);
+        //DMSG("\nkv_string is: %s\n", kv_string);
         // Increase the offset, but subtract one to overwrite the null terminator
         last += str_len-1;
-        DMSG("\nlast=%d,strl_len=%d,total_len=%d\n",last,str_len,total_len);
+        //DMSG("\nlast=%d,strl_len=%d,total_len=%d\n",last,str_len,total_len);
     }
     kv_string[total_len - 1] = '\0';
     kv_string[total_len] = '\0';
 
-    DMSG("\n%s,%d\n", kv_string, total_len);
-    for(int i =0;i<=total_len; i++){
-        if(kv_string[i]=='\0'){
-            DMSG("\n%d\n",i);
-        }
-    }
+    //DMSG("\n%s,%d\n", kv_string, total_len);
+    // for(int i =0;i<=total_len; i++){
+    //     if(kv_string[i]=='\0'){
+    //         DMSG("\n%d\n",i);
+    //     }
+    // }
 }
 
 int get_kv_string_len( void ) {
@@ -566,7 +569,7 @@ int get_kv_string_len( void ) {
     for (temp = (&cap_head)->kv_store; temp != NULL; temp = temp->hh.next) {
         kv_len += temp->key_len + 1 ;//+1 for :
         kv_len += temp->val_len +1 ;//+1 for ;
-        DMSG("K,V,key_l,val_l:= %s,%s,%d,%d", temp->key,temp->value,temp->key_len,temp->val_len);
+        //DMSG("K,V,key_l,val_l:= %s,%s,%d,%d", temp->key,temp->value,temp->key_len,temp->val_len);
     }
     return kv_len;
 }
@@ -627,7 +630,7 @@ void sep_parts( unsigned char* input, size_t inlen,
     bool            matched;
     unsigned char   delimiter[DELIMITER_SIZE] = DELIMITER;
     // Loop to parse the parts
-    DMSG("\n\n\n\nPTX is\n\n\n%s\n----END---\n", input);
+    //DMSG("\n\n\n\nPTX is\n\n\n%s\n----END---\n", input);
     do {
         matched = false;
         find_delimiter(input+last, inlen - last, &start, &end, &match_state, 
@@ -646,9 +649,10 @@ void sep_parts( unsigned char* input, size_t inlen,
                 
                 // Null terminate it
                 parts[index][start] = '\0';
-                
+                           
                 // Move offset pointer forward
                 last += end;
+                DMSG("\n\n parts[%d]\n%s", index, parts[index]);
                 // Increase the part array index
                 index++;
             } else {
@@ -657,9 +661,11 @@ void sep_parts( unsigned char* input, size_t inlen,
                 parts[index] = TEE_Malloc((inlen - last) * sizeof(unsigned char)+1, 0);
                 TEE_MemMove(parts[index], input+last, (inlen - last));
                 parts[index][(inlen - last) * sizeof(unsigned char)] = '\0';
+                DMSG("\n\n parts[%d]\n%s", index, parts[index]);
                 index++;
                 break;
             }
+            
         }
     } while(matched == true);
 
@@ -672,8 +678,8 @@ void sep_parts( unsigned char* input, size_t inlen,
     TEE_MemMove(cap->policy_buf, parts[0], cap->policy_len);
 
     // Pass the kv part to the parser
-    DMSG("\n\n before parse kvs\n\n");
-    DMSG("about to parse kv store %s, size of kvstring is %d",parts[1],strlen((char *)parts[1]));
+    //DMSG("\n\n before parse kvs\n\n");
+    //DMSG("about to parse kv store %s, size of kvstring is %d",parts[1],strlen((char *)parts[1]));
     parse_kv_store(parts[1], strlen((char *) parts[1]), cap);
 
     cap->log_len = strlen((char *) parts[2]);
@@ -694,6 +700,7 @@ void sep_parts( unsigned char* input, size_t inlen,
     for (int i = 0; i < 4; i++) {
         TEE_Free(parts[i]);
     }
+    DMSG("\nhere\n");
 }
 
 /* De-serialize the AES key */

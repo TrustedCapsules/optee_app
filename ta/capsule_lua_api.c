@@ -88,7 +88,7 @@ RESULT TEE_getState(lua_State *L, const char *key, size_t keyLen, char *value, s
 	switch( w ) {
 	case WHERE_SECURE_STORAGE:
 		// Get state from capsule state file
-		return do_get_state(key, value, valueLen);
+		//return do_get_state(key, value, valueLen);
 					   
 	case WHERE_REMOTE_SERVER:
 		res = lua_get_server_ip_port(L, ip_addr, &port);
@@ -125,7 +125,7 @@ RESULT TEE_setState(lua_State *L, const char *key, size_t keyLen, const char *va
 	case WHERE_SECURE_STORAGE:
 		// Since only the capsule specific secure storage file is the only modifiable state file, 
 		//we don't need to check for the device file key, unless we want to claim those as special?
-		return do_set_state( (unsigned char*) key, (uint32_t) keyLen,  (unsigned char*) value,  (uint32_t) valueLen);
+		//return do_set_state( (unsigned char*) key, (uint32_t) keyLen,  (unsigned char*) value,  (uint32_t) valueLen);
 		
 	case WHERE_REMOTE_SERVER:
 		res = lua_get_server_ip_port(L, ip_addr, &port);
@@ -158,7 +158,7 @@ RESULT TEE_deleteCapsule(void) {
 	uint32_t offset = 0;
 	TEE_Result res;
 
-	TEE_CloseAndDeletePersistentObject( stateFile);
+	//TEE_CloseAndDeletePersistentObject( stateFile); TODO:removing this for now.
 	res = TEE_SimpleOpen( capsule_name, &fd );
 	if ( fd < 0 || res != TEE_SUCCESS ) {
 		// File does not exist

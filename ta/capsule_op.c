@@ -100,7 +100,9 @@ TEE_Result do_register_aes( uint32_t keyType, uint32_t id, uint32_t keyLen,
 
 }
 
-TEE_Result do_open( unsigned char* file_contents, int file_size ) {
+TEE_Result
+do_open(unsigned char *file_contents, int file_size)
+{
 
     TEE_Result          res = TEE_SUCCESS;
     struct TrustedCap   header;
@@ -120,6 +122,7 @@ TEE_Result do_open( unsigned char* file_contents, int file_size ) {
         read_header(file_contents, &header);
 
         // If we have not loaded key info (again global), do so.
+        DMSG("here");
         if( aes_key_setup == false ) {
             res = find_key( &header, keyFile, &decrypt_op, &encrypt_op,
                             &hash_op, &symm_id, &symm_iv_len, &symm_key_len,
@@ -147,6 +150,7 @@ TEE_Result do_open( unsigned char* file_contents, int file_size ) {
 
     // Increase the reference count for this capsule
     // cap_head.ref_count++;
+    DMSG("here");
 
     return res;
 }
@@ -226,6 +230,8 @@ unsigned char* do_close( TEE_Result policy_res, size_t *cap_to_write_len,
     // Make sure the concatenated_data string ends with a null terminator
     concatenated_data[last] = '\0';
 
+    DMSG("\n\nconcatenated_data\n%s\n\n", concatenated_data);
+
     // Encrypt the data into a temp string (encrypted_data)
     res = process_aes_block(concatenated_data, encrypt_len, encrypted_data, 
                             &encrypt_len, symm_iv, symm_iv_len, init_ctr, true,
@@ -289,16 +295,16 @@ TEE_Result do_run_policy( lua_State *L, const char* policy, SYSCALL_OP n ) {
     int  cur_stack = lua_gettop(L);
     bool eval, pol_changed;
     uint64_t cnt_a, cnt_b;
-    //DMSG("\npolicy string is %s",policy);
+    DMSG("\npolicy string is %s",policy);
 
     cnt_a = read_cntpct();
     do {
         /* Call lua policy function */
-        //DMSG("\n\n");
+        DMSG("\n\n");
         lua_getglobal( L, policy );
-        //DMSG("\n\n");
+        DMSG("\n\n");
         lua_pushnumber( L, n ); /* policy takes a number argument */
-        //DMSG("\n\n");
+        DMSG("\n\n");
         ret = lua_pcall( L, 1, 2, 0 );
         if( ret != LUA_OK ) {
             res = TEE_ERROR_NOT_SUPPORTED;
@@ -307,14 +313,15 @@ TEE_Result do_run_policy( lua_State *L, const char* policy, SYSCALL_OP n ) {
         }
 
         if( !lua_isboolean( L, -1 ) ) {
+            DMSG("\nhere\n");
             res = TEE_ERROR_NOT_SUPPORTED;
             CHECK_SUCCESS( res, "Func '%s:%d' must return a boolean",
                                 policy, n );
         }
 
         pol_changed  = lua_toboolean( L, -1 );
-        //DMSG( "Function '%s:%d' pol_changed is %s", policy, n,
-        //  pol_changed == true ? "true" : "false" );
+        DMSG( "Function '%s:%d' pol_changed is %s", policy, n,
+          pol_changed == true ? "true" : "false" );
         
         if( pol_changed ) {
             /* reload the policy since it has changed */
@@ -324,14 +331,15 @@ TEE_Result do_run_policy( lua_State *L, const char* policy, SYSCALL_OP n ) {
     } while( pol_changed == true );
 
     if( !lua_isboolean( L, -2 ) ) {
+        DMSG("\nhere\n");
         res = TEE_ERROR_NOT_SUPPORTED;
         CHECK_SUCCESS( res, "Func '%s:%d' must return a boolean",
                             policy, n );
     }
 
     eval = lua_toboolean( L, -2 );
-    //DMSG( "Function '%s:%d' evaluated to %s", policy, n,
-    //eval == true ? "true" : "false" );
+    DMSG( "Function '%s:%d' evaluated to %s", policy, n,
+    	eval == true ? "true" : "false" );
     if( eval == false ) {
         res = TEE_ERROR_POLICY_FAILED;
     }
@@ -354,6 +362,7 @@ TEE_Result do_load_policy(void) {
     /* Load the policy into Lua */
     //DMSG("\npolicy text is %s\n\n\n",cap_head.policy_buf);
     res = lua_load_policy( Lstate, (const char*) cap_head.policy_buf );
+    DMSG("\n\n");
     CHECK_SUCCESS( res, "load_policy() Error" );
 
     cnt_b = read_cntpct();
@@ -779,158 +788,165 @@ TEE_Result do_remove_from_blacklist(const char *key, size_t keyLen, const WHERE 
  *      ...
  */
 
-/* Search the stateFile and write the value to a key. If it does not exist,
- * append to the end of the state file or next available */
-RESULT
-do_set_state(unsigned char *key, uint32_t klen,
-             unsigned char *val, uint32_t vlen)
-{
+// /* Search the stateFile and write the value to a key. If it does not exist,
+//  * append to the end of the state file or next available */
+// RESULT
+// do_set_state(unsigned char *key, uint32_t klen,
+//              unsigned char *val, uint32_t vlen)
+// {
 
-    TEE_Result res = TEE_SUCCESS;
-    uint32_t   count;
-    uint8_t    state[2*STATE_SIZE + 1];
-    uint8_t   *key_state = &state[0];
-    uint8_t   *val_state = &state[STATE_SIZE];
-    uint8_t   *valid = &state[2*STATE_SIZE];
-    uint32_t   write_off = 0;
-    uint32_t   new_write_pos = 0;
-    uint64_t   cnt_a, cnt_b;
+//     TEE_Result res = TEE_SUCCESS;
+//     uint32_t   count;
+//     uint8_t    state[2*STATE_SIZE + 1];
+//     uint8_t   *key_state = &state[0];
+//     uint8_t   *val_state = &state[STATE_SIZE];
+//     uint8_t   *valid = &state[2*STATE_SIZE];
+//     uint32_t   write_off = 0;
+//     uint32_t   new_write_pos = 0;
+//     uint64_t   cnt_a, cnt_b;CHECK_RESULT
 
-    //DMSG( "Setting key: %s val: %s", key, val );
+//     DMSG( "Setting key: %s val: %s", key, val );
 
-    if( vlen > STATE_SIZE || klen > STATE_SIZE ) {
-        MSG( res, "val/key buffer %u/%u B too large"
-                            "(need to be less than %u B", 
-                            vlen, klen, STATE_SIZE );
-        return ERROR_KEY_BAD_SIZE;
-    }
+//     if( vlen > STATE_SIZE || klen > STATE_SIZE ) {
+//         MSG( res, "val/key buffer %u/%u B too large"
+//                             "(need to be less than %u B", 
+//                             vlen, klen, STATE_SIZE );
+//         return ERROR_KEY_BAD_SIZE;
+//     }
+//     DMSG("keys, %d", res);
+//     cnt_a = read_cntpct();
+//     res = TEE_SeekObjectData( stateFile, 0, TEE_DATA_SEEK_SET );
+//     cnt_b = read_cntpct();
+//     timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
+//     if( res !=TEE_SUCCESS)
+//     {
+//         MSG("TEE_SeekObjectData() Error" );
+//         return ERROR_ACCESS_DENIED;
+//     }
 
-    cnt_a = read_cntpct();
-    res = TEE_SeekObjectData( stateFile, 0, TEE_DATA_SEEK_SET );
-    cnt_b = read_cntpct();
-    timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
-    if( res !=TEE_SUCCESS)
-    {
-        MSG("TEE_SeekObjectData() Error" );
-        return ERROR_ACCESS_DENIED;
-    }
-
-    /* First check to see if this state already exists */
-    while( 1 ) {
-        cnt_a = read_cntpct();
-        res = TEE_ReadObjectData( stateFile, state, sizeof(state), &count ); 
-        cnt_b = read_cntpct();
-        timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
-        if (res != TEE_SUCCESS)
-        {
-            MSG("TEE_ReadObjectData Error");
-            return ERROR_ACCESS_DENIED;
-        }
+//     /* First check to see if this state already exists */
+//     while( 1 ) {
+//         DMSG("keys, %d", res);
+//         cnt_a = read_cntpct();
+//         res = TEE_ReadObjectData( stateFile, state, sizeof(state), &count ); 
+//         cnt_b = read_cntpct();
+//         timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
+//         if (res != TEE_SUCCESS)
+//         {
+//             MSG("TEE_ReadObjectData Error");
+//             return ERROR_ACCESS_DENIED;
+//         }
         
-        if( count == 0 ) {
-            new_write_pos = write_off * ( sizeof(state) );      
-            //MSG( "Writing to end of file %u", new_write_pos );
-            break;
-        }
+//         if( count == 0 ) {
+//             new_write_pos = write_off * ( sizeof(state) );      
+//             MSG( "Writing to end of file %u", new_write_pos );
+//             break;
+//         }
     
-        if( strcmp( (const char*) key, (const char*) key_state ) == 0 ) {
-            new_write_pos = write_off * ( sizeof(state) );
-            //MSG( "Writing to offset %u, key found", new_write_pos );
-            break;
-        }
+//         if( strcmp( (const char*) key, (const char*) key_state ) == 0 ) {
+//             new_write_pos = write_off * ( sizeof(state) );
+//             MSG( "Writing to offset %u, key found", new_write_pos );
+//             break;
+//         }
         
-        if( new_write_pos == 0 && *valid == 0 ) {
-            new_write_pos = write_off * ( sizeof(state) );
-            //MSG( "Write to first invalid entry %u", new_write_pos );
-        }
+//         if( new_write_pos == 0 && *valid == 0 ) {
+//             new_write_pos = write_off * ( sizeof(state) );
+//             MSG( "Write to first invalid entry %u", new_write_pos );
+//         }
 
-        write_off++;
-    }
+//         write_off++;
+//     }
+//     DMSG("keys, %d", res);
+//     /*  Add the state in at the first available slot */
+//     memset( state, 0, sizeof(state) );
+//     DMSG("keys, %d", res);
+//     memcpy( key_state, key, klen );
+//     DMSG("keys, %d", res);
+//     memcpy( val_state, val, vlen );
+//     DMSG("keys, %d", res);
+//     *valid = 1;
 
-    /*  Add the state in at the first available slot */
-    memset( state, 0, sizeof(state) );
-    memcpy( key_state, key, klen );
-    memcpy( val_state, val, vlen );
-    *valid = 1;
+//     cnt_a = read_cntpct();
+//     DMSG("keys, %d", res);
+//     res = TEE_SeekObjectData( stateFile, new_write_pos, TEE_DATA_SEEK_SET );
+//     DMSG("keys, %d", res);
+//     res = TEE_WriteObjectData( stateFile, state, sizeof(state) );
+//     cnt_b = read_cntpct();
+//     timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
+//     if (res != TEE_SUCCESS)
+//     {
+//         MSG("TEE_WriteObjectData Error");
+//         return ERROR_ACCESS_DENIED;
+//     }
 
-    cnt_a = read_cntpct();
-    res = TEE_SeekObjectData( stateFile, new_write_pos, TEE_DATA_SEEK_SET );
-    res = TEE_WriteObjectData( stateFile, state, sizeof(state) );
-    cnt_b = read_cntpct();
-    timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
-    if (res != TEE_SUCCESS)
-    {
-        MSG("TEE_WriteObjectData Error");
-        return ERROR_ACCESS_DENIED;
-    }
+//     return NIL;
+// }
 
-    return NIL;
-}
+// TODO: removing this for now
+// RESULT do_get_state( unsigned char* key, unsigned char* val, 
+//                          uint32_t vlen ) 
+// {
+//     TEE_Result res = TEE_SUCCESS;
+//     uint32_t   count;
+//     bool       found = false;
+//     uint8_t    state[2*STATE_SIZE+1];
+//     uint8_t   *key_state = &state[0];
+//     uint8_t   *val_state = &state[STATE_SIZE];
+//     uint8_t   *valid = &state[2*STATE_SIZE];
+//     uint64_t   cnt_a, cnt_b;
 
-RESULT do_get_state( unsigned char* key, unsigned char* val, 
-                         uint32_t vlen ) 
-{
-    TEE_Result res = TEE_SUCCESS;
-    uint32_t   count;
-    bool       found = false;
-    uint8_t    state[2*STATE_SIZE+1];
-    uint8_t   *key_state = &state[0];
-    uint8_t   *val_state = &state[STATE_SIZE];
-    uint8_t   *valid = &state[2*STATE_SIZE];
-    uint64_t   cnt_a, cnt_b;
+//     DMSG( "Looking for key: %s", key );
 
-    DMSG( "Looking for key: %s", key );
-
-    if( vlen < STATE_SIZE ) {
-        DMSG("\n\n");
-        res = TEE_ERROR_NOT_SUPPORTED;
-        MSG( "val buffer %u B too small" 
-                            "(need to be larger than %u B", 
-                            vlen, STATE_SIZE );
-        return ERROR_VAL_BAD_SIZE;
-    }
-    DMSG("\n\n");
-    cnt_a = read_cntpct();
-    res = TEE_SeekObjectData( stateFile, 0, TEE_DATA_SEEK_SET );
-    cnt_b = read_cntpct();
-    timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
-    if (res != TEE_SUCCESS)
-    {
-        MSG("TEE_SeekObjectData() Error");
-        return ERROR_ACCESS_DENIED;
-    }
+//     if( vlen < STATE_SIZE ) {
+//         DMSG("\n\n");
+//         res = TEE_ERROR_NOT_SUPPORTED;
+//         MSG( "val buffer %u B too small" 
+//                             "(need to be larger than %u B", 
+//                             vlen, STATE_SIZE );
+//         return ERROR_VAL_BAD_SIZE;
+//     }
+//     DMSG("\n\n");
+//     cnt_a = read_cntpct();
+//     res = TEE_SeekObjectData( stateFile, 0, TEE_DATA_SEEK_SET );
+//     cnt_b = read_cntpct();
+//     timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
+//     if (res != TEE_SUCCESS)
+//     {
+//         MSG("TEE_SeekObjectData() Error");
+//         return ERROR_ACCESS_DENIED;
+//     }
     
 
-    while (1)
-    {
-        cnt_a = read_cntpct();
-        res = TEE_ReadObjectData( stateFile, state, 2*STATE_SIZE+1, &count );
-        cnt_b = read_cntpct();
-        timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
-        if(res!= TEE_SUCCESS){
-            MSG("TEE_ReadObjectData Error");
-            return ERROR_ACCESS_DENIED;
-        }
+//     while (1)
+//     {
+//         cnt_a = read_cntpct();
+//         res = TEE_ReadObjectData( stateFile, state, 2*STATE_SIZE+1, &count );
+//         cnt_b = read_cntpct();
+//         timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
+//         if(res!= TEE_SUCCESS){
+//             MSG("TEE_ReadObjectData Error");
+//             return ERROR_ACCESS_DENIED;
+//         }
         
-        if (count == 0) break;
-        if( strcmp( (const char*) key, (const char*) key_state ) == 0 
-            && *valid != 0 ) {
-            found = true;
-            DMSG("\n\n");
-            memcpy( val, val_state, STATE_SIZE );
-            DMSG("\n\n");
-            break;
-        }
-    }
+//         if (count == 0) break;
+//         if( strcmp( (const char*) key, (const char*) key_state ) == 0 
+//             && *valid != 0 ) {
+//             found = true;
+//             DMSG("\n\n");
+//             memcpy( val, val_state, STATE_SIZE );
+//             DMSG("\n\n");
+//             break;
+//         }
+//     }
 
-    if( found == false ) {
-        MSG("key %s not found", key);
-        return ERROR_KEY_NOT_FOUND;
+//     if( found == false ) {
+//         MSG("key %s not found", key);
+//         return ERROR_KEY_NOT_FOUND;
         
-    }
+//     }
     
-    return NIL;
-}
+//     return NIL;
+// }
 
 /*
 TEE_Result go_get_device_state(unsigned char *key, unsigned char *val,

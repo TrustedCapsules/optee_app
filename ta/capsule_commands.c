@@ -41,127 +41,132 @@ TEE_Result register_aes_key( uint32_t param_type,
                             params[3].memref.size );
 }
 
-/* Sets a local state in the state file */
-TEE_Result set_state( uint32_t param_type,
-                      TEE_Param params[4] ) {
+// /* Sets a local state in the state file */
+// TEE_Result set_state( uint32_t param_type,
+//                       TEE_Param params[4] ) {
 
-    TEE_Result res = TEE_SUCCESS;
-    bool       close_after = false;
-
-    ASSERT_PARAM_TYPE( 
-        TEE_PARAM_TYPES( TEE_PARAM_TYPE_MEMREF_INPUT,
-                         TEE_PARAM_TYPE_MEMREF_INPUT,
-                         TEE_PARAM_TYPE_VALUE_INPUT,
-                         TEE_PARAM_TYPE_NONE ) );
+//     TEE_Result res = TEE_SUCCESS;
+//     bool       close_after = false;
+//     DMSG("in set_State");
+//     ASSERT_PARAM_TYPE( 
+//         TEE_PARAM_TYPES( TEE_PARAM_TYPE_MEMREF_INPUT,
+//                          TEE_PARAM_TYPE_MEMREF_INPUT,
+//                          TEE_PARAM_TYPE_VALUE_INPUT,
+//                          TEE_PARAM_TYPE_NONE ) );
     
-    /* Open the state file for this trusted capsule */
-    if( stateFile == TEE_HANDLE_NULL ) {
-        close_after = true;
-        res = TEE_OpenPersistentObject( TEE_STORAGE_PRIVATE,
-                                        &params[2].value.a, sizeof( uint32_t ),
-                                        TEE_DATA_FLAG_ACCESS_READ | 
-                                        TEE_DATA_FLAG_ACCESS_WRITE |
-                                        TEE_DATA_FLAG_ACCESS_WRITE_META,    
-                                        &stateFile );
-        if( res == TEE_ERROR_ITEM_NOT_FOUND ) {
-            DMSG( "First activation...creating state file...0x%08x", params[2].value.a );
-            res = TEE_CreatePersistentObject( TEE_STORAGE_PRIVATE,
-                                              &params[2].value.a, sizeof( uint32_t ),
-                                              TEE_DATA_FLAG_ACCESS_READ | 
-                                              TEE_DATA_FLAG_ACCESS_WRITE |
-                                              TEE_DATA_FLAG_ACCESS_WRITE_META,
-                                              0, NULL, 0, &stateFile );
-            CHECK_GOTO( res, set_state_exit, "TEE_CreatePersistentObject() Error" );
-            DMSG( "State file...0x%08x created", params[2].value.a );
-        } else {
-            CHECK_GOTO( res, set_state_exit, "TEE_OpenPersistentObject() Error" );
-        }
-    }
+//     /* Open the state file for this trusted capsule */
+//     DMSG("in set_State");
+//     if( stateFile == TEE_HANDLE_NULL ) {
+//         close_after = true;
+//         DMSG("in set_State");
 
-    res = do_set_state( params[0].memref.buffer, params[0].memref.size, 
-                        params[1].memref.buffer, params[1].memref.size );
-set_state_exit:
-    if( close_after ) {
-        TEE_CloseObject( stateFile );
-        stateFile = TEE_HANDLE_NULL;
-    }
-    return res;
+//         res = TEE_OpenPersistentObject( TEE_STORAGE_PRIVATE,
+//                                         &params[2].value.a, sizeof( uint32_t ),
+//                                         TEE_DATA_FLAG_ACCESS_READ | 
+//                                         TEE_DATA_FLAG_ACCESS_WRITE |
+//                                         TEE_DATA_FLAG_ACCESS_WRITE_META,    
+//                                         &stateFile );
+//         id_global_test_02 = params[2].value.a;
+//             DMSG("in set_State %d", res);
+//         if( res == TEE_ERROR_ITEM_NOT_FOUND ) {
+//             DMSG( "First activation...creating state file...0x%08x", params[2].value.a );
+//             res = TEE_CreatePersistentObject( TEE_STORAGE_PRIVATE,
+//                                               &params[2].value.a, sizeof( uint32_t ),
+//                                               TEE_DATA_FLAG_ACCESS_READ | 
+//                                               TEE_DATA_FLAG_ACCESS_WRITE |
+//                                               TEE_DATA_FLAG_ACCESS_WRITE_META,
+//                                               0, NULL, 0, &stateFile );
+//             CHECK_GOTO( res, set_state_exit, "TEE_CreatePersistentObject() Error" );
+//             DMSG( "State file...0x%08x created", params[2].value.a );
+//         } else {
+//             CHECK_GOTO( res, set_state_exit, "TEE_OpenPersistentObject() Error" );
+//         }
+//     }
+//     DMSG("in set_State");
+//     res = do_set_state( params[0].memref.buffer, params[0].memref.size, 
+//                         params[1].memref.buffer, params[1].memref.size );
+// set_state_exit:
+//     if( close_after ) {
+//         TEE_CloseObject( stateFile );
+//         stateFile = TEE_HANDLE_NULL;
+//     }
+//     return res;
 
-}
+// }
 
-/* Gets a local state in the state file */
-TEE_Result get_state( uint32_t param_type,
-                      TEE_Param params[4] ) {
+// /* Gets a local state in the state file */
+// TEE_Result get_state( uint32_t param_type,
+//                       TEE_Param params[4] ) {
 
-    TEE_Result res = TEE_SUCCESS;
-    bool       close_after = false;
+//     TEE_Result res = TEE_SUCCESS;
+//     bool       close_after = false;
 
-    ASSERT_PARAM_TYPE(
-        TEE_PARAM_TYPES( TEE_PARAM_TYPE_MEMREF_INPUT,
-                         TEE_PARAM_TYPE_MEMREF_OUTPUT,
-                         TEE_PARAM_TYPE_VALUE_INPUT,
-                         TEE_PARAM_TYPE_NONE ) );
+//     ASSERT_PARAM_TYPE(
+//         TEE_PARAM_TYPES( TEE_PARAM_TYPE_MEMREF_INPUT,
+//                          TEE_PARAM_TYPE_MEMREF_OUTPUT,
+//                          TEE_PARAM_TYPE_VALUE_INPUT,
+//                          TEE_PARAM_TYPE_NONE ) );
 
-    /* Open the state file for this trusted capsule. Read-Write access */
-    if( stateFile == TEE_HANDLE_NULL ) {
-        close_after = true;
-        res = TEE_OpenPersistentObject( TEE_STORAGE_PRIVATE,
-                                        &params[2].value.a, sizeof( uint32_t ),
-                                        TEE_DATA_FLAG_ACCESS_READ | 
-                                        TEE_DATA_FLAG_ACCESS_WRITE |
-                                        TEE_DATA_FLAG_ACCESS_WRITE_META,
-                                        &stateFile );
-        if( res == TEE_ERROR_ITEM_NOT_FOUND ) {
-            DMSG( "First activation...creating state file...%x", params[2].value.a );
-            res = TEE_CreatePersistentObject( TEE_STORAGE_PRIVATE,
-                                              &params[2].value.a, sizeof( uint32_t ),
-                                              TEE_DATA_FLAG_ACCESS_READ | 
-                                              TEE_DATA_FLAG_ACCESS_WRITE | 
-                                              TEE_DATA_FLAG_ACCESS_WRITE_META,
-                                              0, NULL, 0, &stateFile );
-            CHECK_GOTO( res, get_state_exit, "TEE_CreatePersistentObject() Error" );
-            DMSG( "State file...%x created", params[2].value.a );
-        } else {
-            CHECK_GOTO( res, get_state_exit, "TEE_OpenPersistentObject() Error" );
-        }
-    }
+//     /* Open the state file for this trusted capsule. Read-Write access */
+//     if( stateFile == TEE_HANDLE_NULL ) {
+//         close_after = true;
+//         res = TEE_OpenPersistentObject( TEE_STORAGE_PRIVATE,
+//                                         &params[2].value.a, sizeof( uint32_t ),
+//                                         TEE_DATA_FLAG_ACCESS_READ | 
+//                                         TEE_DATA_FLAG_ACCESS_WRITE |
+//                                         TEE_DATA_FLAG_ACCESS_WRITE_META,
+//                                         &stateFile );
+//         if( res == TEE_ERROR_ITEM_NOT_FOUND ) {
+//             DMSG( "First activation...creating state file...%x", params[2].value.a );
+//             res = TEE_CreatePersistentObject( TEE_STORAGE_PRIVATE,
+//                                               &params[2].value.a, sizeof( uint32_t ),
+//                                               TEE_DATA_FLAG_ACCESS_READ | 
+//                                               TEE_DATA_FLAG_ACCESS_WRITE | 
+//                                               TEE_DATA_FLAG_ACCESS_WRITE_META,
+//                                               0, NULL, 0, &stateFile );
+//             CHECK_GOTO( res, get_state_exit, "TEE_CreatePersistentObject() Error" );
+//             DMSG( "State file...%x created", params[2].value.a );
+//         } else {
+//             CHECK_GOTO( res, get_state_exit, "TEE_OpenPersistentObject() Error" );
+//         }
+//     }
     
-    //Open the device file. Read only 
-   /* if (deviceFile == TEE_HANDLE_NULL)
-    {
+//     //Open the device file. Read only 
+//    /* if (deviceFile == TEE_HANDLE_NULL)
+//     {
         
-        TEE_Result res = TEE_OpenPersistentObject(TEE_STORAGE_PRIVATE,
-                                                  &params[2].value.a, sizeof(uint32_t),
-                                                  TEE_DATA_FLAG_ACCESS_READ |
-                                                      TEE_DATA_FLAG_ACCESS_WRITE_META,
-                                                  &deviceFile);
-        if (res == TEE_ERROR_ITEM_NOT_FOUND)
-        {
-            DMSG("First activation...creating device file...%x", params[2].value.a);
-            res = TEE_CreatePersistentObject(TEE_STORAGE_PRIVATE,
-                                             &params[2].value.a, sizeof(uint32_t),
-                                             TEE_DATA_FLAG_ACCESS_READ |
-                                                 TEE_DATA_FLAG_ACCESS_WRITE_META,
-                                             0, NULL, 0, &deviceFile);
-            CHECK_GOTO(res, get_state_exit, "TEE_CreatePersistentObject() Error");
-            DMSG("Device file...%x created", params[2].value.a);
-        }
-        else
-        {
-            CHECK_GOTO(res, get_state_exit, "TEE_OpenPersistentObject() Error");
-        }
-    }*/
-    res = do_get_state( params[0].memref.buffer, params[1].memref.buffer,
-                        params[1].memref.size );
-    CHECK_GOTO( res, get_state_exit, "Do_get_state() Error" );
+//         TEE_Result res = TEE_OpenPersistentObject(TEE_STORAGE_PRIVATE,
+//                                                   &params[2].value.a, sizeof(uint32_t),
+//                                                   TEE_DATA_FLAG_ACCESS_READ |
+//                                                       TEE_DATA_FLAG_ACCESS_WRITE_META,
+//                                                   &deviceFile);
+//         if (res == TEE_ERROR_ITEM_NOT_FOUND)
+//         {
+//             DMSG("First activation...creating device file...%x", params[2].value.a);
+//             res = TEE_CreatePersistentObject(TEE_STORAGE_PRIVATE,
+//                                              &params[2].value.a, sizeof(uint32_t),
+//                                              TEE_DATA_FLAG_ACCESS_READ |
+//                                                  TEE_DATA_FLAG_ACCESS_WRITE_META,
+//                                              0, NULL, 0, &deviceFile);
+//             CHECK_GOTO(res, get_state_exit, "TEE_CreatePersistentObject() Error");
+//             DMSG("Device file...%x created", params[2].value.a);
+//         }
+//         else
+//         {
+//             CHECK_GOTO(res, get_state_exit, "TEE_OpenPersistentObject() Error");
+//         }
+//     }*/
+//     res = do_get_state( params[0].memref.buffer, params[1].memref.buffer,
+//                         params[1].memref.size );
+//     CHECK_GOTO( res, get_state_exit, "Do_get_state() Error" );
 
-get_state_exit:
-    if( close_after ) {
-        TEE_CloseObject( stateFile );
-        stateFile = TEE_HANDLE_NULL;
-    }
-    return res;
-}
+// get_state_exit:
+//     if( close_after ) {
+//         TEE_CloseObject( stateFile );
+//         stateFile = TEE_HANDLE_NULL;
+//     }
+//     return res;
+// }
 
 TEE_Result get_buffer( uint32_t param_type, TEE_Param params[4] ) {
     TEE_Result res = TEE_SUCCESS;
@@ -244,43 +249,66 @@ TEE_Result capsule_open( uint32_t param_type,
           capsule_name, curr_ts );
 
     // Create the file contents buffer
+    DMSG("here");
     file_len = params[1].memref.size + 1;
+    DMSG("here");
     file_contents = TEE_Malloc( file_len, 0);
+    DMSG("here");
     TEE_MemMove( file_contents, params[1].memref.buffer, params[1].memref.size );
+    DMSG("here");
     file_contents[params[1].memref.size] = '\0';
-
+    DMSG("here");
     // Open the file (initializes the capsule structure)
     res = do_open( file_contents, params[1].memref.size );
+    DMSG("here");
     CHECK_GOTO( res, capsule_open_exit, "Do_open() Error" );
 
     // Setup Lua (if this is the first time using it)
     if( Lstate == NULL ) {
-        // MSG( "Initializing Interpreter..." );
+        MSG( "Initializing Interpreter..." );
         lua_start_context( &Lstate );
+        DMSG("here");
         res = do_load_policy();
         CHECK_GOTO( res, capsule_open_exit, "Do_load_policy() Error" );
         res = lua_add_ext( Lstate );
         CHECK_GOTO( res, capsule_open_exit, "Add_lua_ext() Error" );
     }
 
-    /* Open the state file for this trusted capsule */
-    if( stateFile == TEE_HANDLE_NULL ) {
-        res = TEE_OpenPersistentObject( TEE_STORAGE_PRIVATE,
-                                        &symm_id, sizeof( uint32_t ),
-                                        TEE_DATA_FLAG_ACCESS_READ | 
-                                        TEE_DATA_FLAG_ACCESS_WRITE |
-                                        TEE_DATA_FLAG_ACCESS_WRITE_META,
-                                        &stateFile );
-        CHECK_GOTO( res, capsule_open_exit, "TEE_OpenPersistentObject() Error" );
-    }
+    //TODO: Commenting out the statefile stuff till I figure out what it does. 
+    ///* Open the state file for this trusted capsule */
+    // if( stateFile == TEE_HANDLE_NULL ) {
+    //     res = TEE_OpenPersistentObject(TEE_STORAGE_PRIVATE,
+    //                                    &symm_id, sizeof(uint32_t),
+    //                                    TEE_DATA_FLAG_ACCESS_READ |
+    //                                    TEE_DATA_FLAG_ACCESS_WRITE |
+    //                                    TEE_DATA_FLAG_ACCESS_WRITE_META,
+    //                                    &stateFile);
+    //     if (res == TEE_ERROR_ITEM_NOT_FOUND)
+    //     {
+    //         DMSG("First activation...creating state file...%d", symm_id);
+    //         res = TEE_CreatePersistentObject(TEE_STORAGE_PRIVATE,
+    //                                          &symm_id, sizeof(uint32_t),
+    //                                          TEE_DATA_FLAG_ACCESS_READ |
+    //                                          TEE_DATA_FLAG_ACCESS_WRITE |
+    //                                          TEE_DATA_FLAG_ACCESS_WRITE_META,
+    //                                          0, NULL, 0, &stateFile);
+    //         CHECK_GOTO(res, capsule_open_exit, "TEE_CreatePersistentObject() Error");
+    //         DMSG("State file...%x created", params[2].value.a);
+    //     }
+    //     else
+    //     {
+    //         CHECK_GOTO(res, capsule_open_exit, "TEE_OpenPersistentObject() Error");
+    //     }
+        
+    // }
 
-    res = do_get_state( (unsigned char*) TZ_CRED, credential, STATE_SIZE );
-    CHECK_GOTO( res, capsule_open_exit, "Do_get_state() Error" );
+    // res = do_get_state( (unsigned char*) TZ_CRED, credential, STATE_SIZE );
+    // CHECK_GOTO( res, capsule_open_exit, "Do_get_state() Error" );
 
     // this line throws a warning because converting an unsigned char* to a
     // void* to an int*. Then it is dereferenced into an int. We should figure
     // out a cleaner way to doing this. The values are stored as strings.
-    curr_cred = *(int*)(void*)(credential); 
+    //curr_cred = *(int*)(void*)(credential); TODO: removing this for now.
 
     curr_len = 0;
 
@@ -290,6 +318,8 @@ TEE_Result capsule_open( uint32_t param_type,
     }
     
     // Run the policy
+    DMSG("policy func string %s", POLICY_FUNC);
+    DMSG("policy op %d", OPEN_OP); 
     res = do_run_policy( Lstate, POLICY_FUNC, OPEN_OP );
     // Clear the return buffer
     TEE_MemFill(params[1].memref.buffer, 0, params[1].memref.size);

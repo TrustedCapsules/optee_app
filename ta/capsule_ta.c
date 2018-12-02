@@ -32,13 +32,17 @@ bool                    aes_key_setup = false;
 struct capsule_text     cap_head;
 SYSCALL_OP		fuse_op;
 
-/* Secure Storage Objects -> keys */
-TEE_ObjectHandle keyFile = TEE_HANDLE_NULL;
+uint32_t                temp_encrypted_len=0;
+char                    *temp_encrypted = NULL;
+
+    /* Secure Storage Objects -> keys */
+    TEE_ObjectHandle keyFile = TEE_HANDLE_NULL;
 char             keyID[] = "aes_key_file";
 
 /* Secure Storage Objects -> credentials, persistent state */
-TEE_ObjectHandle stateFile = TEE_HANDLE_NULL;
-//TEE_ObjectHandle deviceFile = TEE_HANDLE_NULL;
+//TEE_ObjectHandle stateFile = TEE_HANDLE_NULL; TODO: removing this for now. 
+//TODO: Temporary param value being made global for debug
+uint32_t id_global_test_02 = 0;
 
 /* Interpreter State - this is messy, and will only work if policy
  *                     evaluation is synchronous. */
@@ -47,7 +51,7 @@ lua_State *Lstate = NULL;
 // int        curr_fd = 0;
 int        curr_len = 0;
 // char       curr_declassify_dest[128];
-int        curr_cred = 0;
+//int        curr_cred = 0; TODO: removing this for now. 
 
 /* Benchmarking */
 struct benchmarking_ta timestamps[6];
@@ -108,9 +112,9 @@ TEE_Result TA_OpenSessionEntryPoint(uint32_t param_type,
     UNUSED( params );
     UNUSED( param_type );
 
-    //MSG( "New Session Created..." );  
+    MSG( "New Session Created..." );  
 
-    // MSG( "Opening Trusted Capsule session" );
+    MSG( "Opening Trusted Capsule session" );
     memset( &timestamps, 0, sizeof(timestamps) );
     // MSG( "\n   [e h s r p]         \n"
     //   "%d: %llu %llu %llu %llu %llu\n" 
@@ -167,7 +171,7 @@ void TA_CloseSessionEntryPoint(void *sess_ctx) {
     //    );
 
     TEE_CloseObject( keyFile );
-    TEE_CloseObject( stateFile );
+    //TEE_CloseObject( stateFile );TODO:removing this for now
     //TEE_CloseObject( deviceFile );
 
     if( capsule_name != NULL ) {
@@ -184,7 +188,7 @@ void TA_CloseSessionEntryPoint(void *sess_ctx) {
 
     lua_close_context( &Lstate );
 
-    //MSG( "Successfully closed trusted capsule %s session", capsule_name );
+    MSG( "Successfully closed trusted capsule %s session", capsule_name );
 }
 
 int icep_count = 0;
@@ -196,15 +200,15 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx,
     UNUSED( sess_ctx );
 
     curr_ts = 5;
-
+    DMSG("in invoke command entry point : CMD_ID: %d ",cmd_id);
     switch (cmd_id) {
     // Necessary for state registration tests
     case CAPSULE_REGISTER_AES_KEY:
         return register_aes_key(param_type, params);
-    case CAPSULE_SET_STATE:
-        return set_state(param_type, params);
-    case CAPSULE_GET_STATE:
-        return get_state(param_type, params);
+    // case CAPSULE_SET_STATE:
+    //     return set_state(param_type, params);
+    // case CAPSULE_GET_STATE:
+    //     return get_state(param_type, params);
     case CAPSULE_GET_BUFFER:
         return get_buffer(param_type, params);
     // Actual capsule operations

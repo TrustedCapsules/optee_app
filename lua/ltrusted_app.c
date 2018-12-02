@@ -366,10 +366,10 @@ void __noreturn abort( void ) {
 	TEE_Panic( 0 );
 }
 
-int rand(void) {
-	int rv;
-	TEE_GenerateRandom( &rv, sizeof(rv) );
-	return rv;
-}
+//int rand(void) {
+//	int rv;
+//	TEE_GenerateRandom( &rv, sizeof(rv) );
+//	return rv;
+//}
 
 #endif

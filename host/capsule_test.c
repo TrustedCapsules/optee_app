@@ -20,11 +20,11 @@ TEEC_Result test_08() {
     TEEC_Context    ctx;
     TEEC_Session    sess;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
-    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
-    char            kv[] = "/etc/use_case_capsules/test_bio_ehrpatient.kvstore";
-    char            log[] = "/etc/use_case_capsules/test_bio_ehrpatient.log";
-    char            policy[] = "/etc/use_case_capsules/test_bio_ehrpatient.policy";
+    char            capsule[] = "/etc/new_capsules/bio.capsule";
+    char            ptx[] = "/etc/new_capsules/bio.data";
+    char            kv[] = "/etc/new_capsules/bio.kvstore";
+    char            log[] = "/etc/new_capsules/bio.log";
+    char            policy[] = "/etc/new_capsules/bio.policy";
     FILE           *fp = NULL;
     char           *encrypted_data, 
                    *read_data,
@@ -242,8 +242,8 @@ TEEC_Result test_07() {
     TEEC_Session    sess;
     TEEC_Session    sess2;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
-    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
+    char            capsule[] = "/etc/new_capsules/bio.capsule";
+    char            ptx[] = "/etc/new_capsules/bio.data";
     char            capsule2[] = "/etc/sample_capsules/short_story.capsule";
     char            ptx2[] = "/etc/sample_capsules/short_story.data";
     FILE           *fp = NULL;
@@ -445,8 +445,8 @@ TEEC_Result test_06() {
     TEEC_Context    ctx;
     TEEC_Session    sess;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
-    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
+    char            capsule[] = "/etc/new_capsules/bio.capsule";
+    char            ptx[] = "/etc/new_capsules/bio.data";
     FILE           *fp = NULL;
     char           *encrypted_data, 
                    *read_data,
@@ -581,8 +581,8 @@ TEEC_Result test_05() {
     TEEC_Context    ctx;
     TEEC_Session    sess;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
-    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
+    char            capsule[] = "/etc/new_capsules/bio.capsule";
+    char            ptx[] = "/etc/new_capsules/bio.data";
     FILE           *fp = NULL;
     char           *encrypted_data, 
                    *read_data,
@@ -726,8 +726,8 @@ TEEC_Result test_04() {
     TEEC_Context    ctx;
     TEEC_Session    sess;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
-    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
+    char            capsule[] = "/etc/new_capsules/bio.capsule";
+    char            ptx[] = "/etc/new_capsules/bio.data";
     FILE           *fp = NULL;
     char           *encrypted_data, 
                    *read_data,
@@ -885,9 +885,10 @@ TEEC_Result test_03() {
     TEEC_Context    ctx;
     TEEC_Session    sess;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
-    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
-    FILE           *fp = NULL;
+    char            capsule[] = "/etc/new_capsules/bio.capsule";
+    char            ptx[] = "/etc/new_capsules/bio.data";
+    FILE           *fp = NULL,
+                   *log_fp = NULL;
     char           *encrypted_data, 
                    *read_data,
                    *write_data,
@@ -977,9 +978,17 @@ TEEC_Result test_03() {
 
     // Compare write data with encrypted data. 
     COMPARE_LEN( test_num, 2, write_len, encrypt_len );
-    COMPARE_CAPSULE( test_num, 2, i, encrypted_data, write_data, write_len );
+    
+    log_fp = fopen("/root/cap_write_len.log","w");
+    fwrite(write_data, 1, write_len, log_fp);
+    fwrite("\n",1,2, log_fp  );
+    fclose(log_fp);
+    log_fp = fopen("/root/cap_encrypt_len.log", "w");
+    fwrite(encrypted_data, 1, encrypt_len, log_fp);
+    fclose(log_fp);
+    COMPARE_CAPSULE(test_num, 2, i, encrypted_data, write_data, write_len);
 
-    res = closeSession( &sess );
+    res = closeSession(&sess);
     CHECK_RESULT( res, "test_%02d: closeSession() failed", test_num );
 
     res = freeSharedMem( &in_mem );
@@ -1261,10 +1270,10 @@ int main(int argc, char *argv[]) {
         CHECK_RESULT( res, "test_%02d: failed", test_num );
         PRINT_INFO( "test_%02d: passed\n", test_num );
     
-        test_num = 2;
-        res = test_02();
-        CHECK_RESULT( res, "test_%02d: failed", test_num );
-        PRINT_INFO( "test_%02d: passed\n", test_num );
+        //test_num = 2;
+        //res = test_02();
+        //CHECK_RESULT( res, "test_%02d: failed", test_num );
+        //PRINT_INFO( "test_%02d: passed\n", test_num );
 
         test_num = 3;
         res = test_03();

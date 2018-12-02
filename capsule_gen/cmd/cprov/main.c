@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <tee_client_api.h>
 #include "register_capsule.h"
+#include "err_ta.h"
 
 static void usage() {
     printf( "\ncprov -n <capsule name> [-p path]\n"
@@ -47,6 +48,7 @@ int main( int argc, char *argv[] ) {
 
     
     res = registerCapsule( capsuleName, path);
-    return 0;
+	CHECK_RESULT(res, "register_capsule failed");
+	return 0;
 }
 

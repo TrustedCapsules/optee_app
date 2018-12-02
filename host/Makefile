@@ -28,7 +28,7 @@ OBJS_Breakdown = err_ta.o \
 				 capsule_command.o \
 				 capsule_breakdown.o
 
-CFLAGS += -Wall -I../common -I$(TEEC_EXPORT)/include -I$(TA_DEV_KIT_DIR)/host_include
+CFLAGS += -Wall -g -O0 -I../common -I$(TEEC_EXPORT)/include -I$(TA_DEV_KIT_DIR)/host_include
 
 ifdef HIKEY
 CFLAGS += -DHIKEY=y

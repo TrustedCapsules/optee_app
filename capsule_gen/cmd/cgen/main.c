@@ -68,8 +68,7 @@ int main( int argc, char *argv[] ) {
 			} else if( strcmp( section, "data" ) == 0 ) {
 				t = DATA_SECTION;
 			} else {
-				usage();
-				return 0;
+				t = ALL_SECTION;
 			}
 			break;
 		default:

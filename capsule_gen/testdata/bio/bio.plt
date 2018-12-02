@@ -1,28 +1,19 @@
-policy_version = 1
-remote_server = "10.0.0.2:3490"
-
-log_open = true
-log_close = true
-
-policy_result = POLICY_ALLOW
-comment = ""
+trusted_server = "198.162.52.244"
+port = 3490
+replace_char = "#"
 
 function evaluate_policy( op )
-
-	if op == POLICY_OP_OPEN then
-		policy_result = POLICY_ALLOW
-	elseif op == POLICY_OP_CLOSE then
-		policy_result = POLICY_NOT_ALLOW
-	else
-		policy_result = POLICY_ERROR_UNKNOWN_OP
-	end 
-
+	res = true;	
+	pol_changed = false;
+	
+	return res, pol_changed;
 end
 
+
 ----
-location: Vancouver, BC
+Vancouver, BC;doctor:Dr. Bill;insurer:UBC Health
 ----
-Sun Apr 22 21:28:26 2018 - CREATED bio [ location: Vancouver, BC ]
+Sun Apr 22 21:28:26 2018 - CREATED bio [ Vancouver, BC;doctor:Dr. Bill;insurer:UBC Health ]
 ----
 Name: Peter Chen
 Age: 25

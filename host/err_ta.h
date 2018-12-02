@@ -18,6 +18,7 @@
 #define CHECK_RESULT( res, ... ) do { 	  				\
 			if( ( res ) != TEEC_SUCCESS ) {  			\
 				PRINT_INFO( __VA_ARGS__ );  			\
+				printf( "%d\n", __LINE__ );					\
 				PRINT_INFO( "\n" );                     \
 				return (res);							\
 			}							 				\

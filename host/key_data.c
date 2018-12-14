@@ -102,3 +102,30 @@ void create_aes_key( TEEC_Operation *op, uint32_t max_key_size,
 									   TEEC_MEMREF_TEMP_INPUT );
 
 }
+
+void create_state_file_kv(TEEC_Operation *op, uint32_t max_key_size, 
+	                 uint32_t key_type, unsigned char* id, 
+					 TEE_Attribute *attrs, size_t num_attrs, 
+					 uint8_t* iv, size_t iv_len, 
+					 TEEC_SharedMemory* in ){
+
+	uint8_t *buf = (uint8_t *)in->buffer;
+	size_t blen;
+
+	pack_attrs(attrs, num_attrs, buf, &blen, in->size);
+
+	op->params[0].value.a = key_type;
+	op->params[0].value.b = max_key_size;
+	op->params[1].value.a = *(uint32_t *)(void *)(id);
+	// op->params[1].value.b = chunk_size;
+	op->params[2].memref.parent = in;
+	op->params[2].memref.offset = 0;
+	op->params[2].memref.size = blen;
+	op->params[3].tmpref.buffer = (void *)iv;
+	op->params[3].tmpref.size = iv_len;
+
+	op->paramTypes = TEEC_PARAM_TYPES(TEEC_VALUE_INPUT,
+									  TEEC_VALUE_INPUT,
+									  TEEC_MEMREF_PARTIAL_INPUT,
+									  TEEC_MEMREF_TEMP_INPUT);
+}

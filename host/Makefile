@@ -9,7 +9,12 @@ READELF = $(CROSS_COMPILE)readelf
 OBJS = err_ta.o \
 	   key_data.o \
 	   capsule_command.o \
-	   capsule_test.o 
+	   capsule_test.o
+	    
+OBJS_SINGLE = 	err_ta.o \
+	   			key_data.o \
+	   			capsule_command.o \
+	   			single_op.o
 
 # capsule_benchmark.o \
 	   
@@ -41,12 +46,15 @@ LDADD += -lteec -lm -L$(TEEC_EXPORT)/lib
 	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: all
-all: capsule_test 
+all: single_op capsule_test
 
 #capsule_test_network capsule_test_policy capsule_breakdown
 
 capsule_test: $(OBJS)
-	$(CC) $(OBJS) $(LDADD) -o $@  
+	$(CC) $(OBJS) $(LDADD) -o $@
+
+single_op: $(OBJS_SINGLE)
+	$(CC) $(OBJS_SINGLE) $(LDADD) -o $@  
 	
 capsule_test_network: $(OBJS_Network)
 	$(CC) $(OBJS_Network) $(LDADD) -o $@  
@@ -59,7 +67,8 @@ capsule_breakdown: $(OBJS_Breakdown)
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) capsule_test 
+	rm -f $(OBJS) capsule_test
+	rm -f $(OBJS_SINGLE) single_op 
 	rm -f $(OBJS_Network) capsule_test_network
 	rm -f $(OBJS_Policy) capsule_test_policy
 	rm -f $(OBJS_Breakdown) capsule_test_breakdown

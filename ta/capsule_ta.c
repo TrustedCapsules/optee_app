@@ -35,8 +35,8 @@ SYSCALL_OP		fuse_op;
 uint32_t                temp_encrypted_len=0;
 char                    *temp_encrypted = NULL;
 
-    /* Secure Storage Objects -> keys */
-    TEE_ObjectHandle keyFile = TEE_HANDLE_NULL;
+/* Secure Storage Objects -> keys */
+TEE_ObjectHandle keyFile = TEE_HANDLE_NULL;
 char             keyID[] = "aes_key_file";
 
 /* Secure Storage Objects -> credentials, persistent state */

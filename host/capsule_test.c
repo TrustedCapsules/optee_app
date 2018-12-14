@@ -892,6 +892,7 @@ TEEC_Result test_03() {
     char           *encrypted_data, 
                    *read_data,
                    *write_data,
+                   *temp_enc_data,
                    *plain_text_data;
     uint32_t        encrypt_len = 0, 
                     read_len = 0, 
@@ -918,10 +919,14 @@ TEEC_Result test_03() {
     TEEC_SharedMemory out_mem = { .size = SHARED_MEM_SIZE,
                                   .flags = TEEC_MEM_OUTPUT, };
 
+    TEEC_SharedMemory temp_enc_mem = { .size = SHARED_MEM_SIZE,
+                                  .flags = TEEC_MEM_OUTPUT, };
+
     read_data = malloc(SHARED_MEM_SIZE);
     write_data = malloc(SHARED_MEM_SIZE);
+    temp_enc_data = malloc (SHARED_MEM_SIZE);
 
-    res = initializeContext( &ctx ) ;
+    res = initializeContext(&ctx);
     CHECK_RESULT( res, "test_%02d: initializeContext() failed", test_num );
 
     res = allocateSharedMem( &ctx, &in_mem );
@@ -934,7 +939,7 @@ TEEC_Result test_03() {
     CHECK_RESULT( res, "test_%02d: allocateSharedMem() inout_mem failed",
                        test_num);
 
-    res = openSession( &ctx, &sess, &uuid );
+    res = openSession(&ctx, &sess, &uuid);
     CHECK_RESULT( res, "test_%02d: openSession() sess failed", test_num );
 
     // Read in the capsule contents
@@ -971,8 +976,8 @@ TEEC_Result test_03() {
 
     COMPARE_TEXT( test_num, 1, i, read_data, plain_text_data, read_len );
 
-    res = capsule_close( &sess, false, read_data, read_len, &in_mem,
-                         &out_mem, &write_len, write_data );
+    res = capsule_close(&sess, false, read_data, read_len, &in_mem,
+                        &out_mem, &write_len, write_data);
     CHECK_RESULT( res, "test_%02d: capsule_close() %s failed", test_num,
                   capsule );
 

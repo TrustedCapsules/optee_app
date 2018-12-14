@@ -7,6 +7,9 @@
 TEEC_Result allocateSharedMem( TEEC_Context *ctx, 
                                TEEC_SharedMemory *mem );
 
+TEEC_Result registerSharedMem(TEEC_Context *ctx,
+                              TEEC_SharedMemory *mem);
+
 TEEC_Result freeSharedMem( TEEC_SharedMemory *mem );
 
 /* Initialize TrustZone Sessions */

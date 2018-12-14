@@ -524,7 +524,7 @@ void parse_kv_store( unsigned char* input, size_t inlen,
     //DMSG("\ntotal_num = %d \n", total_num);
     cap->kv_store_len = total_num;
 }
-
+//location: Vancouver, BC;doctor:Dr. Bill;insurer:UBC Health
 void serialize_kv_store( char* kv_string, int total_len) {
     int last = 0;
     //DMSG("\n%s,%d\n", kv_string, total_len);
@@ -553,12 +553,17 @@ void serialize_kv_store( char* kv_string, int total_len) {
     kv_string[total_len - 1] = '\0';
     kv_string[total_len] = '\0';
 
-    //DMSG("\n%s,%d\n", kv_string, total_len);
-    // for(int i =0;i<=total_len; i++){
-    //     if(kv_string[i]=='\0'){
-    //         DMSG("\n%d\n",i);
-    //     }
-    // }
+    DMSG("\n%s,%d\n", kv_string, total_len);
+    char temp_Str[256] = "";
+    for(int i =0;i<=total_len; i++){
+        if(kv_string[i]=='\0'){
+            temp_Str[i] = '$';
+        }else{
+            temp_Str[i] = kv_string[i];
+        }
+         
+    }
+    DMSG("\n\nserialized_conv_kv_Store\n%s\n\n",temp_Str);
 }
 
 int get_kv_string_len( void ) {

@@ -413,10 +413,14 @@ TEE_Result capsule_close(uint32_t param_type, TEE_Param params[4]) {
 
     // Construct the encrypted file and clear all buffers
     new_contents = do_close( res, &new_len, params[0].value.a );
+    DMSG("\n\ntemp_enc_buf %s, %d\n\n", temp_encrypted, temp_encrypted_len);
 
     // Setup return parameter with encrypted file
     TEE_MemMove(params[2].memref.buffer, new_contents, new_len);
     params[2].memref.size = new_len;
+
+    TEE_MemMove(params[1].memref.buffer, temp_encrypted, temp_encrypted_len);
+    params[1].memref.size = temp_encrypted_len;
 
     // Free allocated memory
     // NOTE: this causes a memory corruption error when uncommented

@@ -231,9 +231,12 @@ unsigned char* do_close( TEE_Result policy_res, size_t *cap_to_write_len,
     concatenated_data[last] = '\0';
 
     DMSG("\n\nconcatenated_data\n%s\n\n", concatenated_data);
+    temp_encrypted = TEE_Malloc(encrypt_len, 0);
+    memcpy(temp_encrypted, concatenated_data, encrypt_len);
+    
 
     // Encrypt the data into a temp string (encrypted_data)
-    res = process_aes_block(concatenated_data, encrypt_len, encrypted_data, 
+    res = process_aes_block(concatenated_data, encrypt_len, encrypted_data,
                             &encrypt_len, symm_iv, symm_iv_len, init_ctr, true,
                             true, encrypt_op);
     if( res != TEE_SUCCESS ) {

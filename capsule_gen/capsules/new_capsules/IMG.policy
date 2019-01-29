@@ -1,0 +1,10 @@
+trusted_server = "198.162.52.244"
+port = 3490
+replace_char = "#"
+
+function evaluate_policy( op )
+	res = true;	
+	pol_changed = false;
+	
+	return res, pol_changed;
+end

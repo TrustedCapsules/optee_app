@@ -1,0 +1,20 @@
+policy_version = 1
+remote_server = "10.0.0.2:3490"
+
+log_open = true
+log_close = true
+
+policy_result = POLICY_ALLOW
+comment = ""
+
+function evaluate_policy( op )
+
+	if op == POLICY_OP_OPEN then
+		policy_result = POLICY_ALLOW
+	elseif op == POLICY_OP_CLOSE then
+		policy_result = POLICY_NOT_ALLOW
+	else
+		policy_result = POLICY_ERROR_UNKNOWN_OP
+	end 
+
+end

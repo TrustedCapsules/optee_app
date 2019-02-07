@@ -15,6 +15,7 @@ all:
 	make -C capsule_gen/cmd/cgen
 	make -C capsule_gen/cmd/cprov
 	make -C capsule_server/server
+	make -C capsule_server/client
 
 .PHONY: clean
 clean:
@@ -23,4 +24,5 @@ clean:
 	make -C capsule_gen/cmd/cgen clean
 	make -C capsule_gen/cmd/cprov clean
 	make -C capsule_server/server clean
+	make -C capsule_server/client clean
 	make -C lua clean

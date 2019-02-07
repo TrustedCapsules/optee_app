@@ -1,2 +1,3 @@
 *.o
-capsule_server
+server/capsule_server
+client/capsule_client

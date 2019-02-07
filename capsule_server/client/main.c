@@ -129,8 +129,7 @@ int main( int argc, char** argv ) {
 	uint16_t port = strtoumax( argv[1], NULL, 10 );
 
 	// ECHO test with first capsule in manifest
-	printf("HIHIHIHIHIHH\n");
-	sendReqAndRecvReply( ECHO, port, t.head, NULL, 0 );
+	//sendReqAndRecvReply( ECHO, port, t.head, NULL, 0 );
 
 	// GET_STATE test with first capsule in manifest
 	//char key1[] = "credential";

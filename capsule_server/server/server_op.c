@@ -168,13 +168,15 @@ void handleSetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 void handlePolicyUpdate( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	msgPayload *p = recvPayload( fd, reqHeader, e );
 	if( p == NULL ) {
-		reply( fd, reqHeader, e, FAILURE, 0, NULL );
+        printf( "handlePolicyUpdate(): payload recv() error\n" );
+        reply( fd, reqHeader, e, FAILURE, 0, NULL );
 		return;
 	}
 	
 	uint32_t version = littleEndianToUint( (const unsigned char*) p->payload );
 	char	 payload[POLICY_MAX_SIZE] = {0};
-	size_t   payloadLen = 0;	
+	size_t   payloadLen = 0;
+	printf("Version %u\n", version);
 	if( version != e->policyVersion ) {
 		char policyFile[255] = {0};
 		memcpy( policyFile, "../server_capsules/", 19 );
@@ -182,7 +184,8 @@ void handlePolicyUpdate( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 		strcat( policyFile, ".policy" );	
 		payloadLen = open_file( policyFile, payload, POLICY_MAX_SIZE );
 		if( payloadLen < 0 ) {
-			reply( fd, reqHeader, e, FAILURE, 0, NULL );
+            printf( "handlePolicyUpdate(): failed to open policyFile=%s\n", policyFile );
+            reply( fd, reqHeader, e, FAILURE, 0, NULL );
 			free( p );
 			return;
 		}

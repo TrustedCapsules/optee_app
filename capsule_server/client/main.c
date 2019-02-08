@@ -129,39 +129,48 @@ int main( int argc, char** argv ) {
 	uint16_t port = strtoumax( argv[1], NULL, 10 );
 
 	// ECHO test with first capsule in manifest
-	//sendReqAndRecvReply( ECHO, port, t.head, NULL, 0 );
+//	sendReqAndRecvReply( ECHO, port, t.head, NULL, 0 );
 
 	// GET_STATE test with first capsule in manifest
-	//char key1[] = "credential";
-	//sendReqAndRecvReply( GET_STATE, port, t.head, key1, strlen(key1) );
-	//char key2[] = "alreadyOpened";
-	//sendReqAndRecvReply( GET_STATE, port, t.head, key2, strlen(key2) );
-	//char key3[] = "nonExistentKey";
-	//sendReqAndRecvReply( GET_STATE, port, t.head, key3, strlen(key3) );
-	
+//	char key1[] = "credential";
+//	sendReqAndRecvReply( GET_STATE, port, t.head, key1, strlen(key1) );
+//	char key2[] = "alreadyOpened";
+//	sendReqAndRecvReply( GET_STATE, port, t.head, key2, strlen(key2) );
+//	char key3[] = "nonExistentKey";
+//	sendReqAndRecvReply( GET_STATE, port, t.head, key3, strlen(key3) );
+
 	// SET_STATE test with first capsule in manifest
-	//char keyval1[] = "credential:Dr.SimonHowell\n";
-	//sendReqAndRecvReply( SET_STATE, port, t.head, keyval1, strlen(keyval1) );
-	//char keyval2[] = "newState:newStateVal\n";
+//    char key4[] = "credential";
+//    char keyval1[] = "credential:Dr.SimonHowell\n";
+//	  printf("before\n");
+//    sendReqAndRecvReply( GET_STATE, port, t.head, key4, strlen(key1) );
+//    sendReqAndRecvReply( SET_STATE, port, t.head, keyval1, strlen(keyval1) );
+//    printf("after\n");
+//    sendReqAndRecvReply( GET_STATE, port, t.head, key1, strlen(key1) );
+
+    //char keyval2[] = "newState:newStateVal\n";
 	//sendReqAndRecvReply( SET_STATE, port, t.head, keyval2, strlen(keyval2) );
 	//char keyCredential[] = "credential";
-	//sendReqAndRecvReply( GET_STATE, port, t.head, 
+	//sendReqAndRecvReply( GET_STATE, port, t.head,
 	//					 	keyCredential, strlen(keyCredential) );
 	//char keyNewState[] = "newState";
-	//sendReqAndRecvReply( GET_STATE, port, t.head, 
+	//sendReqAndRecvReply( GET_STATE, port, t.head,
 	//						keyNewState, strlen(keyNewState) );
 
 	// POLICY_UPDATE test with first capsule in manifest
 	//int version = 0;
-	//sendReqAndRecvReply( POLICY_UPDATE, port, t.head, 
+	//sendReqAndRecvReply( POLICY_UPDATE, port, t.head,
 	//					 (void*) &version, sizeof(version) );
 	//version = 2;
-	//sendReqAndRecvReply( POLICY_UPDATE, port, t.head, 
+	//sendReqAndRecvReply( POLICY_UPDATE, port, t.head,
 	//					 (void*) &version, sizeof(version) );
 
 	// LOG_ENTRY TEST with first capsule in manifest
 	char log[] = "THIS IS A NEW LOG ENTRY\nRANDOM WORDS\n";
 	sendReqAndRecvReply( LOG_ENTRY, port, t.head, log, strlen(log) );
 
-	return 0;
+    // GET_TIME Test
+//    char time[16];
+//	sendReqAndRecvReply( GET_TIME, port, t.head, NULL, 0 );
+
 }

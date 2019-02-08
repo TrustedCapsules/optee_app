@@ -136,9 +136,7 @@ void handleGetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 
 void handleGetTime( int fd, msgReqHeader *reqHeader, capsuleEntry *e ){
 	time_t rawtime;
-	int res = 0;
-
-	res = time(&rawtime);
+	int res = time(&rawtime);
 	if(res < 0){
 		printf("handleGetTime(): time could not be retrieved\n");
 		reply(fd, reqHeader, e, FAILURE, 0, NULL);
@@ -288,7 +286,7 @@ void* handleCapsule( void* ptr ) {
 			handleLog( fd, &h, e );
 			return NULL;
 		case GET_TIME:
-			printf( "handleCapsule(): handleGetTiem\n" );
+			printf( "handleCapsule(): handleGetTime\n" );
 			handleGetTime( fd, &h, e );
 			return NULL;
 		default: 

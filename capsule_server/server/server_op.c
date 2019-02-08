@@ -38,9 +38,9 @@ void printChars( const char* h, size_t len ) {
 void reply( int fd, msgReqHeader *reqHeader, capsuleEntry *e, 
 			SERVER_REPLY sr, size_t payloadLen, char* payload ) {
 	
-	msgReplyHeader replyHeader;
-	unsigned char 	hHash[HASHLEN] = {0};
-	
+	msgReplyHeader	replyHeader;
+	unsigned char	hHash[HASHLEN] = {0};
+
 	// Create header
 	replyHeader.capsuleID = reqHeader->capsuleID;
 	replyHeader.response = sr;
@@ -63,7 +63,7 @@ void reply( int fd, msgReqHeader *reqHeader, capsuleEntry *e,
 
 	// Create payload
 	if( payloadLen > 0 ) {
-		msgPayload 	 *p = ( msgPayload* ) malloc( sizeof( msgPayload ) + payloadLen );
+		msgPayload *p = ( msgPayload* ) malloc( sizeof( msgPayload ) + payloadLen );
 		if( p == NULL ) return;
 		p->nonce = reqHeader->nonce;
 		hashData( (void*) payload, payloadLen, p->hash, sizeof(p->hash) );
@@ -127,24 +127,26 @@ void handleGetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	if( s == NULL ) {
 		printf( "handleGetState(): state %s not found\n", key );
 		reply( fd, reqHeader, e, FAILURE, 0, NULL );
+	} else {
+		reply( fd, reqHeader, e, SUCCESS, strlen( s->value ), s->value );
 	}
 
-	reply( fd, reqHeader, e, SUCCESS, strlen( s->value ), s->value ); 
 	free( key );
 }
 
 void handleGetTime( int fd, msgReqHeader *reqHeader, capsuleEntry *e ){
 	time_t rawtime;
 	int res = 0;
-	char *timeStr;
 
 	res = time(&rawtime);
 	if(res < 0){
 		printf("handleGetTime(): time could not be retrieved\n");
 		reply(fd, reqHeader, e, FAILURE, 0, NULL);
 	}
-	sprintf(timeStr,"%ld",rawtime);
-	reply(fd, reqHeader, e, SUCCESS, strlen(timeStr), timeStr);
+
+	char timeStr[16];
+	int len = sprintf(timeStr,"%ld", rawtime);
+	reply(fd, reqHeader, e, SUCCESS, len, timeStr);
 }
 
 void handleSetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {

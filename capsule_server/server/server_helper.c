@@ -3,6 +3,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <Python.h> //for twitter server dm
 
 #include <capsulePolicy.h>
 #include <capsuleCommon.h>
@@ -17,7 +19,7 @@ capsuleTable* capsules = NULL;
 
 size_t append_file( const char* filename, char *buf, size_t len ) {
 	FILE	*fp;
-	
+
 	fp = fopen( filename, "a" );
 	if( fp == NULL ) {
 		printf( "Could not append to file %s\n", filename );
@@ -32,7 +34,7 @@ size_t append_file( const char* filename, char *buf, size_t len ) {
 size_t open_file( const char* filename, char *buf, size_t len ) {
 	FILE    *fp;
 	size_t   sz;
-	
+
 	fp = fopen( filename, "r+" );
 	if( fp == NULL ) {
 		printf( "Could not read file %s\n", filename );
@@ -51,7 +53,7 @@ size_t open_file( const char* filename, char *buf, size_t len ) {
 	sz = fread( buf, sizeof(char), sz, fp );
 
 	fclose( fp );
-	return sz;	
+	return sz;
 }
 
 int policyVersion( const char* name ) {
@@ -63,12 +65,12 @@ int policyVersion( const char* name ) {
 	char policy[POLICY_MAX_SIZE] = {0};
 	open_file( policyFile, policy, sizeof(policy) );
 
-	char* pv = strstr( policy, "policy_version" ); 
+	char* pv = strstr( policy, "policy_version" );
 	if( pv == NULL ) return -1;
 
 	char* eq = strchr( pv, '=' );
 	if( eq == NULL ) return -1;
-	
+
 	char* nl = strchr( eq, '\n' );
 	if( nl == NULL ) return -1;
 
@@ -79,30 +81,30 @@ int policyVersion( const char* name ) {
 		else if( *numStart == '\n' ) return -1;
 		else break;
 	}
-	
+
 	char* numEnd = nl - 1;
 	for( int i=numEnd-numStart; i > 0 ; i-- ) {
 		if( *numEnd == ' ' ) numEnd--;
 		else break;
 	}
-	
+
 	// Convert string into number
 	int version = 0;
 	int base = 1;
 	char* digit = numEnd;
 	while( digit >= numStart ) {
-		version += ( *digit - '0' ) * base; 
+		version += ( *digit - '0' ) * base;
 		base = base * 10;
 		digit--;
 	}
 
-	return version;	
+	return version;
 }
 
 void registerStates( capsuleEntry *e, char* buf, size_t len ) {
-	
-	char* lineStart = buf;	
-	char* lineEnd = strchr( buf, '\n' );		
+
+	char* lineStart = buf;
+	char* lineEnd = strchr( buf, '\n' );
 
 	while( lineEnd != NULL && lineEnd - buf <= len ) {
 		char* keyStart = lineStart;
@@ -114,14 +116,14 @@ void registerStates( capsuleEntry *e, char* buf, size_t len ) {
 		}
 		char* valStart = keyEnd + 1;
 		char* valEnd = lineEnd;
-		
-		stateEntry* se = newStateEntry( keyStart, keyEnd - keyStart, 
+
+		stateEntry* se = newStateEntry( keyStart, keyEnd - keyStart,
 										valStart, valEnd - valStart );
 		printf( "\tAdd (%p) key: %s val: %s\n", se, se->key, se->value );
 
 		stateInsert( e->stateMap, se, keyEnd - keyStart );
 
-		lineStart = lineEnd + 1;	
+		lineStart = lineEnd + 1;
 		lineEnd = strchr( lineStart, '\n' );
 	}
 
@@ -129,26 +131,26 @@ void registerStates( capsuleEntry *e, char* buf, size_t len ) {
 
 void registerCapsules(void){
 	capsules = newCapsuleTable( 10 );
-	
+
 	int numCapsules = sizeof( capsule_data_array ) / sizeof( capsule_data );
 	for( int i = 0; i < numCapsules; i++ ) {
 		uint32_t id = littleEndianToUint( capsule_data_array[i].id );
-		capsuleEntry* ce = newCapsuleEntry( id, capsule_data_array[i].name, 
+		capsuleEntry* ce = newCapsuleEntry( id, capsule_data_array[i].name,
 											sizeof( capsule_data_array[i].name ) );
 		capsuleInsert( capsules, ce );
-		
-		printf( "Capsule %s (0x%x): version %u \n", 
-				capsule_data_array[i].name, id, ce->policyVersion ); 
+
+		printf( "Capsule %s (0x%x): version %u \n",
+				capsule_data_array[i].name, id, ce->policyVersion );
 
 		char stateFile[255] = {0};
 		char states[1024] = {0};
 		memcpy( stateFile, "../server_capsules/", 19 );
 		strcat( stateFile, capsule_data_array[i].name );
-		strcat( stateFile, ".state" );	
+		strcat( stateFile, ".state" );
 		size_t len = open_file( stateFile, states, sizeof(states ) );
-		if( len > 0 ) 
-			registerStates( ce , states, len );	
-	} 
+		if( len > 0 )
+			registerStates( ce , states, len );
+	}
 }
 
 int sendData( int fd, void *buf, size_t len ) {
@@ -156,7 +158,7 @@ int sendData( int fd, void *buf, size_t len ) {
 	do {
 		nw = send( fd, ( (unsigned char*) buf ) + written, len - written, 0 );
 		if( nw <= 0 ) {
-			fprintf( stderr, "sendData(): connection closed or aborted, wrote %s" 
+			fprintf( stderr, "sendData(): connection closed or aborted, wrote %s"
 							 " before connection closed\n", (char*) buf );
 			return nw;
 		}
@@ -175,10 +177,28 @@ int recvData( int fd, void *buf, size_t len ) {
 		if( nr <= 0 ) {
 			fprintf( stderr, "recvData(): connection closed or aborted, read %s"
 							 " before connection closed\n", (char*) buf );
-			return nr;	
+			return nr;
 		}
 		read += nr;
 	} while( read < len && nr > 0 );
 
 	return read;
+}
+
+
+bool getTwitterAuth(char* username) {
+	Py_Initialize();
+	PyRun_SimpleString("import sys; sys.path.append('.')"); //segfaults otherwise since cant find 'twitt.py'
+	PyObject* myModuleString = PyUnicode_FromString("twitt"); //for 'twitt.py'
+    PyObject* myModule = PyImport_Import(myModuleString);
+    PyObject* myFunction = PyObject_GetAttrString(myModule, "twitter_proxy"); //find the function 'twitter_proxy'
+    PyObject* args = PyTuple_Pack(1, PyUnicode_FromString(username)); //PyObject_CallObject() expects a tuple
+    PyObject* myResult = PyObject_CallObject(myFunction, args);
+    if(myResult){
+        bool result = (bool) PyObject_IsTrue(myResult);
+        Py_Finalize();
+        return result;
+    }
+    printf("Python twitt.py crashed, probably due to Twitter throttling or API restriction\n");
+    return 0;
 }

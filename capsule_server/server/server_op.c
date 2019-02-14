@@ -115,13 +115,24 @@ void handleGetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 		return;
 	}
 
-	char *key = (char*) malloc( reqHeader->payloadLen + 1 );
-	memset( key, 0, reqHeader->payloadLen + 1 );
+	char *key = (char*) calloc( reqHeader->payloadLen + 1, sizeof(char));
 	memcpy( key, p->payload, reqHeader->payloadLen );
 	free( p );
 
 	pthread_mutex_lock( &e->stateMapMutex );
-		
+
+	//Twitter case (with "twitter" as key)
+	const char twitter_key[] = "twitter";
+	if(strncmp(twitter_key, key, sizeof(twitter_key))){
+		char* username = key + sizeof(twitter_key); //the null terminator of twitter_key should catch the colon
+        printf("handleGetState() twitter sending dm to @%s\n", username);
+		bool response = getTwitterAuth(username);
+		printf("handleGetState() twitter response = %d\n", response);
+		reply( fd, reqHeader, e, SUCCESS, 1, response ? "1" : "0");
+		return;
+	}
+
+    //normal case
 	stateEntry *s = stateSearch( e->stateMap, key, reqHeader->payloadLen );
 	pthread_mutex_unlock( &e->stateMapMutex );	
 	if( s == NULL ) {

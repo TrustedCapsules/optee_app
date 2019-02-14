@@ -1,10 +1,11 @@
 SERVER = capsule_server
-LIBS = -ltomcrypt -ltfm -lpthread 
+LIBS = -ltomcrypt -ltfm -lpthread $(shell python3-config --libs) #includes the "-l" bits
 COMMON = ../../common
+PYTHON_INCL = $(shell python3-config --includes) 		#includes the "-I" bits
 
 CC = gcc
 CFLAGS = -Wall -DTFM_DESC -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable \
-		 -I$(COMMON)
+		 -I$(COMMON) $(PYTHON_INCL)
 
 ifdef DEBUG
 	CFLAGS += -g -DDEBUG

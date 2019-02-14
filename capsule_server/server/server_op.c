@@ -119,12 +119,10 @@ void handleGetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	memcpy( key, p->payload, reqHeader->payloadLen );
 	free( p );
 
-	pthread_mutex_lock( &e->stateMapMutex );
-
 	//Twitter case (with "twitter" as key)
-	const char twitter_key[] = "twitter";
+	const char twitter_key[] = "twitter:";
 	if(strncmp(twitter_key, key, sizeof(twitter_key))){
-		char* username = key + sizeof(twitter_key); //the null terminator of twitter_key should catch the colon
+		char* username = key + sizeof(twitter_key) - 1; //-1 for null terminator
         printf("handleGetState() twitter sending dm to @%s\n", username);
 		bool response = getTwitterAuth(username);
 		printf("handleGetState() twitter response = %d\n", response);
@@ -133,7 +131,8 @@ void handleGetState( int fd, msgReqHeader *reqHeader, capsuleEntry *e ) {
 	}
 
     //normal case
-	stateEntry *s = stateSearch( e->stateMap, key, reqHeader->payloadLen );
+    pthread_mutex_lock( &e->stateMapMutex );
+    stateEntry *s = stateSearch( e->stateMap, key, reqHeader->payloadLen );
 	pthread_mutex_unlock( &e->stateMapMutex );	
 	if( s == NULL ) {
 		printf( "handleGetState(): state %s not found\n", key );

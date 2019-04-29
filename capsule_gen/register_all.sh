@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+set -e
 
 if [[ $# -eq 0 ]] ; then
     echo 'Usage: pass path to the capsule folder'
@@ -9,5 +9,5 @@ fi
 for capsule in `ls $1`; do
     name=$(basename "$capsule")
     echo "Registering $name"
-    cmd/cprov/cprov -n $name -p $1/$name
+    cmd/cprov/cprov -n ${name} -p $1/${name}
 done  

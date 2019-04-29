@@ -1,9 +1,14 @@
 #ifndef CAPSULE_COMMAND_H
 #define CAPSULE_COMMAND_H
 
+#include <capsuleServerProtocol.h>
+
 /* Allocate shared memory with TrustZone */
 TEEC_Result allocateSharedMem( TEEC_Context *ctx, 
                                TEEC_SharedMemory *mem );
+
+TEEC_Result registerSharedMem(TEEC_Context *ctx,
+                              TEEC_SharedMemory *mem);
 
 TEEC_Result freeSharedMem( TEEC_SharedMemory *mem );
 
@@ -18,7 +23,7 @@ TEEC_Result closeSession( TEEC_Session *sess );
 TEEC_Result finalizeContext( TEEC_Context *ctx );
 
 /* AES Key Operation */
-TEEC_Result register_aes_key( TEEC_Session *sess, unsigned char* id,
+TEEC_Result register_aes_key( TEEC_Session *sess, unsigned const char* id,
                               unsigned char* key, size_t keylen,
                               unsigned char* iv, size_t ivlen, 
                               TEEC_SharedMemory *in );
@@ -63,7 +68,7 @@ TEEC_Result capsule_close_connection( TEEC_Session *sess, int fd );
 
 
 TEEC_Result capsule_send( TEEC_Session *sess, TEEC_SharedMemory *in, 
-                          char* buf, uint32_t blen, SERVER_OP s_op, int rv,
+                          char* buf, uint32_t blen, SERVER_REQ s_op, int rv,
                           int fd, int* nw );
 TEEC_Result capsule_recv_header( TEEC_Session *sess, TEEC_SharedMemory *out, 
                                  char* hash, uint32_t hlen, int* recv_plen,

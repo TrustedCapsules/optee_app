@@ -1,0 +1,42 @@
+trusted_server = "198.162.52.244";
+port = 3490;
+replace_char = "#";
+
+open_start_time = 9;
+open_end_time = 14;
+
+open_gps_long = 123.0;
+open_gps_lat = 15.0;
+open_gps_range = 1; 
+
+doctor_cred = 0x12345;
+insurance_cred = 0x21333;
+hospital_cred = 0x33123;
+
+allowed_network = {"10.0.0.1:2345", "10.0.0.2:12"};
+
+function policy( op )
+	res = true;
+	pol_changed = false;
+
+	if op == 0  then
+	elseif op == 1 then
+	elseif op == 2 then
+	elseif op == 3 then
+	end
+
+	return res, pol_changed;
+end
+
+----
+location: Vancouver, BC
+----
+Mon May 28 16:34:34 2018 - CREATED bio_policy [ location: Vancouver, BC ]
+----
+Name: Peter Chen
+Age: 25
+Gender: Male
+Address: 1234 High Park Avenue, Baltimore, MD
+Occupation: Student
+Blood Type: A+
+Illness: none

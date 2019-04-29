@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <tee_client_api.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 
 #define PRINT_INFO(...) printf( __VA_ARGS__ )
 #define PRINT_LOOP( it, start, end, buf ) 			  \
@@ -18,6 +18,7 @@
 #define CHECK_RESULT( res, ... ) do { 	  				\
 			if( ( res ) != TEEC_SUCCESS ) {  			\
 				PRINT_INFO( __VA_ARGS__ );  			\
+				printf( "%d\n", __LINE__ );					\
 				PRINT_INFO( "\n" );                     \
 				return (res);							\
 			}							 				\

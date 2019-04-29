@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
+#include <capsuleServerProtocol.h>
 #include <syslog.h>
 #include "err_ta.h"
 #include "key_data.h"
@@ -14,6 +15,14 @@ TEEC_Result allocateSharedMem( TEEC_Context *ctx,
     return check_result( res, "TEEC_AllocateSharedMemory", 0 );
 }
 
+TEEC_Result registerSharedMem(TEEC_Context *ctx,
+                              TEEC_SharedMemory *mem)
+{
+    TEEC_Result res;
+    res = TEEC_RegisterSharedMemory(ctx, mem);
+    return check_result(res, "TEEC_RegisterSharedMemory", 0);
+}
+
 TEEC_Result freeSharedMem( TEEC_SharedMemory* mem ) {
     TEEC_ReleaseSharedMemory( mem );
     return TEEC_SUCCESS;
@@ -23,7 +32,7 @@ TEEC_Result freeSharedMem( TEEC_SharedMemory* mem ) {
  * for encrypt and decrypt operation.
  */
 
-TEEC_Result register_aes_key( TEEC_Session *sess, unsigned char *id,
+TEEC_Result register_aes_key( TEEC_Session *sess, unsigned const char *id,
                               unsigned char *key, size_t keylen, 
                               unsigned char *iv, size_t ivlen, 
                               TEEC_SharedMemory *in ) {
@@ -226,27 +235,38 @@ TEEC_Result capsule_open( TEEC_Session *sess, TEEC_SharedMemory *in,
 }
 
 /* Remove the session from handling a particular capsule */
-TEEC_Result capsule_close( TEEC_Session *sess, bool flush, char* contents,
-                           uint32_t file_len, TEEC_SharedMemory *in, 
-                           TEEC_SharedMemory *out, uint32_t *out_size,
-                           char* new_contents ) {
+TEEC_Result capsule_close(TEEC_Session *sess, bool flush, char *contents,
+                          uint32_t file_len, TEEC_SharedMemory *in,
+                          TEEC_SharedMemory *out, uint32_t *out_size,
+                          char *new_contents)
+{
 
     uint32_t        ret_orig;
     TEEC_Operation  op;
     TEEC_Result     res = TEEC_SUCCESS;
 
+    char *temp_encrypted_buf = NULL;
+    uint32_t temp_encrypted_len= SHARED_MEM_SIZE+1;
+    temp_encrypted_buf = malloc(temp_encrypted_len);
+    memset(temp_encrypted_buf, 0, temp_encrypted_len);
+
+    // res = allocateSharedMem(&ctx, &temp_enc_mem);
+    // CHECK_RESULT(res, "test_%02d: allocateSharedMem() temp_enc_mem failed",
+    //              test_num);
+
     // Clear memory
-    memset( &op, 0, sizeof( TEEC_Operation ) );
+    memset(&op, 0, sizeof(TEEC_Operation));
     memset( in->buffer, 0, in->size );
     memset( out->buffer, 0, out->size );
+    //memset( temp_enc_mem->buffer, 0, temp_enc_mem->size);
 
     // Initialize input buffer
-    memcpy( in->buffer, contents, file_len );
+    memcpy(in->buffer, contents, file_len);
 
-    op.paramTypes = TEEC_PARAM_TYPES( TEEC_VALUE_INPUT,             // fsync/fflush flag
-                                      TEEC_MEMREF_PARTIAL_INPUT,    // new file contents
-                                      TEEC_MEMREF_PARTIAL_OUTPUT,   // contents to write
-                                      TEEC_NONE );
+    op.paramTypes = TEEC_PARAM_TYPES(TEEC_VALUE_INPUT,           // fsync/fflush flag
+                                     TEEC_MEMREF_PARTIAL_INPUT,  // new file contents
+                                     TEEC_MEMREF_PARTIAL_OUTPUT, // contents to write
+                                     TEEC_NONE);
 
     op.params[0].value.a = (uint32_t) flush;
     op.params[1].memref.parent = in;
@@ -255,25 +275,43 @@ TEEC_Result capsule_close( TEEC_Session *sess, bool flush, char* contents,
     op.params[2].memref.parent = out;
     op.params[2].memref.offset = 0;
     op.params[2].memref.size = *out_size;
+    // op.params[3].memref.parent = temp_enc_mem;
+    // op.params[3].memref.offset = 0;
+    // op.params[3].memref.size = &temp_encrypted_len;
+//TODO: fix this. the param can only be a registered memory. Either register, or look up xtest to identify the right way of using dynamic mem
 
     res = TEEC_InvokeCommand( sess, CAPSULE_CLOSE, &op, &ret_orig );
 
     if( res == TEEC_SUCCESS ) {
         *out_size = op.params[2].memref.size;
         new_contents = realloc(new_contents, *out_size);
+
+        temp_encrypted_len = op.params[1].memref.size;
+        temp_encrypted_buf = realloc(temp_encrypted_buf, temp_encrypted_len);
+
         if ( new_contents != NULL ) {
             memset(new_contents, 0, *out_size);
             memcpy( new_contents, out->buffer, *out_size );
             new_contents[*out_size] = '\0';
+
+            memset(temp_encrypted_buf, 0, temp_encrypted_len);
+            memcpy(temp_encrypted_buf, in->buffer, temp_encrypted_len);
+
         } else {
             *out_size = 0;
             res = TEEC_ERROR_OUT_OF_MEMORY;
             ret_orig = TEEC_ORIGIN_API;
         }
+        
     }
-    
-    return check_result( res, "TEEC_InvokeCommand->CAPSULE_CLOSE", 
-                         ret_orig );
+
+    FILE *concatenated_contents_file = NULL;
+    fopen("/root/cap_concatenated_contents.log", "w");
+    fwrite(temp_encrypted_buf, 1, temp_encrypted_len, concatenated_contents_file);
+    fclose(concatenated_contents_file);
+
+    return check_result(res, "TEEC_InvokeCommand->CAPSULE_CLOSE",
+                        ret_orig);
 }
 
 /* Open a network connection for the TEE */
@@ -387,7 +425,7 @@ TEEC_Result capsule_close_connection( TEEC_Session *sess, int fd ) {
 }
 
 TEEC_Result capsule_send( TEEC_Session *sess, TEEC_SharedMemory *in, 
-                          char* buf, uint32_t blen, SERVER_OP s_op, 
+                          char* buf, uint32_t blen, SERVER_REQ s_op, 
                           int rv, int fd, int *nw ) {
     
     TEEC_Result    res = TEEC_SUCCESS;

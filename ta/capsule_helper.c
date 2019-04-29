@@ -2,7 +2,7 @@
 #include <tee_api_defines.h>
 #include <tee_internal_api_extensions.h>
 #include <string.h>
-#include <capsule.h>
+#include <capsuleCommon.h>
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
@@ -11,180 +11,16 @@
 #include "capsule_structures.h"
 #include "capsule_helper.h"
 
-
-unsigned long long read_cntpct(void) {
-    unsigned long long ts;
+uint64_t read_cntpct(void) {
+    uint64_t ts;
 //#ifdef HIKEY
 //  asm volatile( "mrs %0, cntpct_el0" : "=r" (ts) );
 //#else
-    asm volatile( "mrrc p15, 0, %Q0, %R0, c14" : "=r" (ts) );
+    // volatile( "mrrc p15, 0, %Q0, %R0, c14" : "=r" (ts) );
 //#endif
     return ts;
 }
 
-
-int getfield( lua_State *L, int key, int tindex ) {
-    int result;
-    lua_geti( L, tindex, key ); /* Pops key, puts t[key] */
-    if( !lua_isinteger( L, -1 ) ) 
-        luaL_error( L, "Redact array must be integers" );
-    result = lua_tointeger( L, -1 );
-    lua_pop( L, 1 ); /* Remove number */
-    return result;
-}
-
-
-// TEE_Result lua_read_redact( lua_State *L, int state_tgid, int state_fd,
-//                          unsigned char *bp, uint32_t len ) {
-
-//  int                      cur_stack = lua_gettop( L );
-//  int                      start, end, table, table_start, table_end;
-//  unsigned int             i;
-//  char                     replace_char[2];
-//  TEE_Result               res = TEE_SUCCESS;
-//  struct cap_text_entry   *cap_entry;
-
-//  /* Default replacement character */
-//  replace_char[0] = ' ';
-//  replace_char[1] = '\0';
-
-//  res = lua_get_replacement_char( L, replace_char );
-//  CHECK_SUCCESS( res, "lua_get_replacement_char() error" );
-
-//  lua_getglobal( L, REDACT_OFFSETS );
-
-//  if( !lua_isnil( L, -1 ) ) {
-//      if( !lua_istable( Lstate, -1 ) ) {
-//          res = TEE_ERROR_NOT_SUPPORTED;
-//          CHECK_SUCCESS( res, "'%s' should be a table", REDACT_OFFSETS );
-//      }
-
-//      table = lua_gettop( L );
-
-//      cap_entry = find_capsule_entry( &cap_head.proc_entries, state_tgid, state_fd );
-//      if( cap_entry == NULL ) {
-//          res = TEE_ERROR_NOT_SUPPORTED;
-//          CHECK_SUCCESS( res, "find_capsule_entry() -> tgid/fd %d/%d not found", 
-//                         state_tgid, state_fd );  
-//      }
-
-//      start = cap_entry->data_pos - cap_head.data_begin - len;
-//      end = cap_entry->data_pos - cap_head.data_begin;
-
-//      // MSG( "start: %d, end: %d", start, end );
-
-//      for( i = 1; i <= lua_rawlen( L, table ); i=i+2 ) {
-//          table_start = getfield( L, i, table );
-//          table_end = getfield( L, i+1, table );
-//          // MSG( "table_start: %d, table_end: %d", table_start, table_end );
-    
-//          if( start > table_start && end > table_end && table_end >= start ) {    
-//               <------------>
-//              *        <----------------------------> 
-//              memset( bp, replace_char[0], table_end - start + 1 );
-//          } else if( table_start > start && table_end > end && end >= table_start ) {
-//              /*                                <------------>
-//              *       <----------------------------> */
-//              memset( bp + table_start - start, replace_char[0], end - table_start + 1);
-//              break;
-//          } else if( table_start >= start && table_end <= end ) {
-//              /*                 <-------->
-//              *       <-----------------------------> */
-//              memset( bp + table_start - start, replace_char[0], table_end - table_start + 1 ); 
-//          } else if( table_start < start && table_end > end ) {
-//              /*  <------------------------------------------>
-//              *       <-----------------------------> */
-//              memset( bp, replace_char[0], len );
-//              break;
-//          }
-//          /* <-->
-//           *        <----------------------------> */ 
-        
-//          /*                                        <---->
-//           *        <----------------------------> */
-//      }
-//  }
-
-//  lua_settop( L, cur_stack );
-
-//  return res;
-// }
-
-// TEE_Result lua_get_replacement_char( lua_State *L, char* replace ) {
-//     int res = TEE_SUCCESS;
-//     const char* temp;
-//     size_t len;
-
-//     lua_getglobal( L, REPLACE_CHAR );
-//     if ( !lua_isstring( L, -1 ) ) {
-//         res = TEE_ERROR_NOT_SUPPORTED;
-//         CHECK_SUCCESS( res, "'%s' should be a string", REPLACE_CHAR );
-//     }
-
-//     temp = lua_tolstring( L, -1, &len );
-//     memcpy( replace, temp, len );
-
-//     lua_pop( L, 1);
-
-//     return TEE_SUCCESS;
-// }
-
-/* Get the secure server address */
-TEE_Result lua_get_server_ip_port( lua_State *L, char* ts, int* port ) {
-
-    int res = TEE_SUCCESS;  
-    const char* temp;
-    size_t      len;
-
-    lua_getglobal( L, SERVER_IP );
-    if( !lua_isstring( L, -1 ) ) {
-        res = TEE_ERROR_NOT_SUPPORTED;
-        CHECK_SUCCESS( res, "'%s' should be a string", SERVER_IP );
-    }
-
-    temp = lua_tolstring( L, -1, &len );
-    memcpy( ts, temp, len );
-    lua_pop( L, 1 );
-
-    lua_getglobal( L, SERVER_PORT );
-    if( !lua_isinteger( L, -1 ) ) {
-        res = TEE_ERROR_NOT_SUPPORTED;
-        CHECK_SUCCESS( res, "'%s' should be an integer", SERVER_PORT );
-    }
-
-    *port = lua_tointeger( L, -1 );
-    lua_pop( L, 1 );
-
-    return TEE_SUCCESS;
-}
-
-/* Load a policy file into Lua interpreter */
-TEE_Result lua_load_policy( lua_State *L, const char* buf ) {
-
-    int res = TEE_SUCCESS;
-    int ret = luaL_loadstring( L, buf ) || 
-              lua_pcall( L, 0, 0, 0 );
-    if( ret != LUA_OK ) {
-        res = TEE_ERROR_NOT_SUPPORTED;
-        CHECK_SUCCESS( res, "policy Lua file cannot be run >> error"
-                            " code %d", ret );
-    }
-
-    return res;
-}   
-
-/* Start a new Lua context */
-void lua_start_context( lua_State **L ) {
-    *L = luaL_newstate();
-    luaL_openlibs( *L );
-}
-
-/* Close a Lua context */
-void lua_close_context( lua_State **L ) {
-    if( *L != NULL )
-        lua_close( *L );
-    *L = NULL;
-}
 
 /* Performs encryption and decryption for a piece of data */
 TEE_Result process_aes_block( unsigned char* ctx, size_t clen,
@@ -198,7 +34,8 @@ TEE_Result process_aes_block( unsigned char* ctx, size_t clen,
     cnt_a = read_cntpct();
     
     if( first ) {
-        TEE_CipherInit( op, iv, iv_len, ctr );
+        TEE_CipherInit( op, iv, iv_len ); 
+	//TEE_CipherInit( op, iv, iv_len, ctr );
     }
 
     if( last ) {
@@ -232,7 +69,7 @@ TEE_Result hash_block( unsigned char* ptx, size_t plen,
 
     cnt_a = read_cntpct();
 
-    if( hlen != HASH_LEN ) {
+    if( hlen != HASHLEN ) {
         return TEE_ERROR_NOT_SUPPORTED;
     }
 
@@ -269,7 +106,7 @@ void initialize_capsule_text( struct capsule_text* p ) {
     memset(&(p->header), 0, sizeof(struct TrustedCap));
     p->policy_len = 0;
     p->log_len = 0;
-    p->kv_store_len = 0;
+    p->kv_store = NULL;
     p->data_len = 0;
     p->ref_count = 0;
 }
@@ -279,13 +116,14 @@ void finalize_capsule_text( struct capsule_text* p ) {
     memset(&(p->header), 0, sizeof(struct TrustedCap));
     p->policy_len = 0;
     p->log_len = 0;
-    p->kv_store_len = 0;
+    p->kv_store = NULL;
     p->data_len = 0;
     p->data_shadow_len = 0;
 
     TEE_Free(p->policy_buf);
     TEE_Free(p->log_buf);
-    TEE_Free(p->kv_store_buf);
+    TEE_Free(p->kv_store);
+    //TODO: check if the kv_store hashmap can be deallocated with TEE_Malloc
     TEE_Free(p->data_buf);
     TEE_Free(p->data_shadow_buf);
 }
@@ -397,7 +235,8 @@ TEE_Result find_key( struct TrustedCap *h,
                     "TEE_SetOperationKey() Error" );
     
         cnt_a = read_cntpct();
-        TEE_CipherInit( *dec_op, iv, iv_len, 0 );
+        TEE_CipherInit( *dec_op, iv, iv_len );
+	//TEE_CipherInit( *dec_op, iv, iv_len, 0 );
 
         res = TEE_CipherDoFinal( *dec_op, (void*) h->aes_id,
                                  sizeof(uint32_t), 
@@ -480,7 +319,8 @@ TEE_Result fill_header( struct TrustedCap* cap,
     
     /* Encrypt the capsule ID */
     cnt_a = read_cntpct();
-    TEE_CipherInit( op, iv, iv_len, 0 );
+    TEE_CipherInit( op, iv, iv_len );
+    //TEE_CipherInit( op, iv, iv_len, 0 );
     res = TEE_CipherDoFinal( op, ( char*) &id, sizeof(uint32_t), 
                              cap->aes_id, &id_len );
     cnt_b = read_cntpct();
@@ -506,11 +346,14 @@ void read_header( unsigned char* file_contents, struct TrustedCap* cap ) {
 //     memcpy(&cap_head.header, cap, sizeof(struct TrustedCap));
 //     return 0;
 // }
-
+void find_str_ends(char *string, size_t inlen){
+    
+    
+}
 void parse_kv_store( unsigned char* input, size_t inlen, 
                      struct capsule_text* cap ) {
     unsigned char*  pairs[MAX_NUM_KEYS]; // Make array of maximum key, value pairs
-    struct kv_pair  kv_store[MAX_NUM_KEYS];
+    //struct kv_pair  kv_store[MAX_NUM_KEYS];
     int             last = 0,
                     start = 0,
                     end = 0,
@@ -520,15 +363,28 @@ void parse_kv_store( unsigned char* input, size_t inlen,
     bool            matched = false;
     unsigned char*  delim = (unsigned char*) ";";
     int             delim_len = strlen((char*) delim);
-
+    
     // First pass to parse into key value pairs
+    int i = 0;
+    while (i < inlen)
+    {
+        if (input[i] == '\0')
+        {
+            //DMSG("\nfound \\0 at i = %d\n", i);
+        }
+        i++;
+    }
     do {
         // Must set matched to false or find_delimiter will just return 0
         matched = false;
 
         // Find the range at which the delimiter exists
+        //DMSG("\n\n%s,%d,%d,%d,%d,%d,%d,%s,%d\n\n", input, last, inlen, start, end, match_state, matched, delim, delim_len);
+
         find_delimiter(input+last, inlen - last, &start, &end, &match_state, 
                        &matched, delim, delim_len);
+        
+        //DMSG("\n\n%s,%d,%d,%d,%d,%d,%d,%s,%d\n\n", input, last, inlen, start, end, match_state, matched, delim, delim_len);
 
         // MAX_NUM_KEYS is a hack to avoid having to do two passes for KV pairs
         // We could do away with MAX_NUM_KEYS and do one pass finding the number
@@ -536,36 +392,51 @@ void parse_kv_store( unsigned char* input, size_t inlen,
         if (total_num < MAX_NUM_KEYS) {
             // Need to differentiate between all cases and the last case. 
             if (matched == true) {
+                
+
                 // Since find_delimiter starts at input+last, start holds the
                 // size of the range (find_delimiter treats input+last as offset
                 // 0).
                 pairs[total_num] = TEE_Malloc(start * sizeof(unsigned char), 0);
+                
 
                 // Copy over the range (starting at input+last and ending at 
                 // start) 
                 TEE_MemMove(pairs[total_num], input + last, start);
+                
 
                 // Make sure it is null terminated, use start - 1 because we 
                 // want to get rid of the ';'
                 pairs[total_num][start - 1] = '\0';
+                DMSG("\npairs[0] is %s\n", pairs[total_num]);
+                
 
                 // Advance the offset to check
                 last += end;
+                
 
                 // Increment the total number of keys
                 total_num++;
+                
             } else {
                 // This is a special case because it will not have a start and
                 // end value (because the match failed). So we assume it is the
                 // last range.
                 pairs[total_num] = TEE_Malloc((inlen - last) * sizeof(unsigned char), 0);
-                TEE_MemMove(pairs[total_num], input+last, (inlen - last));
+                
+
+                TEE_MemMove(pairs[total_num], input+last, (inlen - last-1));
+                
 
                 // This removes the \n character
                 pairs[total_num][(inlen - last - 1)] = '\0';
+                // DMSG("\npairs :%d, %d, %d\n", total_num, inlen, last);
+                // DMSG("\nthe value currently there: %d\n", strlen(pairs[total_num]));
+                // DMSG("\nthe value currently there: %s\n", pairs[total_num]);
 
                 // Increment the total number of keys
                 total_num++;
+                
 
                 // Technically not necessary, as matched should equal false
                 break;
@@ -576,97 +447,134 @@ void parse_kv_store( unsigned char* input, size_t inlen,
     // Change the delimiter to the key, value pair delimiter
     // Might want to think about making this a global variable
     delim = (unsigned char*) ":";
+    
 
     // Parse each pair
     for (int i = 0; i < total_num; i++) {
         // Get the length of the kv pair
+        
+
         pair_len = strlen((char*) pairs[i]);
+        
 
         // Initialize the find_delimiter variables
         last = 0, start = 0, end = 0;
         matched = false;
+        
 
         find_delimiter( pairs[i], pair_len, &start, &end, &match_state, 
                        &matched, delim, delim_len);
+        
 
         // Create memory for the key (size start)
-        kv_store[i].key = TEE_Malloc(start * sizeof(unsigned char), 0);
-
+        struct kv_pair *kv_datum = TEE_Malloc(sizeof(struct kv_pair),0);
+        
+        kv_datum->key = TEE_Malloc(start * sizeof(unsigned char), 0);
+        //DMSG("\n src=%s, len=%d \n",pairs[i],start);
         // Copy the key (starting at pairs[i] with size start)
-        TEE_MemMove(kv_store[i].key, pairs[i], start);
-
+        TEE_MemMove(kv_datum->key, pairs[i], start);
+        //strncpy(kv_datum->key,pairs[i],start);
+        
         // Null terminate the key (removing the delimiter)
-        kv_store[i].key[start - 1] = '\0';
-
+        kv_datum->key[start - 1] = '\0';
+        int key_len = strlen(kv_datum->key);
+        //DMSG("key is %s of length %d\n\n", kv_datum->key, key_len);
         // Update the key length
-        kv_store[i].key_len = strlen((char*) kv_store[i].key);
-
+        kv_datum->key_len = key_len;
         // Advance the offset and clear the matched variable
         last += end;
         matched = false;
-
+        
         find_delimiter( pairs[i]+last, pair_len - last, &start, &end, &match_state, 
                        &matched, delim, delim_len);
-
+        
         // Create memory for the value, since it doesn't have a delimiter,
         // increase the size by one (for the null terminator)
-        kv_store[i].value = TEE_Malloc((pair_len - last + 1) * sizeof(unsigned char), 0);
-
+        kv_datum->value = TEE_Malloc((pair_len - last + 1) * sizeof(unsigned char), 0);
+        
         // Copy the value over (starting at pairs[i] + last with size pair_len -
         // last)
-        TEE_MemMove(kv_store[i].value, pairs[i] + last, (pair_len - last));
+        TEE_MemMove(kv_datum->value, pairs[i] + last, (pair_len - last));
         
         // Null terminate the string
-        kv_store[i].value[(pair_len - last)] = '\0';
-
+        kv_datum->value[(pair_len - last)] = '\0';
+        
         // Update the length for value
-        kv_store[i].val_len = strlen((char*) kv_store[i].value);
+        kv_datum->val_len = strlen(kv_datum->value);
+        //DMSG("\n\nINSERTING INTO THE KV STORE <%s,%s>, (%d,%d)\n\n",
+                    // kv_datum->key, kv_datum->value,
+                    // kv_datum->key_len, kv_datum->val_len);
+        kv_pair *temp = NULL;
+        
+        HASH_FIND_STR(cap->kv_store, kv_datum->key, temp);
+        
+        if (temp == NULL)
+        {
+            HASH_ADD_KEYPTR(hh, cap->kv_store, kv_datum->key, kv_datum->key_len,kv_datum );
+        }
     }
 
     // Malloc the space for the array of KV pairs
-    cap->kv_store_buf = TEE_Malloc(sizeof(struct kv_pair) * total_num, 0); // Allocate memory
+    //cap->kv_store_buf = TEE_Malloc(sizeof(struct kv_pair) * total_num, 0); // Allocate memory
     
     // Copy the temp array into the global one
-    TEE_MemMove(cap->kv_store_buf, kv_store, sizeof(struct kv_pair) * total_num);
+    //TEE_MemMove(cap->kv_store_buf, kv_store, sizeof(struct kv_pair) * total_num);
     
     // Update the number of items
+    //DMSG("\ntotal_num = %d \n", total_num);
     cap->kv_store_len = total_num;
 }
-
-void serialize_kv_store( unsigned char* kv_string, size_t total_len ) {
+//location: Vancouver, BC;doctor:Dr. Bill;insurer:UBC Health
+void serialize_kv_store( char* kv_string, int total_len) {
     int last = 0;
-
+    //DMSG("\n%s,%d\n", kv_string, total_len);
     // Iterate through the list of key value pairs to create a string
-    for (unsigned int i = 0; i < cap_head.kv_store_len; i++) {
+    kv_pair *temp;
+    for (temp = (&cap_head)->kv_store; temp != NULL; temp = temp->hh.next) {
         // Size the kv pair string (key_len, val_len, 1 for ':', 1 for ';', and
         // one for \0)
-        int str_len = cap_head.kv_store_buf[i].key_len + 1 + 
-                      cap_head.kv_store_buf[i].val_len + 1 + 1;
-
+        int str_len = temp->key_len + 1 + 
+                      temp->val_len + 1+1;
+        //DMSG("\ncalculated str_len is %d\n", str_len);
         // Temp string
-        char temp[str_len];
+        char tempStr[str_len];
 
         // Format the values into our temp string
-        snprintf( temp, str_len, "%s:%s;", 
-                 cap_head.kv_store_buf[i].key, cap_head.kv_store_buf[i].value);
-        
+        snprintf( tempStr, str_len, "%s:%s;", 
+                temp->key, temp->value);
+        //DMSG("\nconcatednated line is %s\ninserting at %d\nchar at loc %c",tempStr,last,kv_string[last]);
         // Copy the temp string into our final string
-        TEE_MemMove(kv_string + last, temp, str_len);
-        
+        TEE_MemMove(kv_string + last, tempStr, str_len);
+        //DMSG("\nkv_string is: %s\n", kv_string);
         // Increase the offset, but subtract one to overwrite the null terminator
-        last += str_len - 1;
+        last += str_len-1;
+        //DMSG("\nlast=%d,strl_len=%d,total_len=%d\n",last,str_len,total_len);
     }
-
-    // Add null terminator at end
+    kv_string[total_len - 1] = '\0';
     kv_string[total_len] = '\0';
+
+    DMSG("\n%s,%d\n", kv_string, total_len);
+    char temp_Str[256] = "";
+    for(int i =0;i<=total_len; i++){
+        if(kv_string[i]=='\0'){
+            temp_Str[i] = '$';
+        }else{
+            temp_Str[i] = kv_string[i];
+        }
+         
+    }
+    DMSG("\n\nserialized_conv_kv_Store\n%s\n\n",temp_Str);
 }
 
 int get_kv_string_len( void ) {
     int kv_len = 0;
+    
     // Figure out how large to make the key-value store buffer
-    for (unsigned int i = 0; i < cap_head.kv_store_len; i++) {
-        kv_len += cap_head.kv_store_buf[i].key_len + 1; // Key + :
-        kv_len += cap_head.kv_store_buf[i].val_len + 1; // Val + ;
+    kv_pair *temp;
+    for (temp = (&cap_head)->kv_store; temp != NULL; temp = temp->hh.next) {
+        kv_len += temp->key_len + 1 ;//+1 for :
+        kv_len += temp->val_len +1 ;//+1 for ;
+        //DMSG("K,V,key_l,val_l:= %s,%s,%d,%d", temp->key,temp->value,temp->key_len,temp->val_len);
     }
     return kv_len;
 }
@@ -726,29 +634,30 @@ void sep_parts( unsigned char* input, size_t inlen,
     unsigned int    match_state = 0;
     bool            matched;
     unsigned char   delimiter[DELIMITER_SIZE] = DELIMITER;
-
     // Loop to parse the parts
+    //DMSG("\n\n\n\nPTX is\n\n\n%s\n----END---\n", input);
     do {
         matched = false;
         find_delimiter(input+last, inlen - last, &start, &end, &match_state, 
                        &matched, delimiter, DELIMITER_SIZE);
-
         // We have a fixed number of capsule parts. 
-        // TODO: make 4 a global variable
-        if (index < 4) {
+        // DONE make 4 a global variable
+        if (index < TC_FILE_PARTS)
+        {
             if (matched == true) {
                 // Create space for this part
+                
                 parts[index] = TEE_Malloc(start * sizeof(unsigned char)+1, 0);
-
+                
                 // Copy the data over
                 TEE_MemMove(parts[index], input + last, start);
-
+                
                 // Null terminate it
                 parts[index][start] = '\0';
-
+                           
                 // Move offset pointer forward
                 last += end;
-
+                DMSG("\n\n parts[%d]\n%s", index, parts[index]);
                 // Increase the part array index
                 index++;
             } else {
@@ -757,9 +666,11 @@ void sep_parts( unsigned char* input, size_t inlen,
                 parts[index] = TEE_Malloc((inlen - last) * sizeof(unsigned char)+1, 0);
                 TEE_MemMove(parts[index], input+last, (inlen - last));
                 parts[index][(inlen - last) * sizeof(unsigned char)] = '\0';
+                DMSG("\n\n parts[%d]\n%s", index, parts[index]);
                 index++;
                 break;
             }
+            
         }
     } while(matched == true);
 
@@ -772,6 +683,8 @@ void sep_parts( unsigned char* input, size_t inlen,
     TEE_MemMove(cap->policy_buf, parts[0], cap->policy_len);
 
     // Pass the kv part to the parser
+    //DMSG("\n\n before parse kvs\n\n");
+    //DMSG("about to parse kv store %s, size of kvstring is %d",parts[1],strlen((char *)parts[1]));
     parse_kv_store(parts[1], strlen((char *) parts[1]), cap);
 
     cap->log_len = strlen((char *) parts[2]);
@@ -792,6 +705,7 @@ void sep_parts( unsigned char* input, size_t inlen,
     for (int i = 0; i < 4; i++) {
         TEE_Free(parts[i]);
     }
+    DMSG("\nhere\n");
 }
 
 /* De-serialize the AES key */

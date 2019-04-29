@@ -17,3 +17,10 @@ main
 *.map
 *.ta
 *.lds
+*.swp
+*.capsule
+*.plaintext
+cprov
+cgen
+.vscode
+log_viewer

@@ -13,18 +13,6 @@ struct attr_packed {
 unsigned long long read_cntpct(void);
 
 /*
- * Lua operations
- */
-int getfield( lua_State *L, int key, int tindex ); 
-// TEE_Result lua_read_redact( lua_State *L, int state_tgid, int state_fd,
-//                          unsigned char *bp, uint32_t len );
-// TEE_Result lua_get_replacement_char( lua_State *L, char* replace );
-TEE_Result lua_get_server_ip_port( lua_State *L, char* ts, int* port );
-TEE_Result lua_load_policy( lua_State *L, const char* buf );
-void lua_start_context( lua_State **L );
-void lua_close_context( lua_State **L );
-
-/*
  * Process a block of data (encrypt/decrypt)
  */
 TEE_Result process_aes_block( unsigned char* ctx, size_t clen,
@@ -69,7 +57,7 @@ void read_header( unsigned char* file_contents, struct TrustedCap* cap );
 /*
  * Parsing operations
  */
-void serialize_kv_store( unsigned char* kv_string, size_t length );
+void serialize_kv_store( char* kv_string, int len);
 void parse_kv_store( unsigned char* input, size_t length, 
                      struct capsule_text* cap );
 int get_kv_string_len( void );

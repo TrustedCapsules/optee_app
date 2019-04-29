@@ -9,8 +9,8 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
-#include <capsule.h>
-#include <aes_keys.h>
+#include <capsuleCommon.h>
+#include <capsuleKeys.h>
 #include <time.h>
 #include <stdlib.h>
 #include "err_ta.h"

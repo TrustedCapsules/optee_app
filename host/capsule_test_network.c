@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-#include <capsule.h>
-#include <aes_keys.h>
+#include <capsuleCommon.h>
+#include <capsuleKeys.h>
 #include <time.h>
 #include <stdlib.h>
 #include "err_ta.h"

@@ -1,7 +1,7 @@
 #ifndef USER_TA_HEADER_DEFINES_H
 #define USER_TA_HEADER_DEFINES_H
 
-#include <capsule.h>
+#include <capsuleCommon.h>
 
 #define TA_UUID CAPSULE_UUID
 

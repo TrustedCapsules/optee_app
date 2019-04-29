@@ -2,15 +2,32 @@
 #include <tee_api_defines.h>
 #include <tee_internal_api_extensions.h>
 #include <stdlib.h>
-#include <string.h>
-#include <capsule.h>
-#include <amessage.pb-c.h>
-#include <serialize_common.h>
+//#include <string.h>
+#include <capsuleCommon.h>
+#include <capsulePolicy.h>
+#include <capsuleServerProtocol.h>
+#include <capsuleKeys.h>
 #include <lua.h>
 #include "capsule_structures.h"
 #include "capsule_helper.h"
+#include "network_helper.h"
+#include "lua_helpers.h"
 #include "capsule_op.h"
 #include "capsule_ta.h"
+
+int rand_tc_defn(void)
+{
+    int rc;
+
+    TEE_GenerateRandom(&rc, sizeof(rc));
+    /*
+	 * RAND_MAX is the larges int, INT_MAX which is all bits but the
+	 * highest bit set.
+     * Changed this back to INT_MAX -- RAND_MAX had conflicting 
+     * definitions somehow
+	 */
+    return rc & INT_MAX;
+}
 
 TEE_Result do_register_aes( uint32_t keyType, uint32_t id, uint32_t keyLen, 
                             uint8_t* attr, uint32_t attrlen,
@@ -37,30 +54,30 @@ TEE_Result do_register_aes( uint32_t keyType, uint32_t id, uint32_t keyLen,
         // Should be 4 instead of 5. (remove chunk size)
         total_size = attrlen + ivlen + 5*sizeof(uint32_t);
         
-        DMSG( "Write %u B of AES key 0x%08x to sec. storage",
-             total_size, id );
+        //DMSG( "Write %u B of AES key 0x%08x to sec. storage",
+        //     total_size, id );
 
         data_buffer = TEE_Malloc( total_size, 0 );
         it = data_buffer;
 
         //total_size less size of total_size 
         *(uint32_t*) (void*) it = total_size - sizeof(uint32_t);
-        DMSG( "First 4 bytes: %u", *(uint32_t*)(void*) it );       
+        //DMSG( "First 4 bytes: %u", *(uint32_t*)(void*) it );       
         it += sizeof(uint32_t);
 
         //key_len
         *(uint32_t*) (void*) it = keyLen;                
-        DMSG( "Second 4 bytes: %u", *(uint32_t*)(void*) it );       
+        //DMSG( "Second 4 bytes: %u", *(uint32_t*)(void*) it );       
         it += sizeof(uint32_t);
 
         //key_id
         *(uint32_t*) (void*) it = id;               
-        DMSG( "Third 4 bytes: %08x", *(uint32_t*)(void*) it );    
+        //DMSG( "Third 4 bytes: %08x", *(uint32_t*)(void*) it );    
         it += sizeof(uint32_t);
 
         //iv_size
         *(uint32_t*) (void*) it = ivlen;            
-        DMSG( "Fourth 4 bytes: %u", *(uint32_t*)(void*) it );      
+        //DMSG( "Fourth 4 bytes: %u", *(uint32_t*)(void*) it );      
         it += sizeof(uint32_t);
 
         //iv
@@ -83,7 +100,9 @@ TEE_Result do_register_aes( uint32_t keyType, uint32_t id, uint32_t keyLen,
 
 }
 
-TEE_Result do_open( unsigned char* file_contents, int file_size ) {
+TEE_Result
+do_open(unsigned char *file_contents, int file_size)
+{
 
     TEE_Result          res = TEE_SUCCESS;
     struct TrustedCap   header;
@@ -103,6 +122,7 @@ TEE_Result do_open( unsigned char* file_contents, int file_size ) {
         read_header(file_contents, &header);
 
         // If we have not loaded key info (again global), do so.
+        DMSG("here");
         if( aes_key_setup == false ) {
             res = find_key( &header, keyFile, &decrypt_op, &encrypt_op,
                             &hash_op, &symm_id, &symm_iv_len, &symm_key_len,
@@ -123,11 +143,14 @@ TEE_Result do_open( unsigned char* file_contents, int file_size ) {
         ptx[ptxlen] = '\0';
 
         // Parse out the file into specific buffers. 
+        //DMSG("\n\nsepparts\n\n");
+        
         sep_parts(ptx, ptxlen, &cap_head);
     }
 
     // Increase the reference count for this capsule
     // cap_head.ref_count++;
+    DMSG("here");
 
     return res;
 }
@@ -146,19 +169,21 @@ unsigned char* do_close( TEE_Result policy_res, size_t *cap_to_write_len,
                     encrypt_len,        // length of concatenated and encrypted buffers
                     kv_len = 0,         // length of kv string
                     header_len,         // size of header
-                    hlen = HASH_LEN;    // length of hash (should be 32)
+                    hlen = HASHLEN;    // length of hash (should be 32)
 
     int             last = 0,           // current append spot in concat data
                     init_ctr = 0;       // initial counter for hash
 
-    unsigned char   hash[HASH_LEN];     // new hash for encrypted data
+    unsigned char   hash[HASHLEN];     // new hash for encrypted data
 
     if (policy_res != TEE_SUCCESS) {
+        //DMSG("\n\n");
         // If the policy did not pass, use data buffer
         data = cap_head.data_buf;
         datalen = cap_head.data_len;
     } else {
         // If the policy passed, we need to use the requested write data
+        //DMSG("\n\n");
         data = cap_head.data_shadow_buf;
         datalen = cap_head.data_shadow_len;
     }
@@ -205,8 +230,13 @@ unsigned char* do_close( TEE_Result policy_res, size_t *cap_to_write_len,
     // Make sure the concatenated_data string ends with a null terminator
     concatenated_data[last] = '\0';
 
+    DMSG("\n\nconcatenated_data\n%s\n\n", concatenated_data);
+    temp_encrypted = TEE_Malloc(encrypt_len, 0);
+    memcpy(temp_encrypted, concatenated_data, encrypt_len);
+    
+
     // Encrypt the data into a temp string (encrypted_data)
-    res = process_aes_block(concatenated_data, encrypt_len, encrypted_data, 
+    res = process_aes_block(concatenated_data, encrypt_len, encrypted_data,
                             &encrypt_len, symm_iv, symm_iv_len, init_ctr, true,
                             true, encrypt_op);
     if( res != TEE_SUCCESS ) {
@@ -218,14 +248,14 @@ unsigned char* do_close( TEE_Result policy_res, size_t *cap_to_write_len,
     // Update header hash values and size
     res = hash_block(encrypted_data, encrypt_len, hash, hlen, true, hash_op);
     if( res != TEE_SUCCESS ) {
-        DMSG( "hash_block() Error" );
+        //DMSG( "hash_block() Error" );
         return NULL;
     }
 
     // TA side check for no-op capsule (i.e., hash should not change)    
     // for (unsigned int i = 0; i < hlen; i++) {
     //     if (cap_head.header.hash[i] != hash[i]) {
-    //         DMSG("%d: %02x != %02x", i, cap_head.header.hash[i], hash[i]);
+    //         //DMSG("%d: %02x != %02x", i, cap_head.header.hash[i], hash[i]);
     //     }
     // }
 
@@ -268,12 +298,16 @@ TEE_Result do_run_policy( lua_State *L, const char* policy, SYSCALL_OP n ) {
     int  cur_stack = lua_gettop(L);
     bool eval, pol_changed;
     uint64_t cnt_a, cnt_b;
+    DMSG("\npolicy string is %s",policy);
 
     cnt_a = read_cntpct();
     do {
         /* Call lua policy function */
+        DMSG("\n\n");
         lua_getglobal( L, policy );
+        DMSG("\n\n");
         lua_pushnumber( L, n ); /* policy takes a number argument */
+        DMSG("\n\n");
         ret = lua_pcall( L, 1, 2, 0 );
         if( ret != LUA_OK ) {
             res = TEE_ERROR_NOT_SUPPORTED;
@@ -282,6 +316,7 @@ TEE_Result do_run_policy( lua_State *L, const char* policy, SYSCALL_OP n ) {
         }
 
         if( !lua_isboolean( L, -1 ) ) {
+            DMSG("\nhere\n");
             res = TEE_ERROR_NOT_SUPPORTED;
             CHECK_SUCCESS( res, "Func '%s:%d' must return a boolean",
                                 policy, n );
@@ -299,6 +334,7 @@ TEE_Result do_run_policy( lua_State *L, const char* policy, SYSCALL_OP n ) {
     } while( pol_changed == true );
 
     if( !lua_isboolean( L, -2 ) ) {
+        DMSG("\nhere\n");
         res = TEE_ERROR_NOT_SUPPORTED;
         CHECK_SUCCESS( res, "Func '%s:%d' must return a boolean",
                             policy, n );
@@ -306,7 +342,7 @@ TEE_Result do_run_policy( lua_State *L, const char* policy, SYSCALL_OP n ) {
 
     eval = lua_toboolean( L, -2 );
     DMSG( "Function '%s:%d' evaluated to %s", policy, n,
-      eval == true ? "true" : "false" );
+    	eval == true ? "true" : "false" );
     if( eval == false ) {
         res = TEE_ERROR_POLICY_FAILED;
     }
@@ -327,7 +363,9 @@ TEE_Result do_load_policy(void) {
     cnt_a = read_cntpct();
 
     /* Load the policy into Lua */
+    //DMSG("\npolicy text is %s\n\n\n",cap_head.policy_buf);
     res = lua_load_policy( Lstate, (const char*) cap_head.policy_buf );
+    DMSG("\n\n");
     CHECK_SUCCESS( res, "load_policy() Error" );
 
     cnt_b = read_cntpct();
@@ -475,45 +513,58 @@ TEE_Result do_send_connection( int fd, void *buf, int *len ) {
     return res;
 }
 
-    
-TEE_Result do_send( int fd, void *buf, int *len, int op_code, int rv ){
+
+TEE_Result do_send( int fd, void *buf, size_t len, int op_code, int rv ){
     
     TEE_Result res = TEE_SUCCESS;
     uint8_t    header[HEADER_SIZE];
-    int        hdr_len = HEADER_SIZE;
     size_t     hlen = HEADER_SIZE;
-    size_t     plen = *len;
+    size_t     plen = len;
+    char* device_id = "";
+    msgReqHeader msg = {0};
 
     //MSG( "hdr_len %d B", hdr_len );
 
-    serialize_hdr( symm_id, op_code, buf, *len, rv, curr_cred,
-                   header, hdr_len );   
-    
+    res = serialize_hdr( symm_id, op_code, plen, device_id, 0, &msg );
+    CHECK_SUCCESS( res, "serialize_hdr() failed" );
+
+    if ( sizeof(msgReqHeader) >= hlen ) {
+        res = TEE_ERROR_SHORT_BUFFER;
+        CHECK_SUCCESS( res, "msgReqHeader is larger than HEADER_SIZE" );
+    }
+
+    TEE_MemMove( header, &msg, sizeof( msgReqHeader ) );
+
     //MSG( "header decrypted: %02x%02x%02x%02x %02x%02x%02x%02x", 
     //    header[0], header[1], header[2], header[3],
     //        header[48], header[49], header[50], header[51] );
     
-    process_aes_block( header, hlen, header, &hlen, symm_iv, 
-                       symm_iv_len, 0, true, true, encrypt_op );
+    res = process_aes_block( header, hlen, header, &hlen, ivDefault, sizeof(ivDefault), 0, true, true, encrypt_op );
+
+    CHECK_SUCCESS( res, "process_aes_block() of serialized header failed." );
 
     //MSG( "header encrypted: %02x%02x%02x%02x %02x%02x%02x%02x", 
     //    header[0], header[1], header[2], header[3],
     //    header[48], header[49], header[50], header[51] );
 
-
-    res = do_send_connection( fd, header, &hdr_len );
+    res = do_send_connection( fd, header, &hlen );
     CHECK_SUCCESS( res, "do_send_connection() header failed" ); 
 
     //MSG( "payload: %s len %d", (char*) buf, *len );
-    if( *len > 0 ) {
-        process_aes_block( buf, plen, buf, &plen, symm_iv, symm_iv_len,
-                           0, true, true, encrypt_op );
+    if( plen > 0 ) {
+	size_t payload_msg_size = sizeof(msgPayload) + plen;
+	unsigned char* payload_msg = TEE_Malloc(payload_msg_size, 0);
+	res = serialize_payload(msg.nonce, buf, plen, payload_msg, &payload_msg_size);
+	CHECK_SUCCESS( res, "serialize_payload() failed" );
 
-        res = do_send_connection( fd, buf, len );
+	res = process_aes_block( payload_msg, payload_msg_size, payload_msg, &payload_msg_size, ivDefault, sizeof(ivDefault), 0, true, true, encrypt_op);
+	CHECK_SUCCESS( res, "process_aes_block() of serialized payload failed." );
+
+        res = do_send_connection( fd, payload_msg, &payload_msg_size );
         CHECK_SUCCESS( res, "do_send_connection() payload failed" );    
     }
 
-    return res;     
+    return res;
 }
 
 TEE_Result do_recv_payload( int fd, void* hash, int hlen, 
@@ -523,7 +574,7 @@ TEE_Result do_recv_payload( int fd, void* hash, int hlen,
     int           nr = len;
     int           read = 0;
     size_t        plen = len;
-    unsigned char hash_p[HASH_LEN];
+    unsigned char hash_p[HASHLEN];
 
     do {
         res = do_recv_connection( fd, ( (char*) buf ) + read, &nr );
@@ -538,7 +589,7 @@ TEE_Result do_recv_payload( int fd, void* hash, int hlen,
     res = hash_block( buf, read, hash_p, hlen, true, hash_op );
     CHECK_SUCCESS( res, "hash_block() error" );
 
-    if( !compare_hashes( hash, hash_p, HASH_LEN ) ) {
+    if( !compare_hashes( hash, hash_p, HASHLEN ) ) {
         res = TEE_ERROR_COMMUNICATION;
         CHECK_SUCCESS( res, "compare_hashes() header hash does not"
                             " match the hash of the payload" );
@@ -547,7 +598,7 @@ TEE_Result do_recv_payload( int fd, void* hash, int hlen,
     return res;
 }
 
-TEE_Result do_recv_header( int fd, AMessage **msg ) {
+TEE_Result do_recv_header( int fd, msgReplyHeader *msg ) {
     
     TEE_Result  res = TEE_SUCCESS;
     uint8_t     header[HEADER_SIZE];
@@ -555,7 +606,7 @@ TEE_Result do_recv_header( int fd, AMessage **msg ) {
     size_t      hlen = HEADER_SIZE;
     int         read = 0;
 
-    //MSG( "Getting the response header..." );
+    MSG( "Getting the response header..." );
 
     do {
         res = do_recv_connection( fd, header + read, &nr );
@@ -567,20 +618,170 @@ TEE_Result do_recv_header( int fd, AMessage **msg ) {
     process_aes_block( header, hlen, header, &hlen, symm_iv, 
                        symm_iv_len, 0, true, true, decrypt_op );
 
-    deserialize_hdr( msg, header, HEADER_SIZE );
-    if( *msg == NULL ) {
-        res = TEE_ERROR_NOT_SUPPORTED;
-        CHECK_SUCCESS( res, "deserialize() failed" );
+    if ( hlen > sizeof( msgReplyHeader ) ) {
+        res = TEE_ERROR_SHORT_BUFFER;
+        CHECK_SUCCESS( res, "HEADER_SIZE is greater than msgReplayHeader" );
     }
 
-    if( (*msg)->tz_id != curr_cred || (*msg)->capsule_id != (int) symm_id ) {
+    // Should just be able to shove the bytes into the struct and everything *should* line up....
+    TEE_MemMove( msg, header, hlen );
+    // deserialize_hdr( msg, header, HEADER_SIZE );
+    // if( msg == NULL ) {
+    //    res = TEE_ERROR_NOT_SUPPORTED;
+    //    CHECK_SUCCESS( res, "deserialize() failed" );
+    //}
+
+    if( msg->capsuleID != (int) symm_id ) {
         res = TEE_ERROR_CORRUPT_OBJECT;
-        CHECK_SUCCESS( res, "received message for TZ id 0x%08x capsule id 0x%08x"
-                            " (this TZ id is 0x%08x capsule id 0x%08x)", 
-                            (*msg)->tz_id, curr_cred, (*msg)->capsule_id, symm_id );
+        CHECK_SUCCESS( res, "received message for capsule id 0x%08x"
+                            " (this capsule id 0x%08x)", 
+                            msg->capsuleID, symm_id );
     }
 
     return res;     
+}
+
+/* Search the KV store and write a value to a key. If it doesn't
+ * exist, add it.
+ */
+RESULT do_set_capsule_state(unsigned char *key, unsigned char *val,
+                            uint32_t klen, uint32_t vlen)
+{
+
+    kv_pair *lookup_result, *new_entry = NULL;
+
+    //Do size check for the key and value.
+    if (vlen > STATE_SIZE || klen > STATE_SIZE)
+    {
+        MSG("val/key buffer %u/%u B too large"
+                           "(need to be less than %u B",
+                      vlen, klen, STATE_SIZE);
+        return ERROR_KEY_BAD_SIZE;
+    }
+
+    //Assign values to the new entry.
+    new_entry->key = key;
+    new_entry->value = val;
+    new_entry->key_len = klen;
+    new_entry->val_len = vlen;
+
+    //hashtable lookup for the key
+    HASH_FIND_PTR(cap_head.kv_store, key, lookup_result);
+    if (lookup_result == NULL)
+    {
+        HASH_ADD_KEYPTR(hh, cap_head.kv_store, new_entry->key, new_entry->key_len, new_entry);
+    }
+    else
+    {
+        HASH_REPLACE_PTR(cap_head.kv_store, key, new_entry, lookup_result); //Convenience Macro. This should work.
+        //HASH_REPLACE(hh,cap.kv_store, new_entry->key,new_entry->key_len, new_entry, lookup_result);
+    }
+    return NIL;
+}
+
+RESULT do_get_capsule_state(unsigned char *key, unsigned char *val,
+                                uint32_t vlen)
+{
+    kv_pair *lookup_result = NULL;
+
+    if (vlen < STATE_SIZE)
+    {
+        MSG( "val buffer %u B too small"
+                           "(need to be larger than %u B",
+                      vlen, STATE_SIZE);
+        return ERROR_VAL_BAD_SIZE;
+    }
+    
+    HASH_FIND_PTR(cap_head.kv_store, key, lookup_result);
+
+    if (lookup_result == NULL)
+    {
+        MSG( "key %s not found", key);
+        return ERROR_KEY_NOT_FOUND;
+    }
+    memcpy(val, lookup_result->value,lookup_result->val_len);
+    // strncpy((char *)val, lookup_result->value, lookup_result->val_len);
+    val = lookup_result->val_len;
+    return NIL;
+    
+}
+
+TEE_Result do_append_blacklist(const char* key, size_t keyLen, const WHERE w)
+{
+    TEE_Result res = TEE_SUCCESS;
+    kv_pair *black_list_name, *lookup_result, *new_entry = NULL;
+    size_t *size;
+
+    switch( w ) {
+    //case BL_TRUSTED_APP:
+    //	return NIL;
+    case BL_SECURE_STORAGE:
+    	black_list_name = cap_head.secure_storage_bl;
+        size = &cap_head.secure_storage_bl_len;
+    case BL_CAPSULE_META:
+    	black_list_name = cap_head.metadata_bl;
+        size = &cap_head.metadata_bl_len;
+    default:
+    	return ERROR_APPEND_BLACKLIST;
+    }
+    //0. Prepare the new blacklist entry. 
+    TEE_MemMove(new_entry -> key, key, keyLen);
+    new_entry -> key_len = keyLen;
+    new_entry -> value = NULL;
+    new_entry -> value = 0;
+
+    //1. Search for key and add to the respective hashtable.
+    HASH_FIND_PTR(black_list_name, key, lookup_result);
+    if (lookup_result == NULL)
+    {
+        HASH_ADD_KEYPTR(hh, black_list_name, new_entry->key, new_entry->key_len, new_entry);
+    }
+    else
+    {
+        HASH_REPLACE_PTR(black_list_name, key, new_entry, lookup_result); //Convenience Macro. This should work.
+        //HASH_REPLACE(hh,cap.kv_store, new_entry->key,new_entry->key_len, new_entry, lookup_result);
+    }
+
+    //2. Increase the hashthable entry count.
+    (*size)++;
+    return res; 
+}
+
+
+TEE_Result do_remove_from_blacklist(const char *key, size_t keyLen, const WHERE w)
+{
+    TEE_Result res = TEE_SUCCESS;
+    kv_pair *black_list_name, *lookup_result, *new_entry = NULL;
+    size_t *size;
+
+    switch (w)
+    {
+    //case BL_TRUSTED_APP:
+    //	return NIL;
+    case BL_SECURE_STORAGE:
+        black_list_name = cap_head.secure_storage_bl;
+        size = &cap_head.secure_storage_bl_len;
+    case BL_CAPSULE_META:
+        black_list_name = cap_head.metadata_bl;
+        size = &cap_head.metadata_bl_len;
+    default:
+        return ERROR_REMOVE_BLACKLIST;
+    }
+    
+    //1. Search for key and add to the respective hashtable.
+    HASH_FIND_PTR(black_list_name, key, lookup_result);
+    if (lookup_result == NULL)
+    {
+        return res; // The key doesn't exist. Life's simple. 
+    }
+    else
+    {
+        HASH_DEL(black_list_name, lookup_result);
+    }
+
+    //2. Increase the hashthable entry count.
+    (*size)--;
+    return res;
 }
 
 /* Format: KEY size -> 128 B 
@@ -590,130 +791,223 @@ TEE_Result do_recv_header( int fd, AMessage **msg ) {
  *      ...
  */
 
-/* Search the stateFile and write the value to a key. If it does not exist,
- * append to the end of the state file or next available */
-TEE_Result do_set_state( unsigned char* key, uint32_t klen, 
-                         unsigned char* val, uint32_t vlen ) {
+// /* Search the stateFile and write the value to a key. If it does not exist,
+//  * append to the end of the state file or next available */
+// RESULT
+// do_set_state(unsigned char *key, uint32_t klen,
+//              unsigned char *val, uint32_t vlen)
+// {
 
+//     TEE_Result res = TEE_SUCCESS;
+//     uint32_t   count;
+//     uint8_t    state[2*STATE_SIZE + 1];
+//     uint8_t   *key_state = &state[0];
+//     uint8_t   *val_state = &state[STATE_SIZE];
+//     uint8_t   *valid = &state[2*STATE_SIZE];
+//     uint32_t   write_off = 0;
+//     uint32_t   new_write_pos = 0;
+//     uint64_t   cnt_a, cnt_b;CHECK_RESULT
+
+//     DMSG( "Setting key: %s val: %s", key, val );
+
+//     if( vlen > STATE_SIZE || klen > STATE_SIZE ) {
+//         MSG( res, "val/key buffer %u/%u B too large"
+//                             "(need to be less than %u B", 
+//                             vlen, klen, STATE_SIZE );
+//         return ERROR_KEY_BAD_SIZE;
+//     }
+//     DMSG("keys, %d", res);
+//     cnt_a = read_cntpct();
+//     res = TEE_SeekObjectData( stateFile, 0, TEE_DATA_SEEK_SET );
+//     cnt_b = read_cntpct();
+//     timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
+//     if( res !=TEE_SUCCESS)
+//     {
+//         MSG("TEE_SeekObjectData() Error" );
+//         return ERROR_ACCESS_DENIED;
+//     }
+
+//     /* First check to see if this state already exists */
+//     while( 1 ) {
+//         DMSG("keys, %d", res);
+//         cnt_a = read_cntpct();
+//         res = TEE_ReadObjectData( stateFile, state, sizeof(state), &count ); 
+//         cnt_b = read_cntpct();
+//         timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
+//         if (res != TEE_SUCCESS)
+//         {
+//             MSG("TEE_ReadObjectData Error");
+//             return ERROR_ACCESS_DENIED;
+//         }
+        
+//         if( count == 0 ) {
+//             new_write_pos = write_off * ( sizeof(state) );      
+//             MSG( "Writing to end of file %u", new_write_pos );
+//             break;
+//         }
+    
+//         if( strcmp( (const char*) key, (const char*) key_state ) == 0 ) {
+//             new_write_pos = write_off * ( sizeof(state) );
+//             MSG( "Writing to offset %u, key found", new_write_pos );
+//             break;
+//         }
+        
+//         if( new_write_pos == 0 && *valid == 0 ) {
+//             new_write_pos = write_off * ( sizeof(state) );
+//             MSG( "Write to first invalid entry %u", new_write_pos );
+//         }
+
+//         write_off++;
+//     }
+//     DMSG("keys, %d", res);
+//     /*  Add the state in at the first available slot */
+//     memset( state, 0, sizeof(state) );
+//     DMSG("keys, %d", res);
+//     memcpy( key_state, key, klen );
+//     DMSG("keys, %d", res);
+//     memcpy( val_state, val, vlen );
+//     DMSG("keys, %d", res);
+//     *valid = 1;
+
+//     cnt_a = read_cntpct();
+//     DMSG("keys, %d", res);
+//     res = TEE_SeekObjectData( stateFile, new_write_pos, TEE_DATA_SEEK_SET );
+//     DMSG("keys, %d", res);
+//     res = TEE_WriteObjectData( stateFile, state, sizeof(state) );
+//     cnt_b = read_cntpct();
+//     timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
+//     if (res != TEE_SUCCESS)
+//     {
+//         MSG("TEE_WriteObjectData Error");
+//         return ERROR_ACCESS_DENIED;
+//     }
+
+//     return NIL;
+// }
+
+// TODO: removing this for now
+// RESULT do_get_state( unsigned char* key, unsigned char* val, 
+//                          uint32_t vlen ) 
+// {
+//     TEE_Result res = TEE_SUCCESS;
+//     uint32_t   count;
+//     bool       found = false;
+//     uint8_t    state[2*STATE_SIZE+1];
+//     uint8_t   *key_state = &state[0];
+//     uint8_t   *val_state = &state[STATE_SIZE];
+//     uint8_t   *valid = &state[2*STATE_SIZE];
+//     uint64_t   cnt_a, cnt_b;
+
+//     DMSG( "Looking for key: %s", key );
+
+//     if( vlen < STATE_SIZE ) {
+//         DMSG("\n\n");
+//         res = TEE_ERROR_NOT_SUPPORTED;
+//         MSG( "val buffer %u B too small" 
+//                             "(need to be larger than %u B", 
+//                             vlen, STATE_SIZE );
+//         return ERROR_VAL_BAD_SIZE;
+//     }
+//     DMSG("\n\n");
+//     cnt_a = read_cntpct();
+//     res = TEE_SeekObjectData( stateFile, 0, TEE_DATA_SEEK_SET );
+//     cnt_b = read_cntpct();
+//     timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
+//     if (res != TEE_SUCCESS)
+//     {
+//         MSG("TEE_SeekObjectData() Error");
+//         return ERROR_ACCESS_DENIED;
+//     }
+    
+
+//     while (1)
+//     {
+//         cnt_a = read_cntpct();
+//         res = TEE_ReadObjectData( stateFile, state, 2*STATE_SIZE+1, &count );
+//         cnt_b = read_cntpct();
+//         timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
+//         if(res!= TEE_SUCCESS){
+//             MSG("TEE_ReadObjectData Error");
+//             return ERROR_ACCESS_DENIED;
+//         }
+        
+//         if (count == 0) break;
+//         if( strcmp( (const char*) key, (const char*) key_state ) == 0 
+//             && *valid != 0 ) {
+//             found = true;
+//             DMSG("\n\n");
+//             memcpy( val, val_state, STATE_SIZE );
+//             DMSG("\n\n");
+//             break;
+//         }
+//     }
+
+//     if( found == false ) {
+//         MSG("key %s not found", key);
+//         return ERROR_KEY_NOT_FOUND;
+        
+//     }
+    
+//     return NIL;
+// }
+
+/*
+TEE_Result go_get_device_state(unsigned char *key, unsigned char *val,
+                               uint32_t vlen) 
+{
     TEE_Result res = TEE_SUCCESS;
-    uint32_t   count;
-    uint8_t    state[2*STATE_SIZE + 1];
-    uint8_t   *key_state = &state[0];
-    uint8_t   *val_state = &state[STATE_SIZE];
-    uint8_t   *valid = &state[2*STATE_SIZE];
-    uint32_t   write_off = 0;
-    uint32_t   new_write_pos = 0;
-    uint64_t   cnt_a, cnt_b;
+    uint32_t count;
+    bool found = false;
+    uint8_t state[2 * STATE_SIZE + 1];
+    uint8_t *key_state = &state[0];
+    uint8_t *val_state = &state[STATE_SIZE];
+    uint8_t *valid = &state[2 * STATE_SIZE];
+    uint64_t cnt_a, cnt_b;
 
-    DMSG( "Setting key: %s val: %s", key, val );
+    //DMSG("Looking for key: %s in device file", key);
 
-    if( vlen > STATE_SIZE || klen > STATE_SIZE ) {
+    if (vlen < STATE_SIZE)
+    {
         res = TEE_ERROR_NOT_SUPPORTED;
-        CHECK_SUCCESS( res, "val/key buffer %u/%u B too large"
-                            "(need to be less than %u B", 
-                            vlen, klen, STATE_SIZE );
+        CHECK_SUCCESS(res, "val buffer %u B too small"
+                           "(need to be larger than %u B",
+                      vlen, STATE_SIZE);
     }
 
     cnt_a = read_cntpct();
-    res = TEE_SeekObjectData( stateFile, 0, TEE_DATA_SEEK_SET );
+    res = TEE_SeekObjectData(deviceFile, 0, TEE_DATA_SEEK_SET);
     cnt_b = read_cntpct();
     timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
-    CHECK_SUCCESS( res, "TEE_SeekObjectData() Error" );
+    CHECK_SUCCESS(res, "TEE_SeekObjectData() Error");
 
-    /* First check to see if this state already exists */
-    while( 1 ) {
+    while (1)
+    {
         cnt_a = read_cntpct();
-        res = TEE_ReadObjectData( stateFile, state, sizeof(state), &count ); 
+        res = TEE_ReadObjectData(deviceFile, state, 2 * STATE_SIZE + 1, &count);
         cnt_b = read_cntpct();
         timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
-        CHECK_SUCCESS( res, "TEE_ReadObjectData Error" );
+        CHECK_SUCCESS(res, "TEE_ReadObjectData Error");
 
-        if( count == 0 ) {
-            new_write_pos = write_off * ( sizeof(state) );      
-            //MSG( "Writing to end of file %u", new_write_pos );
+        if (count == 0)
+            break;
+        if (strcmp((const char *)key, (const char *)key_state) == 0 && *valid != 0)
+        {
+            found = true;
+            memcpy(val, val_state, STATE_SIZE);
             break;
         }
-    
-        if( strcmp( (const char*) key, (const char*) key_state ) == 0 ) {
-            new_write_pos = write_off * ( sizeof(state) );
-            //MSG( "Writing to offset %u, key found", new_write_pos );
-            break;
-        }
-        
-        if( new_write_pos == 0 && *valid == 0 ) {
-            new_write_pos = write_off * ( sizeof(state) );
-            //MSG( "Write to first invalid entry %u", new_write_pos );
-        }
-
-        write_off++;
     }
 
-    /*  Add the state in at the first available slot */
-    memset( state, 0, sizeof(state) );
-    memcpy( key_state, key, klen );
-    memcpy( val_state, val, vlen );
-    *valid = 1;
-
-    cnt_a = read_cntpct();
-    res = TEE_SeekObjectData( stateFile, new_write_pos, TEE_DATA_SEEK_SET );
-    res = TEE_WriteObjectData( stateFile, state, sizeof(state) );
-    cnt_b = read_cntpct();
-    timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
-    CHECK_SUCCESS( res, "TEE_WriteObjectData Error" );
-
+    if (found == false)
+    {
+        res = TEE_ERROR_ITEM_NOT_FOUND;
+        CHECK_SUCCESS(res, "key %s not found", key);
+    }
     return res;
 }
-
-TEE_Result do_get_state( unsigned char* key, unsigned char* val, 
-                         uint32_t vlen ) {
-    TEE_Result res = TEE_SUCCESS;
-    uint32_t   count;
-    bool       found = false;
-    uint8_t    state[2*STATE_SIZE+1];
-    uint8_t   *key_state = &state[0];
-    uint8_t   *val_state = &state[STATE_SIZE];
-    uint8_t   *valid = &state[2*STATE_SIZE];
-    uint64_t   cnt_a, cnt_b;
-
-    DMSG( "Looking for key: %s", key );
-
-    if( vlen < STATE_SIZE ) {
-        res = TEE_ERROR_NOT_SUPPORTED;
-        CHECK_SUCCESS( res, "val buffer %u B too small" 
-                            "(need to be larger than %u B", 
-                            vlen, STATE_SIZE );
-    }
-
-    cnt_a = read_cntpct();
-    res = TEE_SeekObjectData( stateFile, 0, TEE_DATA_SEEK_SET );
-    cnt_b = read_cntpct();
-    timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
-    CHECK_SUCCESS( res, "TEE_SeekObjectData() Error" );
-
-    while( 1 ) {
-        cnt_a = read_cntpct();
-        res = TEE_ReadObjectData( stateFile, state, 2*STATE_SIZE+1, &count );
-        cnt_b = read_cntpct();
-        timestamps[curr_ts].secure_storage += cnt_b - cnt_a;
-        CHECK_SUCCESS( res, "TEE_ReadObjectData Error" );
-
-        if( count == 0 ) break;
-        if( strcmp( (const char*) key, (const char*) key_state ) == 0 
-            && *valid != 0 ) {
-            found = true;
-            memcpy( val, val_state, STATE_SIZE );
-            break;
-        }
-    }
-
-    if( found == false ) {
-        res = TEE_ERROR_ITEM_NOT_FOUND;
-        CHECK_SUCCESS( res, "key %s not found", key );
-    }
-    return res; 
-}
-
-char* do_get_buffer( BUF_TYPE t, size_t *len, TEE_Result *res ) {
+*/
+char * do_get_buffer(BUF_TYPE t, size_t *len, TEE_Result *res)
+{
     char* buffer;
 
     *res = TEE_SUCCESS;
@@ -753,4 +1047,200 @@ char* do_get_buffer( BUF_TYPE t, size_t *len, TEE_Result *res ) {
             *res = TEE_ERROR_NOT_SUPPORTED;
             return NULL;
     }
+}
+
+TEE_Result do_redact(char *buf, char **newBuf, char *replaceString, size_t start, size_t end, size_t len)
+{
+    TEE_Result res = TEE_SUCCESS;
+    int MAX_SIZE;
+    char *newString;
+    unsigned int i = 0, j=0;
+    //DMSG("\n\n");
+    if (len <= (end - start))
+    {
+        MAX_SIZE = strlen(buf);
+    }
+    else
+    {
+        MAX_SIZE = strlen(buf) + len - end + start;
+    }
+    newString = TEE_Malloc(sizeof(char) * MAX_SIZE, 0);
+    
+    while (i < start)
+    {
+        newString[i] = buf[i];
+        i++;
+    }
+    i = 0;
+    while (i < len)
+    {
+        newString[i + start] = replaceString[i];
+        i++;
+    }
+    
+    i--;
+    while (buf[end + j] != '\0')
+    {
+        newString[start + i] = buf[end + j];
+        i++;
+        j++;
+    }
+    
+    *newBuf = TEE_Malloc(sizeof(char) * strlen(newString),0);
+    TEE_MemMove(*newBuf, newString, strlen(newString));
+    return res;
+    //TODO: errors
+}
+
+TEE_Result get_time_from_remote(char *ip_addr, uint16_t port, TEE_Time *t)
+{
+    int             fd = -1,
+                    sent_rv;
+    TEE_Result      res = TEE_SUCCESS;
+    char            *payload = GET_TIME;
+    msgReplyHeader  header_reply;
+    char            payload_reply[POLICY_TIME_MAX];
+    
+    //do_open_connection
+    res = do_open_connection(ip_addr, port, &fd);
+    if(res !=TEE_SUCCESS || fd <= 0){
+        CHECK_SUCCESS(res, "do_open_connection() failed");
+    }
+    
+    //do send.
+    sent_rv = rand_tc_defn();
+    res = do_send( fd, NULL, 0, GET_TIME, sent_rv );
+    if(res !=TEE_SUCCESS){
+        CHECK_SUCCESS(res, "do_send() failed");
+    }
+
+    //do_recv_header
+    res = do_recv_header(fd, &header_reply);
+    if(res != TEE_SUCCESS){
+        CHECK_SUCCESS(res, "do_recv_header() failed");
+    }
+    
+    //do_recv_payload
+    res = do_recv_payload(fd, cap_head.header.hash, HASHLEN, payload_reply, POLICY_TIME_MAX);
+    if (res != TEE_SUCCESS)
+    {
+        CHECK_SUCCESS(res, "do_recv_payload() failed");
+    }
+
+    t->seconds = atoi(payload_reply);
+
+    //do_close_connection
+    res = do_close_connection(fd);
+    if (res != TEE_SUCCESS)
+    {
+        CHECK_SUCCESS(res, "do_close_connection() failed");
+    }
+}
+
+RESULT do_get_remote_state(unsigned char *key, unsigned char *value, uint32_t keyLen,
+                               uint32_t valueLen, char *ip_addr, uint16_t port)
+{
+    int fd = -1,
+        sent_rv;
+    TEE_Result res = TEE_SUCCESS;
+    msgReplyHeader header_reply;
+    
+    //do_open_connection
+    res = do_open_connection(ip_addr, port, &fd);
+    if (res != TEE_SUCCESS || fd <= 0)
+    {
+        MSG("do_open_connection() failed");
+        return ERROR_SERVER_BROKEN_PIPE;
+    }
+
+    //do send.
+    sent_rv = rand_tc_defn();
+    res = do_send(fd, key, keyLen, GET_STATE, sent_rv);
+    if (res != TEE_SUCCESS)
+    {
+        MSG("do_send() failed");
+        return ERROR_SERVER_REPLY;
+    }
+
+    //do_recv_header
+    res = do_recv_header(fd, &header_reply);
+    if (res != TEE_SUCCESS)
+    {
+        MSG( "do_recv_header() failed");
+        return ERROR_SERVER_REPLY;
+    }
+
+    //do_recv_payload
+    res = do_recv_payload(fd, cap_head.header.hash, HASHLEN, value, POLICY_STATE_MAX_VALUE_SIZE);
+    if (res != TEE_SUCCESS)
+    {
+        MSG("do_recv_payload() failed");
+        return ERROR_SERVER_REPLY;
+    }
+    valueLen = strlen(value);
+    //do_close_connection
+    res = do_close_connection(fd);
+    if (res != TEE_SUCCESS)
+    {
+        MSG( "do_close_connection() failed");
+        return ERROR_SERVER_REPLY;
+    }
+    return NIL;
+}
+
+RESULT do_set_remote_state(unsigned char *key, unsigned char *value, uint32_t keyLen,
+                                uint32_t valueLen, char *ip_addr, uint16_t port)
+
+{
+    int sent_rv, fd = -1, len;
+
+    TEE_Result res = TEE_SUCCESS;
+    msgReplyHeader header_reply;
+    
+    len = (keyLen)+(valueLen)+2;
+    char payload[len];
+    snprintf(payload, len, "%s:%s", key, value);
+
+    //do_open_connection
+    res = do_open_connection(ip_addr, port, &fd);
+    if (res != TEE_SUCCESS || fd <= 0)
+    {
+        MSG("do_open_connection() failed");
+        return ERROR_SERVER_BROKEN_PIPE;
+    }
+
+    //do send.
+    sent_rv = rand_tc_defn();
+    res = do_send(fd, payload,len, SET_STATE , sent_rv);
+    if (res != TEE_SUCCESS)
+    {
+        MSG("do_send() failed");
+        return ERROR_SERVER_REPLY;
+    }
+    
+    //do_recv_header
+    res = do_recv_header(fd, &header_reply);
+    if (res != TEE_SUCCESS)
+    {
+        MSG("do_recv_header() failed");
+        return ERROR_SERVER_REPLY;
+    }
+
+    //do_recv_payload
+    res = do_recv_payload(fd, cap_head.header.hash, HASHLEN, value, POLICY_STATE_MAX_VALUE_SIZE);
+    if (res != TEE_SUCCESS)
+    {
+        MSG("do_recv_payload() failed");
+        return ERROR_SERVER_REPLY;
+    }
+    
+    //do_close_connection
+    res = do_close_connection(fd);
+    if (res != TEE_SUCCESS)
+    {
+        MSG("do_close_connection() failed");
+        return ERROR_SERVER_REPLY;
+    }
+    return NIL;
+    
 }

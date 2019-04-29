@@ -4,8 +4,8 @@
 #include <fcntl.h>
 #include <string.h>
 #include <inttypes.h>
-#include <capsule.h>
-#include <aes_keys.h>
+#include <capsuleCommon.h>
+#include <capsuleKeys.h>
 #include "err_ta.h"
 #include "key_data.h"
 #include "capsule_command.h"

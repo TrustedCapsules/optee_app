@@ -5,14 +5,17 @@
 #include <tee_internal_api_extensions.h>
 #include <tee_api.h>
 #include <string.h>
-#include <capsule.h>
-#include <amessage.pb-c.h>
+#include <capsuleCommon.h>
+#include <capsulePolicy.h> // for SYSCALL_OP
+#include <capsuleBenchmark.h>
 #include <lua.h>
 #include "capsule_structures.h"
 #include "capsule_ta.h"
 #include "capsule_commands.h"
 #include "capsule_helper.h"
+#include "lua_helpers.h"
 #include "capsule_op.h"
+#include "uthash.h"
 
 /* AES key parameters */
 TEE_OperationHandle     decrypt_op;
@@ -27,13 +30,19 @@ bool                    aes_key_setup = false;
 
 /* Trusted Capsule file information */
 struct capsule_text     cap_head;
+SYSCALL_OP		fuse_op;
+
+uint32_t                temp_encrypted_len=0;
+char                    *temp_encrypted = NULL;
 
 /* Secure Storage Objects -> keys */
 TEE_ObjectHandle keyFile = TEE_HANDLE_NULL;
 char             keyID[] = "aes_key_file";
 
 /* Secure Storage Objects -> credentials, persistent state */
-TEE_ObjectHandle stateFile = TEE_HANDLE_NULL;
+//TEE_ObjectHandle stateFile = TEE_HANDLE_NULL; TODO: removing this for now. 
+//TODO: Temporary param value being made global for debug
+uint32_t id_global_test_02 = 0;
 
 /* Interpreter State - this is messy, and will only work if policy
  *                     evaluation is synchronous. */
@@ -42,7 +51,7 @@ lua_State *Lstate = NULL;
 // int        curr_fd = 0;
 int        curr_len = 0;
 // char       curr_declassify_dest[128];
-int        curr_cred = 0;
+//int        curr_cred = 0; TODO: removing this for now. 
 
 /* Benchmarking */
 struct benchmarking_ta timestamps[6];
@@ -57,8 +66,7 @@ TEE_Result TA_CreateEntryPoint(void) {
 
     if( keyFile != TEE_HANDLE_NULL ) {
         TEE_Panic( 0 );
-    }   
-    
+    }  
     /* This is a hack to get the keys into the TEE. We run
      * capsule_test from host/ which will register the keys 
      * into the TEE's secure storage and run a bunch of 
@@ -104,9 +112,9 @@ TEE_Result TA_OpenSessionEntryPoint(uint32_t param_type,
     UNUSED( params );
     UNUSED( param_type );
 
-    //MSG( "New Session Created..." );  
+    MSG( "New Session Created..." );  
 
-    // MSG( "Opening Trusted Capsule session" );
+    MSG( "Opening Trusted Capsule session" );
     memset( &timestamps, 0, sizeof(timestamps) );
     // MSG( "\n   [e h s r p]         \n"
     //   "%d: %llu %llu %llu %llu %llu\n" 
@@ -163,7 +171,8 @@ void TA_CloseSessionEntryPoint(void *sess_ctx) {
     //    );
 
     TEE_CloseObject( keyFile );
-    TEE_CloseObject( stateFile );
+    //TEE_CloseObject( stateFile );TODO:removing this for now
+    //TEE_CloseObject( deviceFile );
 
     if( capsule_name != NULL ) {
         TEE_Free( capsule_name );
@@ -179,7 +188,7 @@ void TA_CloseSessionEntryPoint(void *sess_ctx) {
 
     lua_close_context( &Lstate );
 
-    //MSG( "Successfully closed trusted capsule %s session", capsule_name );
+    MSG( "Successfully closed trusted capsule %s session", capsule_name );
 }
 
 int icep_count = 0;
@@ -191,22 +200,24 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx,
     UNUSED( sess_ctx );
 
     curr_ts = 5;
-
+    DMSG("in invoke command entry point : CMD_ID: %d ",cmd_id);
     switch (cmd_id) {
     // Necessary for state registration tests
     case CAPSULE_REGISTER_AES_KEY:
         return register_aes_key(param_type, params);
-    case CAPSULE_SET_STATE:
-        return set_state(param_type, params);
-    case CAPSULE_GET_STATE:
-        return get_state(param_type, params);
+    // case CAPSULE_SET_STATE:
+    //     return set_state(param_type, params);
+    // case CAPSULE_GET_STATE:
+    //     return get_state(param_type, params);
     case CAPSULE_GET_BUFFER:
         return get_buffer(param_type, params);
     // Actual capsule operations
     case CAPSULE_OPEN:
+	fuse_op = OPEN_OP;
         curr_ts = 0;
         return capsule_open(param_type, params);
     case CAPSULE_CLOSE:
+	fuse_op = CLOSE_OP;
         curr_ts = 1;
         return capsule_close(param_type, params);
     // Necessary for network tests

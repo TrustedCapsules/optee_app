@@ -1,7 +1,7 @@
 ARMCC ?= gcc
 LUALIB ?= ../luacopy
 COMMON = ../commonref
-CFLAGS = -std=gnu99 -O2 -Wall -Wcast-align -Wsuggest-attribute=noreturn \
+CFLAGS = -std=gnu99 -g -O0 -Wall -Wcast-align -Wsuggest-attribute=noreturn \
 		 -Wfloat-equal -Wswitch-default -Wformat-nonliteral -Wextra \
 		 -I$(LUALIB) -I$(COMMON)
 

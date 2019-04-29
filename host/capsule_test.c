@@ -4,8 +4,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <inttypes.h>
-#include <capsule.h>
-#include <aes_keys.h>
+#include <capsuleCommon.h>
+#include <capsuleKeys.h>
 #include <syslog.h>
 #include "err_ta.h"
 #include "key_data.h"
@@ -20,11 +20,11 @@ TEEC_Result test_08() {
     TEEC_Context    ctx;
     TEEC_Session    sess;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
-    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
-    char            kv[] = "/etc/use_case_capsules/test_bio_ehrpatient.kvstore";
-    char            log[] = "/etc/use_case_capsules/test_bio_ehrpatient.log";
-    char            policy[] = "/etc/use_case_capsules/test_bio_ehrpatient.policy";
+    char            capsule[] = "/etc/new_capsules/bio.capsule";
+    char            ptx[] = "/etc/new_capsules/bio.data";
+    char            kv[] = "/etc/new_capsules/bio.kvstore";
+    char            log[] = "/etc/new_capsules/bio.log";
+    char            policy[] = "/etc/new_capsules/bio.policy";
     FILE           *fp = NULL;
     char           *encrypted_data, 
                    *read_data,
@@ -242,8 +242,8 @@ TEEC_Result test_07() {
     TEEC_Session    sess;
     TEEC_Session    sess2;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
-    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
+    char            capsule[] = "/etc/new_capsules/bio.capsule";
+    char            ptx[] = "/etc/new_capsules/bio.data";
     char            capsule2[] = "/etc/sample_capsules/short_story.capsule";
     char            ptx2[] = "/etc/sample_capsules/short_story.data";
     FILE           *fp = NULL;
@@ -445,8 +445,8 @@ TEEC_Result test_06() {
     TEEC_Context    ctx;
     TEEC_Session    sess;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
-    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
+    char            capsule[] = "/etc/new_capsules/bio.capsule";
+    char            ptx[] = "/etc/new_capsules/bio.data";
     FILE           *fp = NULL;
     char           *encrypted_data, 
                    *read_data,
@@ -581,8 +581,8 @@ TEEC_Result test_05() {
     TEEC_Context    ctx;
     TEEC_Session    sess;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
-    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
+    char            capsule[] = "/etc/new_capsules/bio.capsule";
+    char            ptx[] = "/etc/new_capsules/bio.data";
     FILE           *fp = NULL;
     char           *encrypted_data, 
                    *read_data,
@@ -726,8 +726,8 @@ TEEC_Result test_04() {
     TEEC_Context    ctx;
     TEEC_Session    sess;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
-    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
+    char            capsule[] = "/etc/new_capsules/bio.capsule";
+    char            ptx[] = "/etc/new_capsules/bio.data";
     FILE           *fp = NULL;
     char           *encrypted_data, 
                    *read_data,
@@ -885,12 +885,14 @@ TEEC_Result test_03() {
     TEEC_Context    ctx;
     TEEC_Session    sess;
     TEEC_UUID       uuid = CAPSULE_UUID;
-    char            capsule[] = "/etc/use_case_capsules/test_bio_ehrpatient.capsule";
-    char            ptx[] = "/etc/use_case_capsules/test_bio_ehrpatient.data";
-    FILE           *fp = NULL;
+    char            capsule[] = "/etc/new_capsules/bio.capsule";
+    char            ptx[] = "/etc/new_capsules/bio.data";
+    FILE           *fp = NULL,
+                   *log_fp = NULL;
     char           *encrypted_data, 
                    *read_data,
                    *write_data,
+                   *temp_enc_data,
                    *plain_text_data;
     uint32_t        encrypt_len = 0, 
                     read_len = 0, 
@@ -917,10 +919,14 @@ TEEC_Result test_03() {
     TEEC_SharedMemory out_mem = { .size = SHARED_MEM_SIZE,
                                   .flags = TEEC_MEM_OUTPUT, };
 
+    TEEC_SharedMemory temp_enc_mem = { .size = SHARED_MEM_SIZE,
+                                  .flags = TEEC_MEM_OUTPUT, };
+
     read_data = malloc(SHARED_MEM_SIZE);
     write_data = malloc(SHARED_MEM_SIZE);
+    temp_enc_data = malloc (SHARED_MEM_SIZE);
 
-    res = initializeContext( &ctx ) ;
+    res = initializeContext(&ctx);
     CHECK_RESULT( res, "test_%02d: initializeContext() failed", test_num );
 
     res = allocateSharedMem( &ctx, &in_mem );
@@ -933,7 +939,7 @@ TEEC_Result test_03() {
     CHECK_RESULT( res, "test_%02d: allocateSharedMem() inout_mem failed",
                        test_num);
 
-    res = openSession( &ctx, &sess, &uuid );
+    res = openSession(&ctx, &sess, &uuid);
     CHECK_RESULT( res, "test_%02d: openSession() sess failed", test_num );
 
     // Read in the capsule contents
@@ -970,16 +976,24 @@ TEEC_Result test_03() {
 
     COMPARE_TEXT( test_num, 1, i, read_data, plain_text_data, read_len );
 
-    res = capsule_close( &sess, false, read_data, read_len, &in_mem,
-                         &out_mem, &write_len, write_data );
+    res = capsule_close(&sess, false, read_data, read_len, &in_mem,
+                        &out_mem, &write_len, write_data);
     CHECK_RESULT( res, "test_%02d: capsule_close() %s failed", test_num,
                   capsule );
 
     // Compare write data with encrypted data. 
     COMPARE_LEN( test_num, 2, write_len, encrypt_len );
-    COMPARE_CAPSULE( test_num, 2, i, encrypted_data, write_data, write_len );
+    
+    log_fp = fopen("/root/cap_write_len.log","w");
+    fwrite(write_data, 1, write_len, log_fp);
+    fwrite("\n",1,2, log_fp  );
+    fclose(log_fp);
+    log_fp = fopen("/root/cap_encrypt_len.log", "w");
+    fwrite(encrypted_data, 1, encrypt_len, log_fp);
+    fclose(log_fp);
+    COMPARE_CAPSULE(test_num, 2, i, encrypted_data, write_data, write_len);
 
-    res = closeSession( &sess );
+    res = closeSession(&sess);
     CHECK_RESULT( res, "test_%02d: closeSession() failed", test_num );
 
     res = freeSharedMem( &in_mem );
@@ -1044,7 +1058,7 @@ TEEC_Result test_02() {
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
         CHECK_RESULT( res, "test_%02d: capsule_set_state() key %s -> val %s"
                            " for %s failed", test_num, key, val_random, 
-                           capsule_data_array[i].str );
+                           capsule_data_array[i].name );
 
         // reset the cred state to the right value
         memset( val, 0, sizeof(val) );
@@ -1056,7 +1070,7 @@ TEEC_Result test_02() {
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
         CHECK_RESULT( res, "test_%02d: capsule_set_state() key %s -> val %s"
                            " for %s failed", test_num, key, val, 
-                           capsule_data_array[i].str );
+                           capsule_data_array[i].name );
         
         // setting another random state to see if we can add multiple
         // states 
@@ -1065,14 +1079,14 @@ TEEC_Result test_02() {
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
         CHECK_RESULT( res, "test_%02d: capsule_set_state() key %s -> val %s"
                            " for %s failed", test_num, key_random, val_random, 
-                           capsule_data_array[i].str );
+                           capsule_data_array[i].name );
 
         // get the two states to see if they are correct 
         res = capsule_get_state( &sess, &in_mem, &out_mem, key, STATE_SIZE, 
                                  val_get, STATE_SIZE, 
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
         CHECK_RESULT( res, "test_%02d: capsule_get_state() key %s failed for %s",
-                           test_num, key, capsule_data_array[i].str );
+                           test_num, key, capsule_data_array[i].name );
 
         if( strcmp( val, val_get) != 0 ) {
             CHECK_RESULT( TEEC_ERROR_CORRUPT_OBJECT, 
@@ -1084,7 +1098,7 @@ TEEC_Result test_02() {
                                  STATE_SIZE, val_get, STATE_SIZE, 
                                  *(uint32_t*) (void*) capsule_data_array[i].id );
         CHECK_RESULT( res, "test_%02d: capsule_get_state() key %s failed for %s",
-                           test_num, key_random, capsule_data_array[i].str );
+                           test_num, key_random, capsule_data_array[i].name );
 
         if( strcmp( val_random, val_get) != 0 ) {
             CHECK_RESULT( TEEC_ERROR_CORRUPT_OBJECT, 
@@ -1200,11 +1214,11 @@ TEEC_Result register_keys() {
     for( i = 0; i < sizeof( capsule_data_array ) /
                     sizeof( struct capsule_data ); i++ ) {
         res = register_aes_key( &sess, capsule_data_array[i].id,
-                                key_std, sizeof(key_std),
-                                iv_std, sizeof(iv_std), 
+                                keyDefault, sizeof(keyDefault),
+                                ivDefault, sizeof(ivDefault), 
                                 &in_mem );
         CHECK_RESULT( res, "register_keys: register_aes_key() %s failed",
-                           capsule_data_array[i].str );
+                           capsule_data_array[i].name );
     }
 
     res = closeSession( &sess );
@@ -1261,10 +1275,10 @@ int main(int argc, char *argv[]) {
         CHECK_RESULT( res, "test_%02d: failed", test_num );
         PRINT_INFO( "test_%02d: passed\n", test_num );
     
-        test_num = 2;
-        res = test_02();
-        CHECK_RESULT( res, "test_%02d: failed", test_num );
-        PRINT_INFO( "test_%02d: passed\n", test_num );
+        //test_num = 2;
+        //res = test_02();
+        //CHECK_RESULT( res, "test_%02d: failed", test_num );
+        //PRINT_INFO( "test_%02d: passed\n", test_num );
 
         test_num = 3;
         res = test_03();

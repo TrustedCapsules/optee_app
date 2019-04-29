@@ -5,12 +5,13 @@
 #define __HI(x)  *(1+(int*)&x)
 #define __LO(x)  *(int*)&x
 
+// TODO: add strstr here
 
 #undef strspn
 size_t strspn( const char* str1, const char *str2 );
 
-#undef strchr
-char* strchr( const char* str, int character );
+//#undef strchr
+//char* strchr( const char* str, int character );
 
 char* strcpy( char* destination, const char* source );
 
@@ -56,7 +57,7 @@ int isupper( int c );
 #undef isxdigit
 int isxdigit( int c );
 
-int abs( int c );
+//int abs( int c );
 
 
 double floor( double c );
@@ -72,7 +73,7 @@ double frexp( double x, int* exp );
 
 #ifdef TRUSTED_APP_BUILD
 int rand(void);
-void abort( void );
+//void abort( void );
 #endif
 
 

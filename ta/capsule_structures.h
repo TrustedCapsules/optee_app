@@ -1,6 +1,8 @@
 #ifndef STRUCTURE_H
 #define STRUCTURE_H
 
+#include <stddef.h>
+
 struct capsule_text {
     int                 ref_count;              // Number of times the capsule has been opened
 

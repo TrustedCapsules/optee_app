@@ -10,9 +10,9 @@ OBJS = err_ta.o \
 	   key_data.o \
 	   capsule_command.o \
 	   capsule_test.o
-	    
+
 # capsule_benchmark.o \
-	   
+
 OBJS_Network = err_ta.o \
 	   		   key_data.o \
 	   		   capsule_command.o \
@@ -28,6 +28,11 @@ OBJS_Breakdown = err_ta.o \
 				 capsule_command.o \
 				 capsule_breakdown.o
 
+OBJS_Log_Viewer =	err_ta.o \
+					key_data.o \
+					capsule_command.o \
+					log_viewer.o
+
 CFLAGS += -Wall -g -O0 -I../common -I$(TEEC_EXPORT)/include -I$(TA_DEV_KIT_DIR)/host_include
 
 ifdef HIKEY
@@ -41,7 +46,7 @@ LDADD += -lteec -lm -L$(TEEC_EXPORT)/lib
 	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY: all
-all: capsule_test
+all: capsule_test log_viewer
 
 #capsule_test_network capsule_test_policy capsule_breakdown
 
@@ -57,10 +62,14 @@ capsule_test_policy: $(OBJS_Policy)
 capsule_breakdown: $(OBJS_Breakdown)
 	$(CC) $(OBJS_Breakdown) $(LDADD) -o $@
 
+log_viewer: $(OBJS_Log_Viewer)
+	$(CC) $(OBJS_Log_Viewer) $(LDADD) -o $@
+
 .PHONY: clean
 clean:
 	rm -f $(OBJS) capsule_test
 	rm -f $(OBJS_Network) capsule_test_network
 	rm -f $(OBJS_Policy) capsule_test_policy
 	rm -f $(OBJS_Breakdown) capsule_test_breakdown
+	rm -f $(OBJS_Log_Viewer) log_viewer
 

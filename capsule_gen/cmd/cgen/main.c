@@ -6,16 +6,19 @@
 #include "gen_helper.h"
 
 static void usage() {
-    printf( "\ncgen <op> -n <capsule name> [-p path] [-o outpath] [-s SECTION]\n"
-			"  encode   encode plaintext policy, data, log, kvstore into capsule\n"
-			"\t-n   	capsule name\n"
+    printf( "Usage: cgen <op> -n <capsule_name> [-p path] [-o outpath] [-s SECTION]\n\n"
+            "  Expected structure with -n NAME:\n"
+            "  path flag must contain folder NAME\n"
+            "  and contain NAME.kvstore, NAME.data, NAME.policy\n\n"
+			"  encode	encodes a plaintext policy, data, log, kvstore into capsule\n"
+			"\t-n   	capsule name [Required]\n"
 			"\t-u   	capsule uuid [Default: ffffffffffffffffffffffffffffffff]\n"
-			"\t-p   	path, default local\n"
-			"\t-o   	output path, default local\n"
-			"  decode	decode capsule into plaintext policy, data, log, kvstore\n"
-			"\t-n   	capsule name\n"
-			"\t-p   	path, default local\n"
-			"\t-s   	section to decode\n\n"
+			"\t-p   	path [Default: ./]\n"
+			"\t-o   	output path [Default: ./]\n"
+			"  decode	decodes capsule into plaintext policy, data, log, kvstore\n"
+			"\t-n   	capsule name [Required]\n"
+			"\t-p   	path [Default: ./]\n"
+			"\t-s   	section to decode [Default: all] [Options: header, policy, kv, log, data]\n\n"
 		  );
 }
 

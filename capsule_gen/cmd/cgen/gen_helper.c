@@ -29,19 +29,20 @@ bool getCapsuleKeys( char* capsuleName, capsuleEntry* c ) {
 	size_t numCapsules = sizeof( capsule_data_array ) / sizeof( capsule_data );
 
     for( int i = 0; i < numCapsules; i++ ) {
-        if( strcmp( capsuleName, capsule_data_array[i].name ) == 0 ) {
+#       // FIXME: comparing just the prefix of the capsule name. Eg. 10MBHELLOWORLD -> 10MB
+        if( strncmp( capsuleName, capsule_data_array[i].name, strlen(capsule_data_array[i].name) ) == 0 ) {
 		// For now, we use the same key:iv pair for all capsules. 
-    		memset( c->name, 0, sizeof( c->name ) );
-		memset( c->id, 0, sizeof( c->id ) );
-		memcpy( c->name, capsule_data_array[i].name, sizeof( capsule_data_array[i].name ) );
-		memcpy( c->id, capsule_data_array[i].id, sizeof( capsule_data_array[i].id ) );
-			
-		c->aesKey = keyDefault;
-		c->aesKeyLength = sizeof( keyDefault );
-    		c->iv = ivDefault;
-    		c->ivLength = sizeof( ivDefault );
-            
-		return true;
+            memset( c->name, 0, sizeof( c->name ) );
+            memset( c->id, 0, sizeof( c->id ) );
+            memcpy( c->name, capsule_data_array[i].name, sizeof( capsule_data_array[i].name ) );
+            memcpy( c->id, capsule_data_array[i].id, sizeof( capsule_data_array[i].id ) );
+
+            c->aesKey = keyDefault;
+            c->aesKeyLength = sizeof( keyDefault );
+                c->iv = ivDefault;
+                c->ivLength = sizeof( ivDefault );
+
+            return true;
         }
     }
     

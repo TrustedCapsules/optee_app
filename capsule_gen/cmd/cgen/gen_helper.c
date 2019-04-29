@@ -314,7 +314,7 @@ void encodeToCapsule( char* capsuleName, char* path, char* opath, char* uuid ) {
 	
 	capsuleEntry e;
 	if( getCapsuleKeys( capsuleName, &e ) == false ) {
-		fprintf( stderr, "encryptFile(): cannot find capsule keys %s\n", 
+		fprintf( stderr, "encodeToCapsule(): cannot find capsule keys %s\n",
 					capsuleName );
 		return;
 	}	

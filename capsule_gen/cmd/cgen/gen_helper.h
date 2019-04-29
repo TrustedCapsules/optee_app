@@ -24,7 +24,7 @@ typedef struct range {
 	size_t end;
 } range;
 
-void encodeToCapsule( char* capsuleName, char* path, char* opath );
+void encodeToCapsule( char* capsuleName, char* path, char* opath, char* uuid );
 void decodeFromCapsule( char *capsuleName, char* path, SECTION s );
 
 #endif

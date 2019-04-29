@@ -210,7 +210,7 @@ void encryptFile( capsuleEntry* e, char* ptxFile, char* ctxFile ) {
 
 // fillHeader constructs and encrypts trusted capsule header 
 bool fillHeader( TrustedCap* header, size_t fsize, capsuleEntry *e, 
-                 unsigned char* hash, size_t hashLen ) {
+                 unsigned char* hash, size_t hashLen, char* uuid ) {
 
     if( hashLen != HASHLEN ) {
         fprintf( stderr, "fillHeader(): hash is wrong length\n" );
@@ -223,13 +223,14 @@ bool fillHeader( TrustedCap* header, size_t fsize, capsuleEntry *e,
 	aesEncrypt( e->id, header->aes_id, sizeof( header->aes_id ), e );
     header->capsize = (unsigned int) fsize;
     memcpy( header->hash, hash, hashLen );
+    strncpy( header->uuid, uuid, UUIDLEN );
 	return true;
 }
 
 
 // writeHeader creates a capsule header from the plaintext file and writes it 
 // to the capsule 
-void writeHeader( capsuleEntry *e, const char *plaintext, const char *capsule ) {
+void writeHeader( capsuleEntry *e, const char *plaintext, const char *capsule, char* uuid ) {
     FILE *in 	= fopen( plaintext, "rb" );
     FILE *out 	= fopen( capsule, "wb" );
 
@@ -265,7 +266,7 @@ void writeHeader( capsuleEntry *e, const char *plaintext, const char *capsule ) 
 
     // Write header -> capsule
     TrustedCap 		header;
-    fillHeader( &header, ptxLength, e, hash, sizeof(hash) );
+    fillHeader( &header, ptxLength, e, hash, sizeof(hash), uuid );
     
 	fseek( out, 0, SEEK_SET );
 	if( fullWrite( &header, sizeof( TrustedCap ), 1, out ) != sizeof( TrustedCap ) ) {
@@ -278,7 +279,7 @@ void writeHeader( capsuleEntry *e, const char *plaintext, const char *capsule ) 
     fclose( out );
 }
 
-void encodeToCapsule( char* capsuleName, char* path, char* opath ) {
+void encodeToCapsule( char* capsuleName, char* path, char* opath, char* uuid ) {
 	// Generate full output path
 	char oFullPathCapsule[255] = {0};
 	memcpy( oFullPathCapsule, opath, strlen( opath ) );	
@@ -325,7 +326,7 @@ void encodeToCapsule( char* capsuleName, char* path, char* opath ) {
 
 	//printf("\tWriting header...\n");
 	// Write header	
-	writeHeader( &e, oFullPathPlainText, oFullPathCapsule );	
+	writeHeader( &e, oFullPathPlainText, oFullPathCapsule, uuid );
 
 	//printf("\tEncrypting capsule...\n");
 	// Plaintext->Cipher text and write out to oFullPathCapsule

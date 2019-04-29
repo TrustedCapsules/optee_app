@@ -8,11 +8,12 @@
 static void usage() {
     printf( "\ncgen <op> -n <capsule name> [-p path] [-o outpath] [-s SECTION]\n"
 			"  encode   encode plaintext policy, data, log, kvstore into capsule\n"
-			"\t-n 		capsule name\n"
+			"\t-n   	capsule name\n"
+			"\t-u   	capsule uuid [Default: ffffffffffffffffffffffffffffffff]\n"
 			"\t-p   	path, default local\n"
 			"\t-o   	output path, default local\n"
 			"  decode	decode capsule into plaintext policy, data, log, kvstore\n"
-			"\t-n 		capsule name\n"
+			"\t-n   	capsule name\n"
 			"\t-p   	path, default local\n"
 			"\t-s   	section to decode\n\n"
 		  );
@@ -30,7 +31,7 @@ int main( int argc, char *argv[] ) {
 	char*	op = argv[1];
     char   *optparse;
     if (strcmp(op, "encode") == 0) {
-        optparse = "n:p:o:";
+        optparse = "n:u:p:o:";
     } else if (strcmp(op, "decode") == 0) {
         optparse = "n:p:s:";
     } else {
@@ -41,6 +42,7 @@ int main( int argc, char *argv[] ) {
 	char *capsuleName = NULL;
 	char *path = "./"; 
 	char *opath = "./";
+	char *uuid = "ffffffffffffffffffffffffffffffff";
 	char *section = "all";
 	SECTION t = ALL_SECTION;
 
@@ -49,7 +51,10 @@ int main( int argc, char *argv[] ) {
 		case 'n':
 			capsuleName = optarg;
 			break;
-		case 'p':
+		case 'u':
+			uuid = optarg;
+			break;
+        case 'p':
 			path = optarg;
 			break;
 		case 'o':
@@ -83,7 +88,7 @@ int main( int argc, char *argv[] ) {
     }
 
     if( strcmp( op, "encode" ) == 0 ) {
-		encodeToCapsule( capsuleName, path, opath );
+		encodeToCapsule( capsuleName, path, opath, uuid );
     } else if ( strcmp( op, "decode" ) == 0 ) {
         decodeFromCapsule( capsuleName, path, t );
     }

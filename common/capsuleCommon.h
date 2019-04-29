@@ -10,6 +10,7 @@
 #define DELIMITER       "\n----\n"
 #define DELIMITER_SIZE  6
 #define HASHLEN         32
+#define UUIDLEN         32
 #define SHARED_MEM_SIZE 1024*10         // Used in tests
 #define HEADER_SIZE 128 // Backward compatability with send functions
 #define MAX_NUM_KEYS 10 // Maximum number of keys in capsule KV store
@@ -71,9 +72,10 @@ typedef enum {
 
 typedef struct TrustedCap {
 	char            pad[11];        // bytes 0-11
-	unsigned int    capsize;        // bytes 12-15
-	unsigned char   aes_id[4];      // bytes 16-19
-	unsigned char   hash[HASHLEN];  // bytes 20-52
+	char            uuid[UUIDLEN];  // bytes 12-43
+	unsigned int    capsize;        // bytes 44-47
+	unsigned char   aes_id[4];      // bytes 48-51
+	unsigned char   hash[HASHLEN];  // bytes 52-83
 } TrustedCap;
 
 #endif

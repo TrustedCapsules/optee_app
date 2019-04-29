@@ -85,23 +85,23 @@ void concatenateFiles( char* datafile, char* policyfile, char* kvfile, char* ptx
     if( data == NULL ) {
         fprintf( stderr, "concatenateFiles(): unable to open %s\n", 
 				datafile );
-        return;
+        exit(1);
     }
     
     if( policy == NULL ) {
         fprintf( stderr, "concatenateFiles(): unable to open %s\n", 
 				policyfile );
-        return;
+        exit(1);
     }
     if( kvstore == NULL ) {
         fprintf( stderr, "concatenateFiles(): unable to open %s\n", 
 				kvfile );
-        return;
+        exit(1);
     }
     if( plaintext == NULL ) {
         fprintf( stderr, "concatenateFiles(): unable to open %s\n", 
 				ptx );
-        return;
+        exit(1);
     }
 	// write delimiter -> plaintext file
     // fprintf( plaintext, DELIMITER );
@@ -167,7 +167,7 @@ void encryptFile( capsuleEntry* e, char* ptxFile, char* ctxFile ) {
     if( in == NULL || out == NULL ) {
         fprintf( stderr, "encryptFile(): unable to open %s or %s\n", 
 				ptxFile, ctxFile );
-        return;
+        exit(1);
     }
 
     // get plaintext file size
@@ -184,7 +184,7 @@ void encryptFile( capsuleEntry* e, char* ptxFile, char* ctxFile ) {
     	free( buffer );
     	fclose( out );
     	fclose( in );
-    	return;    
+        exit(1);
     }
 
     // read in entire file
@@ -194,14 +194,21 @@ void encryptFile( capsuleEntry* e, char* ptxFile, char* ctxFile ) {
     	free( buffer );
     	fclose( out );
     	fclose( in );
-    	return;    
+        exit(1);
     }
 
 	// encrypt file
 	aesEncrypt( buffer, buffer, ptxLength, e );
 
     // write file -> capsule
-    fullWrite( buffer, sizeof(char), ptxLength, out );
+    if( fullWrite( buffer, sizeof(char), ptxLength, out ) != ptxLength ) {
+        fprintf( stderr,  "encryptFile(): fullWrite() did not write %zu B\n",
+                 ptxLength );
+        free( buffer );
+        fclose( out );
+        fclose( in );
+        exit(1);
+    }
     
     free( buffer );
     fclose( out );
@@ -237,7 +244,7 @@ void writeHeader( capsuleEntry *e, const char *plaintext, const char *capsule, c
     if( in == NULL || out == NULL ) {
         printf( "writeHeader(): unable to open files %s or %s\n", 
 				plaintext, capsule );
-        return;
+        exit(1);
     }
 
     fseek(in, 0, SEEK_END);
@@ -247,7 +254,7 @@ void writeHeader( capsuleEntry *e, const char *plaintext, const char *capsule, c
     unsigned char* buffer = (unsigned char*) malloc( ptxLength * sizeof(char) );
     if( buffer == NULL ) {
         fprintf( stderr, "writeHeader(): malloc failed\n" );
-        return;
+        exit(1);
     }
     
 	// Read in everything after the header
@@ -257,7 +264,7 @@ void writeHeader( capsuleEntry *e, const char *plaintext, const char *capsule, c
     	free( buffer );
     	fclose( in );
     	fclose( out );
-		return;
+        exit(1);
 	}
 
     unsigned char	hash[HASHLEN];
@@ -272,7 +279,8 @@ void writeHeader( capsuleEntry *e, const char *plaintext, const char *capsule, c
 	if( fullWrite( &header, sizeof( TrustedCap ), 1, out ) != sizeof( TrustedCap ) ) {
 		fprintf( stderr, "writeHeader(): fullWrite did not write %zu B\n", 
 				 sizeof( TrustedCap ) );
-	}
+        exit(1);
+    }
     
 	free( buffer );
     fclose( in );
@@ -316,7 +324,7 @@ void encodeToCapsule( char* capsuleName, char* path, char* opath, char* uuid ) {
 	if( getCapsuleKeys( capsuleName, &e ) == false ) {
 		fprintf( stderr, "encodeToCapsule(): cannot find capsule keys %s\n",
 					capsuleName );
-		return;
+		exit(1);
 	}	
 
 	//printf("\tConcatenating files...\n");

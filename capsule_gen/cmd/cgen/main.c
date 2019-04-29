@@ -18,7 +18,7 @@ static void usage() {
 			"  decode	decodes capsule into plaintext policy, data, log, kvstore\n"
 			"\t-n   	capsule name [Required]\n"
 			"\t-p   	path [Default: ./]\n"
-			"\t-s   	section to decode [Default: all] [Options: header, policy, kv, log, data]\n\n"
+			"\t-s   	section to decode [Default: all] [Options: header, policy, kvstore, log, data]\n\n"
 		  );
 }
 
@@ -69,7 +69,7 @@ int main( int argc, char *argv[] ) {
 				t = HEADER_SECTION;
 			} else if( strcmp( section, "policy" ) == 0 ) {
 				t = POLICY_SECTION;
-			} else if( strcmp( section, "kv" ) == 0 ) {
+			} else if( strcmp( section, "kvstore" ) == 0 ) {
 				t = KV_SECTION;
 			} else if( strcmp( section, "log" ) == 0 ) {
 				t = LOG_SECTION;
@@ -87,7 +87,7 @@ int main( int argc, char *argv[] ) {
 
     if ( capsuleName == NULL ) {
         usage();
-        return 0;
+        return 1;
     }
 
     if( strcmp( op, "encode" ) == 0 ) {
